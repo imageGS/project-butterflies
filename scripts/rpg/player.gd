@@ -29,7 +29,7 @@ func _draw():
 	var color := Color.WHITE if state == State.IDLE else Color.ORANGE
 	draw_rect(Rect2(-16, -32, 32, 48), color)
 
-func _input(event):
+func _unhandled_input(event):
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var now := Time.get_ticks_msec() / 1000.0
 		var is_double := (now - _last_click_time) < 0.3

@@ -1,6 +1,8 @@
 class_name Interactable
 extends Area2D
 
+signal interacted
+
 @export var interaction_label: String = "Interact"
 @export var tooltip: String = ""
 
@@ -23,4 +25,4 @@ func _draw():
 	draw_rect(Rect2(-24, -24, 48, 48), c)
 
 func interact():
-	print("[%s] Interacted with: %s" % [name, interaction_label])
+	interacted.emit()
