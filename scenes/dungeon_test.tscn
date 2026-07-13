@@ -1,13 +1,13 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dr0twnl3sajh6"]
 
-[ext_resource type="Script" path="res://scripts/dungeon/dungeon_manager.gd" id="1_5l8q4"]
+[ext_resource type="Script" uid="uid://pesddcenx2q6" path="res://scripts/dungeon/dungeon_manager.gd" id="1_5l8q4"]
 [ext_resource type="Shader" uid="uid://beau46y3abk4b" path="res://crtshader.gdshader" id="2_5x6o4"]
 [ext_resource type="Script" uid="uid://bd8tswh2btr2u" path="res://crt_display.gd" id="3_7d8j2"]
 [ext_resource type="Texture2D" uid="uid://da3ixditkkdem" path="res://UI_BACK.png" id="4_p3o8t"]
-[ext_resource type="Script" path="res://scripts/dungeon/dungeon_renderer.gd" id="5_8d2k1"]
+[ext_resource type="Script" uid="uid://r533lqkw3jph" path="res://scripts/dungeon/dungeon_renderer.gd" id="5_8d2k1"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_ek"]
-viewport_path = NodePath("GameViewport")
+viewport_path = NodePath("CRT_Root/GameViewport")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_eo"]
 resource_local_to_scene = true
@@ -23,13 +23,10 @@ shader_parameter/min_scanline_thickness = 0.7240000225150001
 shader_parameter/aspect = 0.5170000008075
 shader_parameter/wobble_strength = 0.302000014345
 
-[node name="DungeonTest" type="Node" node_paths=PackedStringArray("renderer", "hud_label", "direction_label")]
+[node name="DungeonTest" type="Node" unique_id=1698261410]
 script = ExtResource("1_5l8q4")
-renderer = NodePath("CRT_Root/GameViewport/UI/CentralViewport")
-hud_label = NodePath("CRT_Root/GameViewport/UI/InfoLabel")
-direction_label = NodePath("CRT_Root/GameViewport/UI/DirectionLabel")
 
-[node name="CRT_Root" type="Control" parent="DungeonTest"]
+[node name="DungeonTest#CRT_Root" type="Control" parent="." unique_id=1066366203]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -38,9 +35,8 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="CRT_Display" type="ColorRect" parent="DungeonTest/CRT_Root" node_paths=PackedStringArray("subviewport_node")]
+[node name="DungeonTest_CRT_Root#CRT_Display" type="ColorRect" parent="." unique_id=1722926503]
 material = SubResource("ShaderMaterial_eo")
-layout_mode = 1
 anchors_preset = -1
 anchor_left = -2.0
 anchor_top = -13.625001
@@ -54,13 +50,12 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("3_7d8j2")
-subviewport_node = NodePath("../GameViewport")
 
-[node name="GameViewport" type="SubViewport" parent="DungeonTest/CRT_Root"]
+[node name="DungeonTest_CRT_Root#GameViewport" type="SubViewport" parent="." unique_id=1113557625]
 size = Vector2i(1152, 648)
 size_2d_override = Vector2i(1152, 648)
 
-[node name="UI" type="Control" parent="DungeonTest/CRT_Root/GameViewport"]
+[node name="DungeonTest_CRT_Root_GameViewport#UI" type="Control" parent="." unique_id=1240989260]
 layout_mode = 3
 anchors_preset = 0
 offset_left = 76.0
@@ -68,8 +63,9 @@ offset_top = 546.0
 offset_right = 1076.0
 offset_bottom = 608.0
 
-[node name="CentralViewport" type="Control" parent="DungeonTest/CRT_Root/GameViewport/UI"]
-layout_mode = 0
+[node name="DungeonTest_CRT_Root_GameViewport_UI#CentralViewport" type="Control" parent="." unique_id=689375822]
+layout_mode = 3
+anchors_preset = 0
 offset_left = 71.0
 offset_top = -516.0
 offset_right = 929.0
@@ -77,10 +73,9 @@ offset_bottom = -67.0
 mouse_filter = 2
 script = ExtResource("5_8d2k1")
 
-[node name="UI_BACK" type="TextureRect" parent="DungeonTest/CRT_Root/GameViewport/UI"]
+[node name="DungeonTest_CRT_Root_GameViewport_UI#UI_BACK" type="TextureRect" parent="." unique_id=1810487170]
 z_index = 4
 texture_filter = 1
-layout_mode = 0
 offset_left = -83.0
 offset_top = -548.0
 offset_right = 557.0
@@ -89,9 +84,8 @@ scale = Vector2(1.8179175, 1.8119441)
 mouse_filter = 2
 texture = ExtResource("4_p3o8t")
 
-[node name="InfoLabel" type="Label" parent="DungeonTest/CRT_Root/GameViewport/UI"]
+[node name="DungeonTest_CRT_Root_GameViewport_UI#InfoLabel" type="Label" parent="." unique_id=1927071878]
 z_index = 5
-layout_mode = 0
 offset_left = 5.0
 offset_top = -40.0
 offset_right = 300.0
@@ -99,9 +93,8 @@ offset_bottom = -15.0
 theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
 theme_override_font_sizes/font_size = 14
 
-[node name="DirectionLabel" type="Label" parent="DungeonTest/CRT_Root/GameViewport/UI"]
+[node name="DungeonTest_CRT_Root_GameViewport_UI#DirectionLabel" type="Label" parent="." unique_id=1778531321]
 z_index = 5
-layout_mode = 0
 offset_left = 5.0
 offset_top = -65.0
 offset_right = 100.0

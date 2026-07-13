@@ -24,7 +24,7 @@ func _draw():
 		_setup_view()
 
 	var fov: float = deg_to_rad(90.0)
-	var num_strips: int = _view_w / _strip_w
+	var num_strips: int = int(_view_w / _strip_w)
 	var half_h: float = _view_h / 2.0
 
 	var px: float = player_grid_x + 0.5
@@ -102,7 +102,7 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 			side_y += delta_y
 			map_y += step_y
 			side = 1
-		if map_x < 0 or map_x >= len(map_data[0]) or map_y < 0 or map_y >= len(map_data):
+		if map_data.is_empty() or map_x < 0 or map_y < 0 or map_y >= len(map_data) or map_x >= len(map_data[0]):
 			hit = true
 			break
 		if map_data[map_y][map_x] == TILE_WALL:

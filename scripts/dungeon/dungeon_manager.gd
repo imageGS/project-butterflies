@@ -101,7 +101,7 @@ func _check_entity():
 func _start_battle():
 	TransitionManager.change_scene("res://node.tscn")
 
-func _start_dialogue(ent: Dictionary):
+func _start_dialogue(_ent: Dictionary):
 	if hud_label:
 		hud_label.text = "[NPC] Hello, wanderer..."
 
