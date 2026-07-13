@@ -319,8 +319,8 @@ func _log(text: String, append: bool = false):
 	else:
 		log_label.text = text
 
-func _roll_d20() -> int:
-	return randi() % 20 + 1
+func _roll_d20(modifier: int = 0) -> int:
+	return SkillCheck.roll(modifier)
 
 # ==================================================== Враг
 func new_rat():

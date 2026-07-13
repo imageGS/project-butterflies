@@ -13,8 +13,8 @@ const DIR_VECTORS: Dictionary = {
 const TILE_FLOOR := 0
 const TILE_WALL := 1
 
-@export var move_duration: float = 0.12
-@export var turn_duration: float = 0.08
+@export var move_duration: float = 0.25
+@export var turn_duration: float = 0.2
 
 var _player_x: float = 1.0
 var _player_y: float = 1.0
@@ -35,6 +35,21 @@ var _anim_to_angle := 0.0
 var _footstep_sounds: Array = []
 var _footstep_player: AudioStreamPlayer
 
+var _awareness_timer: float = 0.0
+var _awareness_interval: float = 8.0
+var _awareness_pool: Array[String] = [
+	"Вы замечаете странные царапины на стенах.",
+	"Откуда-то доносится запах сырости и металла.",
+	"Краем глаза вы замечаете движение в темноте.",
+	"Пол под ногами слегка вибрирует.",
+	"Где-то капает вода. Звук эхом разносится по тоннелю.",
+	"Тишина слишком плотная. Словно метро затаило дыхание.",
+	"На стене следы когтей. Свежие.",
+	"Воздух становится тяжелее. Вы чувствуете давление в висках.",
+	"Лампы мигают. На мгновение тьма становится абсолютной.",
+	"По полу пробегает крыса. Обычная, не падальщик.",
+]
+
 var _dialogue_overlay: CanvasLayer
 var _dialogue_root: ColorRect
 var _dialogue_portrait_bg: ColorRect
@@ -47,9 +62,12 @@ var _dialogue_responses: Array[Label] = []
 var _dialogue_nodes: Array = []
 var _dialogue_index: int = 0
 var _dialogue_active: bool = false
+var _dialogue_busy: bool = false
+var _passive_cache: Dictionary = {}
 
 @onready var _renderer: Control = $DungeonView
 @onready var _label: Label = $DungeonView/InfoLabel
+@onready var _awareness_label: Label = $DungeonView/AwarenessLabel
 
 func _ready():
 	_build_test_level()
@@ -58,6 +76,7 @@ func _ready():
 	_setup_dialogue_ui()
 	_setup_audio()
 	_refresh()
+	_awareness_timer = _awareness_interval
 
 func _build_test_level():
 	_map_data = []
@@ -73,23 +92,19 @@ func _build_test_level():
 func _setup_entities():
 	_entities = []
 	_entities.append({ "grid_x": 3, "grid_y": 3, "color": Color(0.8, 0.2, 0.2), "type": "enemy", "texture": load("res://sprites/enemy/bunny/bunny_enemy.png") })
-	_entities.append({ "grid_x": 5, "grid_y": 5, "color": Color(0.2, 0.6, 0.2), "type": "npc", "name": "Таинственный странник", "texture": load("res://sprites/npc/17_sprite.png"), "dialogue": [
-		{ "text": "Привет, путник. Давно тебя не видел в этих краях.", "responses": [
-			{ "text": "Мы знакомы?", "next": 1 },
-			{ "text": "Кто ты?", "next": 2 },
-			{ "text": "Мне некогда.", "next": 3 }
-		]},
-		{ "text": "Ты просто не помнишь. Но это неважно. Важно то, что ты здесь.", "responses": [
-			{ "text": "Что ты имеешь в виду?", "next": 2 },
-			{ "text": "Ладно, мне пора.", "next": 3 }
-		]},
-		{ "text": "Это место — не просто подземелье. Оно дышит. Оно помнит. Будь осторожен, что тревожишь.", "responses": [
-			{ "text": "Я запомню.", "next": -1 }
-		]},
-		{ "text": "Как знаешь. Но помни — обратной дороги может не быть.", "responses": [
-			{ "text": "...", "next": -1 }
-		]}
-	]})
+
+	var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
+	if file:
+		var data: Dictionary = JSON.parse_string(file)
+		if data and data.has("nodes"):
+			_entities.append({
+				"grid_x": 5, "grid_y": 5,
+				"color": Color(0.2, 0.6, 0.2),
+				"type": "npc",
+				"name": data.get("name", "Незнакомец"),
+				"texture": load("res://sprites/npc/17_sprite.png"),
+				"dialogue": data.nodes,
+			})
 
 func _setup_dialogue_ui():
 	_dialogue_overlay = CanvasLayer.new()
@@ -132,6 +147,10 @@ func _setup_dialogue_ui():
 		resp.add_theme_font_size_override("font_size", 18)
 		resp.text = ""
 		resp.visible = false
+		resp.mouse_filter = Control.MOUSE_FILTER_STOP
+		resp.gui_input.connect(_on_resp_gui_input.bind(resp))
+		resp.mouse_entered.connect(_on_resp_mouse_entered.bind(resp))
+		resp.mouse_exited.connect(_on_resp_mouse_exited.bind(resp))
 		_dialogue_overlay.add_child(resp)
 		_dialogue_responses.append(resp)
 
@@ -282,39 +301,119 @@ func _show_dialogue_node():
 	var node: Dictionary = _dialogue_nodes[_dialogue_index]
 	_dialogue_text.text = node.get("text", "")
 	var responses: Array = node.get("responses", [])
-
-	if responses.is_empty():
-		_dialogue_prompt.text = "[E] Закрыть"
-		return
+	_passive_cache.clear()
+	var visible_count: int = 0
 
 	for i in responses.size():
-		if i < _dialogue_responses.size():
-			var opt: Dictionary = responses[i]
-			_dialogue_responses[i].text = str(i + 1) + ". " + opt.get("text", "")
+		if i >= _dialogue_responses.size():
+			break
+		var opt: Dictionary = responses[i]
+		var show: bool = true
+		var check: Dictionary = opt.get("check", {})
+		if not check.is_empty() and check.get("passive", false):
+			var r := SkillCheck.check(PlayerStats.get_skill(check.get("skill", "composure")), check.get("dc", 10))
+			_passive_cache[i] = r.success
+			show = r.success
+		if show:
+			_dialogue_responses[i].set_meta("resp_idx", visible_count)
+			_dialogue_responses[i].text = str(visible_count + 1) + ". " + opt.get("text", "")
 			_dialogue_responses[i].visible = true
+			visible_count += 1
+		else:
+			_dialogue_responses[i].visible = false
 
-	_dialogue_prompt.text = "[1-" + str(responses.size()) + "]"
+	if visible_count == 0:
+		_dialogue_prompt.text = "[E] Закрыть"
+	else:
+		_dialogue_prompt.text = "[1-" + str(visible_count) + "]"
 
 func _advance_dialogue():
 	var node: Dictionary = _dialogue_nodes[_dialogue_index]
 	var responses: Array = node.get("responses", [])
-	if responses.is_empty():
+	var visible := _count_visible_responses(responses)
+	if visible == 0:
 		_dialogue_index += 1
 		_show_dialogue_node()
 	else:
 		_select_response(0)
 
+func _count_visible_responses(responses: Array) -> int:
+	var count: int = 0
+	for i in responses.size():
+		var opt: Dictionary = responses[i]
+		var check: Dictionary = opt.get("check", {})
+		if not check.is_empty() and check.get("passive", false):
+			if not _passive_cache.get(i, false):
+				continue
+		count += 1
+	return count
+
+func _on_resp_mouse_entered(label: Label):
+	if not _dialogue_active or _dialogue_busy:
+		return
+	label.add_theme_color_override("font_color", Color(1, 0.95, 0.8))
+
+func _on_resp_mouse_exited(label: Label):
+	label.add_theme_color_override("font_color", Color(0.85, 0.8, 0.65))
+
+func _on_resp_gui_input(event: InputEvent, label: Label):
+	if not _dialogue_active or _dialogue_busy:
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var vis_idx: int = label.get_meta("resp_idx", -1)
+		if vis_idx >= 0:
+			_select_response(vis_idx)
+
 func _select_response(idx: int):
+	if _dialogue_busy:
+		return
+	_dialogue_busy = true
+
 	var node: Dictionary = _dialogue_nodes[_dialogue_index]
 	var responses: Array = node.get("responses", [])
-	if idx < 0 or idx >= responses.size():
+	var actual_idx: int = -1
+	var seen: int = 0
+	for i in responses.size():
+		var opt: Dictionary = responses[i]
+		var check: Dictionary = opt.get("check", {})
+		if not check.is_empty() and check.get("passive", false):
+			if not _passive_cache.get(i, false):
+				continue
+		if seen == idx:
+			actual_idx = i
+			break
+		seen += 1
+	if actual_idx < 0 or actual_idx >= responses.size():
+		_dialogue_busy = false
 		return
-	var next_idx: int = responses[idx].get("next", -1)
-	if next_idx < 0:
+
+	var chosen: Dictionary = responses[actual_idx]
+	var chk: Dictionary = chosen.get("check", {})
+	if chk.is_empty():
+		_dialogue_busy = false
+		_go_to_node(chosen.get("next", -1))
+		return
+
+	_dialogue_prompt.text = "Проверка " + SkillCheck.dc_description(chk.get("dc", 10)) + "..."
+	var result := SkillCheck.check(PlayerStats.get_skill(chk.get("skill", "composure")), chk.get("dc", 10))
+	if result.success:
+		_dialogue_prompt.text = "✓ Успех!  (" + str(result.total) + ")"
+	else:
+		_dialogue_prompt.text = "✗ Провал  (" + str(result.total) + ")"
+	await get_tree().create_timer(0.6).timeout
+
+	_dialogue_busy = false
+	if result.success:
+		_go_to_node(chosen.get("next_pass", chosen.get("next", -1)))
+	else:
+		_go_to_node(chosen.get("next_fail", chosen.get("next", -1)))
+
+func _go_to_node(idx: int):
+	if idx < 0:
 		_close_dialogue()
-		return
-	_dialogue_index = next_idx
-	_show_dialogue_node()
+	else:
+		_dialogue_index = idx
+		_show_dialogue_node()
 
 func _close_dialogue():
 	_dialogue_active = false
@@ -351,20 +450,23 @@ func _start_rotate(old_dir: int):
 	set_process(true)
 
 func _process(delta):
+	_awareness_timer -= delta
+	if _awareness_timer <= 0.0:
+		_awareness_timer = _awareness_interval + randf_range(-2.0, 2.0)
+		_try_awareness()
+
 	if not _is_animating:
-		set_process(false)
 		return
 	_anim_timer += delta
 	var dur: float = turn_duration if _anim_from_angle != _anim_to_angle and _anim_from_x == _anim_to_x else move_duration
 	var t: float = min(_anim_timer / dur, 1.0)
-	t = t * t * (3.0 - 2.0 * t)
+	t = t * t * t * (t * (6.0 * t - 15.0) + 10.0)
 	_player_x = lerp(_anim_from_x, _anim_to_x, t)
 	_player_y = lerp(_anim_from_y, _anim_to_y, t)
 	_current_angle = lerp_angle(_anim_from_angle, _anim_to_angle, t)
 	_refresh()
 	if t >= 1.0:
 		_is_animating = false
-		set_process(false)
 		_check_entity()
 
 func _check_entity():
@@ -374,6 +476,20 @@ func _check_entity():
 		if ent.grid_x == rx and ent.grid_y == ry:
 			if ent.type == "enemy":
 				TransitionManager.change_scene("res://scenes/battle/node.tscn")
+
+func _try_awareness():
+	if _dialogue_active:
+		return
+	if not _awareness_label:
+		return
+	var result := SkillCheck.check(PlayerStats.get_skill("intuition"), 12)
+	if result.success and not _awareness_pool.is_empty():
+		var msg: String = _awareness_pool[randi() % _awareness_pool.size()]
+		_awareness_label.text = msg
+		get_tree().create_timer(6.0).timeout.connect(func():
+			if is_instance_valid(_awareness_label):
+				_awareness_label.text = ""
+		, CONNECT_ONE_SHOT)
 
 func _refresh():
 	if _renderer:
