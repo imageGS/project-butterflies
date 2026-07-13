@@ -2,8 +2,8 @@ extends Control
 
 const TILE_WALL: int = 1
 
-var player_grid_x: int = 1
-var player_grid_y: int = 1
+var cam_x: float = 1.5
+var cam_y: float = 1.5
 var player_angle: float = 0.0
 var map_data: Array = []
 
@@ -13,6 +13,7 @@ var _strip_w: int = 4
 var _ready_drawn: bool = false
 
 var entities_on_map: Array = []
+var _bunny_texture: Texture2D = preload("res://sprites/enemy/bunny/bunny_enemy.png")
 
 func _ready():
 	if not _ready_drawn:
@@ -27,14 +28,11 @@ func _draw():
 	var num_strips: int = int(_view_w / _strip_w)
 	var half_h: float = _view_h / 2.0
 
-	var px: float = player_grid_x + 0.5
-	var py: float = player_grid_y + 0.5
-
 	_draw_floor_ceiling()
 
 	for i in range(num_strips):
 		var ray_angle: float = player_angle - fov * 0.5 + (i / float(num_strips)) * fov
-		var result: Dictionary = _cast_ray(px, py, ray_angle)
+		var result: Dictionary = _cast_ray(cam_x, cam_y, ray_angle)
 		if result.hit:
 			var perp: float = result.distance
 			if perp < 0.01: perp = 0.01
@@ -48,7 +46,7 @@ func _draw():
 			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
 
 	for ent: Dictionary in entities_on_map:
-		var ent_dir: Vector2 = Vector2(ent.grid_x + 0.5 - px, ent.grid_y + 0.5 - py).normalized()
+		var ent_dir: Vector2 = Vector2(ent.grid_x + 0.5 - cam_x, ent.grid_y + 0.5 - cam_y).normalized()
 		var view_dir: Vector2 = Vector2(cos(player_angle), sin(player_angle))
 		var dot: float = view_dir.dot(ent_dir)
 		if dot > 0.7:
@@ -56,11 +54,19 @@ func _draw():
 			var angle: float = atan2(cross, dot)
 			if abs(angle) <= fov * 0.5:
 				var screen_x: int = int((angle / fov + 0.5) * _view_w)
-				var dist: float = Vector2(ent.grid_x + 0.5 - px, ent.grid_y + 0.5 - py).length()
+				var dist: float = Vector2(ent.grid_x + 0.5 - cam_x, ent.grid_y + 0.5 - cam_y).length()
 				if dist < 0.01: dist = 0.01
 				var scale_h: float = _view_h / (dist * 1.5)
-				var y: float = half_h - scale_h * 0.5
-				draw_rect(Rect2(screen_x - 12, y, 24, scale_h), ent.color)
+				var tex: Texture2D = ent.get("texture") if ent.has("texture") else null
+				var y: float = half_h - scale_h * 0.6
+				if tex:
+					var tex_w: float = tex.get_width()
+					var tex_h: float = tex.get_height()
+					var spr_h: float = scale_h
+					var spr_w: float = spr_h * tex_w / tex_h
+					draw_texture_rect(tex, Rect2(screen_x - spr_w * 0.5, y, spr_w, spr_h), false, Color.WHITE)
+				else:
+					draw_rect(Rect2(screen_x - 12, y, 24, scale_h), ent.get("color", Color.WHITE))
 
 func _setup_view():
 	_view_w = int(size.x)
@@ -112,9 +118,9 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	if perp < 0.0: perp = 0.0
 	return { "hit": hit, "distance": perp, "side": side, "mx": map_x, "my": map_y }
 
-func update_view(px: int, py: int, angle: float, map: Array, entities: Array):
-	player_grid_x = px
-	player_grid_y = py
+func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array):
+	cam_x = cx
+	cam_y = cy
 	player_angle = angle
 	map_data = map
 	entities_on_map = entities

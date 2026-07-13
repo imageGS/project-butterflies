@@ -1,6 +1,6 @@
-[gd_scene format=3 uid="uid://nlgfppmunca4"]
+[gd_scene format=3 uid="uid://bgubrcktor04j"]
 
-[ext_resource type="Script" path="res://main.gd" id="1_sy5k4"]
+[ext_resource type="Script" uid="uid://clwyqhh5hoog5" path="res://scripts/scenes/main.gd" id="1_sy5k4"]
 [ext_resource type="Texture2D" uid="uid://bgb3x25qaqtwj" path="res://sprites/backgrond/dark_tonnel_1.webp" id="2_112p8"]
 [ext_resource type="Texture2D" uid="uid://di8hwmrceguj3" path="res://sprites/enemy/bunny/head.png" id="3_112p8"]
 [ext_resource type="Texture2D" uid="uid://d1psc5pl1vou" path="res://sprites/enemy/bunny/body.png" id="4_l6pdb"]
@@ -11,10 +11,11 @@
 [ext_resource type="VideoStream" uid="uid://clgtiiojihm5q" path="res://videos/punch.ogv" id="9_r657h"]
 [ext_resource type="Texture2D" uid="uid://rk4kynomwl7i" path="res://sprites/guts.png" id="10_436f3"]
 [ext_resource type="AudioStream" uid="uid://dghhonvnx6h5h" path="res://audio/male-scream.mp3" id="10_bcos8"]
-[ext_resource type="Script" path="res://crt_display.gd" id="10_f0urt"]
-[ext_resource type="Texture2D" path="res://UI_BACK.png" id="11_jfkdj"]
+[ext_resource type="Script" uid="uid://dsi67p8ck8fw5" path="res://scripts/ui/crt_display.gd" id="10_f0urt"]
+[ext_resource type="Texture2D" uid="uid://3aub1ayemjdp" path="res://assets/textures/UI_BACK.png" id="11_jfkdj"]
 [ext_resource type="VideoStream" uid="uid://box6o06jshoqq" path="res://videos/punchL2.ogv" id="11_wt6go"]
 [ext_resource type="VideoStream" uid="uid://bi3467e47wqa5" path="res://videos/heal.ogv" id="12_3t6p4"]
+[ext_resource type="Script" uid="uid://cmicxtwxruolj" path="res://scripts/ui/ripple_button.gd" id="13_r657h"]
 
 [sub_resource type="Shader" id="Shader_r657h"]
 code = "// CRT Shader by Harrison Allen
@@ -682,21 +683,25 @@ alignment = 1
 layout_mode = 2
 mouse_default_cursor_shape = 2
 text = "Атака"
+script = ExtResource("13_r657h")
 
 [node name="BtnAction" type="Button" parent="CRT_Root/GameViewport/UI/MainMenu" unique_id=863084105]
 layout_mode = 2
 mouse_default_cursor_shape = 2
 text = "Действие"
+script = ExtResource("13_r657h")
 
 [node name="BtnItem" type="Button" parent="CRT_Root/GameViewport/UI/MainMenu" unique_id=1326251851]
 layout_mode = 2
 mouse_default_cursor_shape = 2
 text = "Предмет"
+script = ExtResource("13_r657h")
 
 [node name="BtnFlee" type="Button" parent="CRT_Root/GameViewport/UI/MainMenu" unique_id=656378783]
 layout_mode = 2
 mouse_default_cursor_shape = 2
 text = "Побег"
+script = ExtResource("13_r657h")
 
 [node name="AttackSubMenu" type="VBoxContainer" parent="CRT_Root/GameViewport/UI" unique_id=657704664]
 z_index = 5
@@ -711,30 +716,37 @@ offset_transform_position = Vector2(0.92, 0)
 [node name="BtnHead" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=345701858]
 layout_mode = 2
 text = "Ударить в голову"
+script = ExtResource("13_r657h")
 
 [node name="BtnTorso" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=1845175837]
 layout_mode = 2
 text = "Ударить в торс"
+script = ExtResource("13_r657h")
 
 [node name="BtnArmLeft" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=393327279]
 layout_mode = 2
 text = "Ударить в руку"
+script = ExtResource("13_r657h")
 
 [node name="BtnArmRight" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=623952334]
 layout_mode = 2
 text = "Ударить в руку"
+script = ExtResource("13_r657h")
 
 [node name="BtnLegLeft" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=1457917926]
 layout_mode = 2
 text = "Ударить в ногу"
+script = ExtResource("13_r657h")
 
 [node name="BtnLegRight" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=1038535318]
 layout_mode = 2
 text = "Ударить в ногу"
+script = ExtResource("13_r657h")
 
 [node name="BtnBack" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=1157140171]
 layout_mode = 2
 text = "Назад"
+script = ExtResource("13_r657h")
 
 [node name="ActionSubMenu" type="VBoxContainer" parent="CRT_Root/GameViewport/UI" unique_id=1332488472]
 z_index = 5

@@ -1,0 +1,25 @@
+[gd_scene format=3 uid="uid://c8w7nm7je1a3q"]
+
+[ext_resource type="Script" uid="uid://r533lqkw3jph" path="res://scripts/dungeon/dungeon_renderer.gd" id="1_k2c7o"]
+[ext_resource type="Script" uid="uid://dklw7i5r0a06u" path="res://scripts/dungeon/test_dungeon_mechanics.gd" id="2_r7h3n"]
+
+[node name="TestDungeon" type="Node" unique_id=1267846060]
+script = ExtResource("2_r7h3n")
+
+[node name="DungeonView" type="Control" parent="." unique_id=12586940]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_k2c7o")
+
+[node name="InfoLabel" type="Label" parent="DungeonView" unique_id=1955034960]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 200.0
+offset_bottom = 40.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
