@@ -1,13 +1,13 @@
-[gd_scene format=3 uid="uid://rpg_exploration"]
+[gd_scene format=3 uid="uid://dyoo0et8xnwpm"]
 
 [ext_resource type="Script" uid="uid://bxr3s5jkcu8q5" path="res://scripts/rpg/exploration.gd" id="1_5l8q4"]
 [ext_resource type="Shader" uid="uid://beau46y3abk4b" path="res://crtshader.gdshader" id="2_5x6o4"]
 [ext_resource type="Script" uid="uid://bd8tswh2btr2u" path="res://crt_display.gd" id="3_7d8j2"]
 [ext_resource type="Texture2D" uid="uid://da3ixditkkdem" path="res://UI_BACK.png" id="4_p3o8t"]
-[ext_resource type="Script" path="res://scripts/rpg/dialogue_box.gd" id="5_2k9s1"]
+[ext_resource type="Script" uid="uid://d04l2dcf7qog4" path="res://scripts/rpg/dialogue_box.gd" id="5_2k9s1"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_ek"]
-viewport_path = NodePath("CRT_Root/GameViewport")
+viewport_path = NodePath("GameViewport")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_eo"]
 resource_local_to_scene = true
@@ -23,7 +23,7 @@ shader_parameter/min_scanline_thickness = 0.7240000225150001
 shader_parameter/aspect = 0.5170000008075
 shader_parameter/wobble_strength = 0.302000014345
 
-[node name="CRT_Root" type="Control" unique_id=186295484 node_paths=PackedStringArray("central_viewport", "dialogue_box")]
+[node name="RPGExploration" type="Control" node_paths=PackedStringArray("central_viewport", "dialogue_box")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -35,7 +35,7 @@ script = ExtResource("1_5l8q4")
 central_viewport = NodePath("GameViewport/UI/CentralViewport")
 dialogue_box = NodePath("GameViewport/UI/DialogueBox")
 
-[node name="CRT_Display" type="ColorRect" parent="CRT_Root" unique_id=971596335 node_paths=PackedStringArray("subviewport_node")]
+[node name="CRT_Display" type="ColorRect" parent="RPGExploration" node_paths=PackedStringArray("subviewport_node")]
 material = SubResource("ShaderMaterial_eo")
 layout_mode = 1
 anchors_preset = -1
@@ -53,27 +53,27 @@ mouse_filter = 2
 script = ExtResource("3_7d8j2")
 subviewport_node = NodePath("../GameViewport")
 
-[node name="GameViewport" type="SubViewport" parent="CRT_Root" unique_id=543370289]
+[node name="GameViewport" type="SubViewport" parent="RPGExploration"]
 size = Vector2i(1152, 648)
 size_2d_override = Vector2i(1152, 648)
 
-[node name="UI" type="Control" parent="CRT_Root/GameViewport" unique_id=715070371]
+[node name="UI" type="Control" parent="RPGExploration/GameViewport"]
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 0
+offset_left = 76.0
+offset_top = 546.0
+offset_right = 1076.0
+offset_bottom = 608.0
 
-[node name="CentralViewport" type="Control" parent="CRT_Root/GameViewport/UI" unique_id=607584456]
+[node name="CentralViewport" type="Control" parent="RPGExploration/GameViewport/UI"]
 layout_mode = 0
 offset_left = 71.0
-offset_top = 30.0
+offset_top = -516.0
 offset_right = 929.0
-offset_bottom = 479.0
+offset_bottom = -67.0
 mouse_filter = 2
 
-[node name="UI_BACK" type="TextureRect" parent="CRT_Root/GameViewport/UI" unique_id=825436902]
+[node name="UI_BACK" type="TextureRect" parent="RPGExploration/GameViewport/UI"]
 z_index = 4
 texture_filter = 1
 layout_mode = 0
@@ -85,13 +85,13 @@ scale = Vector2(1.8179175, 1.8119441)
 mouse_filter = 2
 texture = ExtResource("4_p3o8t")
 
-[node name="DialogueBox" type="Control" parent="CRT_Root/GameViewport/UI" unique_id=349016105]
+[node name="DialogueBox" type="Control" parent="RPGExploration/GameViewport/UI"]
 z_index = 5
 visible = false
 layout_mode = 0
 offset_left = 70.0
-offset_top = 30.0
+offset_top = -515.0
 offset_right = 930.0
-offset_bottom = 480.0
+offset_bottom = -70.0
 mouse_filter = 1
 script = ExtResource("5_2k9s1")

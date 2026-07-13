@@ -45,8 +45,8 @@ func _setup_layout():
 	dialogue_text = RichTextLabel.new()
 	dialogue_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dialogue_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	dialogue_text.fit_content_height = true
 	dialogue_text.bbcode_enabled = true
+	dialogue_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	right.add_child(dialogue_text)
 
 	options_container = VBoxContainer.new()
