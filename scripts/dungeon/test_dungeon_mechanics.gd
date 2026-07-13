@@ -86,7 +86,7 @@ func _ready():
 	_awareness_timer = _awareness_interval
 
 func _build_test_level():
-	var ascii_rows := [
+	var ascii_rows: Array[String] = [
 		"################################################",
 		"#E....#.........#.......#.....#........#........#",
 		"#.###.#.#######.#.#####.#.###.#.######.#.######.#",
@@ -140,9 +140,9 @@ func _build_test_level():
 	_map_data = []
 	for y in ascii_rows.size():
 		var row: Array = []
-		var line := ascii_rows[y]
+		var line: String = ascii_rows[y]
 		for x in line.length():
-			var ch := line[x]
+			var ch: String = line[x]
 			match ch:
 				"#": row.append(TILE_WALL)
 				".": row.append(TILE_FLOOR)
@@ -219,11 +219,11 @@ func _build_test_level():
 	# 8. Спавны врагов — добавляем как entity
 
 func _carve_diag(x1: int, y1: int, x2: int, y2: int):
-	var steps := max(abs(x2 - x1), abs(y2 - y1))
+	var steps: int = max(abs(x2 - x1), abs(y2 - y1))
 	for i in steps + 1:
-		var t := float(i) / float(steps) if steps > 0 else 0.0
-		var px := int(round(lerp(float(x1), float(x2), t)))
-		var py := int(round(lerp(float(y1), float(y2), t)))
+		var t: float = float(i) / float(steps) if steps > 0 else 0.0
+		var px: int = int(round(lerp(float(x1), float(x2), t)))
+		var py: int = int(round(lerp(float(y1), float(y2), t)))
 		_set_tile(px, py, TILE_FLOOR)
 
 func _carve(x1: int, y1: int, x2: int, y2: int, tile: int = TILE_FLOOR):
