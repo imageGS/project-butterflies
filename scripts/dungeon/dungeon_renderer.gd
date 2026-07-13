@@ -1,6 +1,7 @@
 extends Control
 
 const TILE_WALL: int = 1
+const TILE_BLOCKED: int = 6
 
 var cam_x: float = 1.5
 var cam_y: float = 1.5
@@ -111,7 +112,8 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 		if map_data.is_empty() or map_x < 0 or map_y < 0 or map_y >= len(map_data) or map_x >= len(map_data[0]):
 			hit = true
 			break
-		if map_data[map_y][map_x] == TILE_WALL:
+		var cell: int = map_data[map_y][map_x]
+		if cell == TILE_WALL or cell == TILE_BLOCKED:
 			hit = true
 			break
 	var perp: float = side_x - delta_x if side == 0 else side_y - delta_y

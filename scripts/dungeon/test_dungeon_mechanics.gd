@@ -12,12 +12,19 @@ const DIR_VECTORS: Dictionary = {
 
 const TILE_FLOOR := 0
 const TILE_WALL := 1
+const TILE_DOOR := 2
+const TILE_LOCKED := 3
+const TILE_STAIRS := 4
+const TILE_SPECIAL := 5
+const TILE_BLOCKED := 6
+const TILE_EXIT := 7
+const TILE_ITEM := 8
 
 @export var move_duration: float = 0.25
 @export var turn_duration: float = 0.2
 
-var _player_x: float = 1.0
-var _player_y: float = 1.0
+var _player_x: float = 5.0
+var _player_y: float = 4.0
 var _player_dir: int = Dir.SOUTH
 var _current_angle: float = PI / 2.0
 var _map_data: Array = []
@@ -80,25 +87,149 @@ func _ready():
 
 func _build_test_level():
 	_map_data = []
-	_map_data.append([1, 1, 1, 1, 1, 1, 1, 1])
-	_map_data.append([1, 0, 0, 0, 0, 0, 0, 1])
-	_map_data.append([1, 0, 0, 0, 0, 0, 0, 1])
-	_map_data.append([1, 0, 0, 0, 0, 0, 0, 1])
-	_map_data.append([1, 0, 0, 0, 0, 0, 0, 1])
-	_map_data.append([1, 0, 0, 0, 0, 0, 0, 1])
-	_map_data.append([1, 0, 0, 0, 0, 0, 0, 1])
-	_map_data.append([1, 1, 1, 1, 1, 1, 1, 1])
+	var w := 40
+	var h := 38
+	for y in range(h):
+		var row: Array = []
+		for x in range(w):
+			row.append(TILE_WALL)
+		_map_data.append(row)
+
+	# ── БЛОК A ──
+	# A-тамбур (лестница)
+	_carve(3, 3, 9, 8)
+	_carve(3, 3, 7, 5, TILE_STAIRS)
+	_set_tile(4, 2, TILE_EXIT); _set_tile(5, 2, TILE_EXIT); _set_tile(6, 2, TILE_EXIT)
+	_set_tile(5, 8, TILE_DOOR); _set_tile(6, 8, TILE_DOOR)
+
+	# A-главный зал
+	_carve(1, 9, 12, 20)
+	# Ниша 1
+	_carve(1, 11, 2, 13); _set_tile(3, 12, TILE_DOOR)
+	# Ниша 2
+	_carve(1, 15, 2, 17); _set_tile(3, 16, TILE_DOOR)
+	# Выход на запад
+	_set_tile(1, 20, TILE_EXIT)
+
+	# A-пристройка
+	_carve(4, 21, 10, 24)
+	_set_tile(6, 20, TILE_DOOR); _set_tile(7, 20, TILE_DOOR)
+	_set_tile(4, 22, TILE_EXIT)
+
+	# Связь A→B
+	_set_tile(12, 14, TILE_DOOR); _set_tile(12, 15, TILE_DOOR)
+	# Синий переход W (A → гориз. коридор)
+	_carve(8, 21, 17, 21, TILE_SPECIAL)
+
+	# ── БЛОК B ──
+	# B-верхняя длинная комната
+	_carve(15, 5, 24, 9)
+	_set_tile(16, 9, TILE_DOOR); _set_tile(17, 9, TILE_DOOR)
+
+	# B-комната с лутом
+	_carve(14, 10, 19, 14)
+	_set_tile(15, 11, TILE_ITEM)
+	_set_tile(19, 12, TILE_DOOR)
+	_set_tile(16, 14, TILE_DOOR)
+
+	# B-нижние камеры
+	_carve(14, 15, 20, 20)
+	_carve(17, 15, 20, 17); _set_tile(16, 16, TILE_DOOR)
+	_carve(14, 15, 16, 17); _set_tile(16, 19, TILE_DOOR)
+	_carve(14, 18, 16, 20); _set_tile(17, 17, TILE_DOOR)
+
+	# B-верхняя запертая
+	_carve(21, 10, 25, 14)
+	_set_tile(21, 12, TILE_LOCKED)
+	# Чёрный скос
+	_set_tile(20, 14, TILE_WALL); _set_tile(21, 14, TILE_WALL)
+
+	# B-нижняя запертая
+	_carve(21, 15, 25, 20)
+	_set_tile(21, 17, TILE_LOCKED)
+
+	# Связь B→A
+	_set_tile(14, 14, TILE_DOOR); _set_tile(14, 15, TILE_DOOR)
+	# Лестница B → верт.коридор
+	_carve(26, 16, 29, 16, TILE_STAIRS)
+
+	# ── БЛОК C ──
+	# Вертикальный коридор
+	_carve(29, 3, 31, 24)
+	# Заблокированный выход сверху
+	_set_tile(29, 2, TILE_BLOCKED); _set_tile(30, 2, TILE_BLOCKED); _set_tile(29, 3, TILE_BLOCKED);
+	_set_tile(30, 3, TILE_BLOCKED)
+	# Боковой карман
+	_carve(32, 6, 33, 7); _set_tile(31, 6, TILE_DOOR)
+
+	# Горизонтальный коридор
+	_carve(8, 22, 31, 24)
+
+	# C-столовая
+	_carve(32, 18, 39, 27)
+	_set_tile(31, 23, TILE_STAIRS); _set_tile(32, 23, TILE_STAIRS)
+	_set_tile(37, 24, TILE_ITEM)
+	_set_tile(35, 27, TILE_DOOR)
+
+	# C-кухня
+	_carve(34, 28, 38, 31)
+	_set_tile(35, 27, TILE_DOOR)
+	# Кладовка
+	_carve(37, 32, 38, 33); _set_tile(37, 31, TILE_DOOR)
+
+	# C-левый блок камер
+	_carve(10, 25, 23, 30)
+	_carve(10, 25, 13, 27); _set_tile(13, 26, TILE_DOOR); _set_tile(11, 26, TILE_ITEM)
+	_carve(10, 28, 13, 30); _set_tile(13, 29, TILE_DOOR)
+	_carve(14, 25, 18, 30); _set_tile(14, 27, TILE_DOOR); _set_tile(16, 28, TILE_ITEM)
+	_carve(19, 25, 23, 30); _set_tile(19, 27, TILE_DOOR); _set_tile(21, 28, TILE_ITEM)
+	_set_tile(15, 24, TILE_DOOR)
+
+	# C-раздевалка
+	_carve(25, 27, 33, 33)
+	_set_tile(26, 28, TILE_ITEM); _set_tile(28, 28, TILE_ITEM)
+	_set_tile(30, 28, TILE_ITEM); _set_tile(32, 28, TILE_ITEM)
+	_set_tile(26, 31, TILE_ITEM); _set_tile(28, 31, TILE_ITEM)
+	_set_tile(30, 31, TILE_ITEM); _set_tile(32, 31, TILE_ITEM)
+	_set_tile(28, 27, TILE_DOOR)
+	_set_tile(28, 33, TILE_DOOR)
+
+	# ── БЛОК D ──
+	# D-южный коридор
+	_carve(2, 34, 38, 35)
+
+	# Выступы
+	_carve(3, 31, 6, 33); _set_tile(4, 33, TILE_DOOR)
+	_carve(8, 31, 12, 33); _set_tile(10, 33, TILE_DOOR)
+
+	# Левая казарма
+	_carve(3, 36, 17, 37); _set_tile(9, 35, TILE_DOOR)
+
+	# Правая казарма
+	_carve(19, 36, 34, 37); _set_tile(26, 35, TILE_DOOR)
+
+func _carve(x1: int, y1: int, x2: int, y2: int, tile: int = TILE_FLOOR):
+	for y in range(y1, y2 + 1):
+		for x in range(x1, x2 + 1):
+			if y >= 0 and y < _map_data.size() and x >= 0 and x < _map_data[0].size():
+				_map_data[y][x] = tile
+
+func _set_tile(x: int, y: int, tile: int):
+	if y >= 0 and y < _map_data.size() and x >= 0 and x < _map_data[0].size():
+		_map_data[y][x] = tile
 
 func _setup_entities():
 	_entities = []
-	_entities.append({ "grid_x": 3, "grid_y": 3, "color": Color(0.8, 0.2, 0.2), "type": "enemy", "texture": load("res://sprites/enemy/bunny/bunny_enemy.png") })
+	# Враг в B-камерах
+	_entities.append({ "grid_x": 18, "grid_y": 18, "color": Color(0.8, 0.2, 0.2), "type": "enemy", "texture": load("res://sprites/enemy/bunny/bunny_enemy.png") })
 
+	# NPC-странник в C-столовой
 	var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
 	if file:
 		var data: Dictionary = JSON.parse_string(file)
 		if data and data.has("nodes"):
 			_entities.append({
-				"grid_x": 5, "grid_y": 5,
+				"grid_x": 35, "grid_y": 23,
 				"color": Color(0.2, 0.6, 0.2),
 				"type": "npc",
 				"name": data.get("name", "Незнакомец"),
@@ -422,7 +553,8 @@ func _close_dialogue():
 func _is_walkable(x: int, y: int) -> bool:
 	if x < 0 or x >= _map_data[0].size() or y < 0 or y >= _map_data.size():
 		return false
-	return _map_data[y][x] == TILE_FLOOR
+	var t := _map_data[y][x]
+	return t != TILE_WALL and t != TILE_BLOCKED
 
 func _start_move(tx: int, ty: int):
 	_is_animating = true
