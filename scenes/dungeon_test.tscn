@@ -1,0 +1,110 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/dungeon/dungeon_manager.gd" id="1_5l8q4"]
+[ext_resource type="Shader" uid="uid://beau46y3abk4b" path="res://crtshader.gdshader" id="2_5x6o4"]
+[ext_resource type="Script" uid="uid://bd8tswh2btr2u" path="res://crt_display.gd" id="3_7d8j2"]
+[ext_resource type="Texture2D" uid="uid://da3ixditkkdem" path="res://UI_BACK.png" id="4_p3o8t"]
+[ext_resource type="Script" path="res://scripts/dungeon/dungeon_renderer.gd" id="5_8d2k1"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_ek"]
+viewport_path = NodePath("GameViewport")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_eo"]
+resource_local_to_scene = true
+shader = ExtResource("2_5x6o4")
+shader_parameter/tex = SubResource("ViewportTexture_ek")
+shader_parameter/mask_type = 4
+shader_parameter/curve = 0.0970000046075
+shader_parameter/sharpness = 0.7050000097375
+shader_parameter/color_offset = 0.01000002422500001
+shader_parameter/mask_brightness = 0.60800002888
+shader_parameter/scanline_brightness = 0.6700000080749999
+shader_parameter/min_scanline_thickness = 0.7240000225150001
+shader_parameter/aspect = 0.5170000008075
+shader_parameter/wobble_strength = 0.302000014345
+
+[node name="DungeonTest" type="Node" node_paths=PackedStringArray("renderer", "hud_label", "direction_label")]
+script = ExtResource("1_5l8q4")
+renderer = NodePath("CRT_Root/GameViewport/UI/CentralViewport")
+hud_label = NodePath("CRT_Root/GameViewport/UI/InfoLabel")
+direction_label = NodePath("CRT_Root/GameViewport/UI/DirectionLabel")
+
+[node name="CRT_Root" type="Control" parent="DungeonTest"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CRT_Display" type="ColorRect" parent="DungeonTest/CRT_Root" node_paths=PackedStringArray("subviewport_node")]
+material = SubResource("ShaderMaterial_eo")
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -2.0
+anchor_top = -13.625001
+anchor_right = 27.000002
+anchor_bottom = 2.65
+offset_left = -44.546875
+offset_top = -24.999939
+offset_right = 44.546753
+offset_bottom = 25.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_7d8j2")
+subviewport_node = NodePath("../GameViewport")
+
+[node name="GameViewport" type="SubViewport" parent="DungeonTest/CRT_Root"]
+size = Vector2i(1152, 648)
+size_2d_override = Vector2i(1152, 648)
+
+[node name="UI" type="Control" parent="DungeonTest/CRT_Root/GameViewport"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 76.0
+offset_top = 546.0
+offset_right = 1076.0
+offset_bottom = 608.0
+
+[node name="CentralViewport" type="Control" parent="DungeonTest/CRT_Root/GameViewport/UI"]
+layout_mode = 0
+offset_left = 71.0
+offset_top = -516.0
+offset_right = 929.0
+offset_bottom = -67.0
+mouse_filter = 2
+script = ExtResource("5_8d2k1")
+
+[node name="UI_BACK" type="TextureRect" parent="DungeonTest/CRT_Root/GameViewport/UI"]
+z_index = 4
+texture_filter = 1
+layout_mode = 0
+offset_left = -83.0
+offset_top = -548.0
+offset_right = 557.0
+offset_bottom = -188.0
+scale = Vector2(1.8179175, 1.8119441)
+mouse_filter = 2
+texture = ExtResource("4_p3o8t")
+
+[node name="InfoLabel" type="Label" parent="DungeonTest/CRT_Root/GameViewport/UI"]
+z_index = 5
+layout_mode = 0
+offset_left = 5.0
+offset_top = -40.0
+offset_right = 300.0
+offset_bottom = -15.0
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="DirectionLabel" type="Label" parent="DungeonTest/CRT_Root/GameViewport/UI"]
+z_index = 5
+layout_mode = 0
+offset_left = 5.0
+offset_top = -65.0
+offset_right = 100.0
+offset_bottom = -40.0
+theme_override_colors/font_color = Color(0.9, 0.7, 0.3, 1)
+theme_override_font_sizes/font_size = 18
