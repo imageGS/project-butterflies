@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/rpg/player.gd" id="1_rjk5g"]
+[ext_resource type="Script" path="res://scripts/rpg/interactable.gd" id="2_f0urt"]
+
+[node name="RPGGame" type="Node2D"]
+
+[node name="Camera2D" type="Camera2D" parent="RPGGame"]
+position = Vector2(400, 300)
+
+[node name="Player" type="CharacterBody2D" parent="RPGGame"]
+position = Vector2(400, 300)
+script = ExtResource("1_rjk5g")
+
+[node name="InteractableTree" type="Area2D" parent="RPGGame"]
+position = Vector2(600, 250)
+script = ExtResource("2_f0urt")
+interaction_label = "Tree"
+
+[node name="InteractableNPC" type="Area2D" parent="RPGGame"]
+position = Vector2(200, 450)
+script = ExtResource("2_f0urt")
+interaction_label = "Merchant"
+tooltip = "A travelling merchant"

@@ -1,0 +1,784 @@
+[gd_scene format=3 uid="uid://bgubrcktor04j"]
+
+[ext_resource type="Script" uid="uid://c4s1q0mxy6oo5" path="res://main.gd" id="1_sy5k4"]
+[ext_resource type="Texture2D" uid="uid://bgb3x25qaqtwj" path="res://sprites/backgrond/dark_tonnel_1.webp" id="2_112p8"]
+[ext_resource type="Texture2D" uid="uid://di8hwmrceguj3" path="res://sprites/enemy/bunny/head.png" id="3_112p8"]
+[ext_resource type="Texture2D" uid="uid://d1psc5pl1vou" path="res://sprites/enemy/bunny/body.png" id="4_l6pdb"]
+[ext_resource type="Texture2D" uid="uid://cybeihjlmlnpb" path="res://sprites/enemy/bunny/r arm.png" id="5_r657h"]
+[ext_resource type="Texture2D" uid="uid://bhtlww31v70t1" path="res://sprites/enemy/bunny/l arm.png" id="6_f0urt"]
+[ext_resource type="Texture2D" uid="uid://c7mbxdirdg87t" path="res://sprites/enemy/bunny/l leg.png" id="7_jfkdj"]
+[ext_resource type="Texture2D" uid="uid://dt2v8lwlkcxx3" path="res://sprites/enemy/bunny/r leg.png" id="8_wt6go"]
+[ext_resource type="VideoStream" uid="uid://clgtiiojihm5q" path="res://videos/punch.ogv" id="9_r657h"]
+[ext_resource type="Texture2D" uid="uid://rk4kynomwl7i" path="res://sprites/guts.png" id="10_436f3"]
+[ext_resource type="AudioStream" uid="uid://dghhonvnx6h5h" path="res://audio/male-scream.mp3" id="10_bcos8"]
+[ext_resource type="Script" uid="uid://bd8tswh2btr2u" path="res://crt_display.gd" id="10_f0urt"]
+[ext_resource type="Texture2D" uid="uid://da3ixditkkdem" path="res://UI_BACK.png" id="11_jfkdj"]
+[ext_resource type="VideoStream" uid="uid://box6o06jshoqq" path="res://videos/punchL2.ogv" id="11_wt6go"]
+[ext_resource type="VideoStream" uid="uid://bi3467e47wqa5" path="res://videos/heal.ogv" id="12_3t6p4"]
+
+[sub_resource type="Shader" id="Shader_r657h"]
+code = "// CRT Shader by Harrison Allen
+// V4
+
+shader_type canvas_item;
+
+/**
+	The input texture that will have the CRT effect applied to it.
+	Scanline count will be determined by this texture's height.
+	You'll need to use a texture that's roughly screen height / 4.5
+	(for instance 240 on a 1080 monitor or 480 on a 4k monitor)
+	Else The scanlines won't properly resolve and you're get moiré patters.
+	*/
+uniform sampler2D tex: filter_linear;
+
+
+/**
+	Set the type of mask this CRT will have.
+	Dots: emulates a typical PC CRT monitor.
+	Grille: emulates an aperture grille. Good with higher curve values.
+	Wide Grille: more suitable for 4k monitors.
+	Soft Grille: very close to wide grille, but a little softer.
+	Slot mask: this is the pattern found on most TVs, but it can clash with the
+	scanlines unless the input texture resolution is halved.
+	*/
+uniform int mask_type : hint_enum(
+	\"Dots:1\",
+	\"Aperture Grille:2\",
+	\"Wide Grille:3\",
+	\"Wide Soft Grille:4\",
+	\"Slot Mask:5\",
+	\"Null:0\") = 1;
+
+uniform float curve : hint_range(0.0, 0.5) = 0.0;
+
+/**
+	Controls how sharp the image is. Low values are fun with dithering, but a
+	value of 0.5 will destroy high frequency details and render small text
+	illegible. Use with care.
+	*/
+uniform float sharpness : hint_range(0.5, 1.0) = 0.6666666666666666666666666667;
+
+/**
+	Use to offset color channels from each other. I've personally observed this
+	effect in real CRTs. It can go in either direction, and some CRTs are better
+	aligned than others.
+	I'd suggest offsetting this at least a little bit from the default value.
+	Note that because of the typical RGB subpixel layout on on LCD, a very small
+	positive value will actually align colors better (it depends on
+	screen size), and -0.5 is just slightly more misaligned than 0.5, which is
+	important if you want to be as misaligned as possible.
+	*/
+uniform float color_offset : hint_range(-0.5, 0.5) = 0.0;
+
+/**
+	Reduce to preserve phosphor mask details in highlights at the cost of
+	overall brightness. This should usually be kept at or near 1
+	*/
+uniform float mask_brightness : hint_range(0, 1) = 1.0;
+
+/**
+	Reduce to preserve scanline details in highlights at the cost of
+	overall brightness. This should usually be kept at or near 1
+	*/
+uniform float scanline_brightness : hint_range(0.5, 1.0) = 1.0;
+
+/**
+	Raising this value can help reduce Moiré patterns.
+	A value of 1 will eliminate scanlines entirely.
+	*/
+uniform float min_scanline_thickness : hint_range(0.25, 1.0) = 0.5;
+
+/**
+	This should be the input texture's height divided by width.
+	Only important if curve is used.
+	For 16:9, this should be 0.5625.
+	*/
+uniform float aspect : hint_range(0.5, 1.0) = 0.75;
+
+/**
+	This controls slight horizontal shaking. This is set to 0 (off) by default.
+	*/
+uniform float wobble_strength : hint_range(0.0, 1.0) = 0.0;
+
+varying flat float wobble;
+
+void vertex()
+{
+	wobble = cos(TIME * TAU * 15.0) * wobble_strength / 8192.0;
+}
+
+vec2 warp(vec2 uv, float _aspect, float _curve)
+{
+	// Centralize coordinates
+	uv -= 0.5;
+
+	uv.x /= _aspect;
+
+	// Squared distance from the middle
+	float warping = dot(uv, uv) * _curve;
+
+	// Compensate for shrinking
+	warping -= _curve * 0.25;
+
+	// Warp the coordinates
+	uv /= 1.0 - warping;
+
+	uv.x *= _aspect;
+
+	// Decentralize the coordinates
+	uv += 0.5;
+
+	return uv;
+}
+
+vec3 linear_to_srgb(vec3 col)
+{
+	return mix(
+		(pow(col, vec3(1.0 / 2.4)) * 1.055) - 0.055,
+		col * 12.92,
+		lessThan(col, vec3(0.0031318))
+	);
+}
+
+vec3 srgb_to_linear(vec3 col)
+{
+	return mix(
+		pow((col + 0.055) / 1.055, vec3(2.4)),
+		col / 12.92,
+		lessThan(col, vec3(0.04045))
+	);
+}
+
+
+// Get scanlines from coordinates (returns in linear color)
+vec3 scanlines(vec2 uv)
+{
+	// Set coordinates to match texture dimensions
+	uv *= vec2(textureSize(tex, 0));
+
+	// Vertical coordinate scanline samples
+	int y = int(uv.y + 0.5) - 1;
+
+	float x = floor(uv.x);
+
+	// Horizontal coordinates for the texture samples
+	float ax = x - 2.0;
+	float bx = x - 1.0;
+	float cx = x;
+	float dx = x + 1.0;
+	float ex = x + 2.0;
+
+	// Sample the texture at various points
+	vec3 upper_a = texelFetch(tex, ivec2(int(ax), y), 0).rgb;
+	vec3 upper_b = texelFetch(tex, ivec2(int(bx), y), 0).rgb;
+	vec3 upper_c = texelFetch(tex, ivec2(int(cx), y), 0).rgb;
+	vec3 upper_d = texelFetch(tex, ivec2(int(dx), y), 0).rgb;
+	vec3 upper_e = texelFetch(tex, ivec2(int(ex), y), 0).rgb;
+
+	// Adjust the vertical coordinate for the lower scanline
+	y += 1;
+
+	// Sample the texture at various points
+	vec3 lower_a = texelFetch(tex, ivec2(int(ax), y), 0).rgb;
+	vec3 lower_b = texelFetch(tex, ivec2(int(bx), y), 0).rgb;
+	vec3 lower_c = texelFetch(tex, ivec2(int(cx), y), 0).rgb;
+	vec3 lower_d = texelFetch(tex, ivec2(int(dx), y), 0).rgb;
+	vec3 lower_e = texelFetch(tex, ivec2(int(ex), y), 0).rgb;
+
+	// Convert every sample to linear color
+	upper_a = srgb_to_linear(upper_a);
+	upper_b = srgb_to_linear(upper_b);
+	upper_c = srgb_to_linear(upper_c);
+	upper_d = srgb_to_linear(upper_d);
+	upper_e = srgb_to_linear(upper_e);
+
+	lower_a = srgb_to_linear(lower_a);
+	lower_b = srgb_to_linear(lower_b);
+	lower_c = srgb_to_linear(lower_c);
+	lower_d = srgb_to_linear(lower_d);
+	lower_e = srgb_to_linear(lower_e);
+
+	// The x coordinates of electron beam offsets
+	vec3 beam = vec3(uv.x - 0.5);
+	beam.r -= color_offset;
+	beam.b += color_offset;
+
+	// Calculate weights
+	vec3 weight_a = smoothstep(1, 0, (beam - ax) * sharpness);
+	vec3 weight_b = smoothstep(1, 0, (beam - bx) * sharpness);
+	vec3 weight_c = smoothstep(1, 0, abs(beam - cx) * sharpness);
+	vec3 weight_d = smoothstep(1, 0, (dx - beam) * sharpness);
+	vec3 weight_e = smoothstep(1, 0, (ex - beam) * sharpness);
+	
+	// This can be a fun place to raise each weight to some power
+
+	// Mix samples into the upper scanline color
+	vec3 upper_col = vec3(
+		upper_a * weight_a +
+		upper_b * weight_b +
+		upper_c * weight_c +
+		upper_d * weight_d +
+		upper_e * weight_e
+	);
+
+	// Mix samples into the lower scanline color
+	vec3 lower_col = vec3(
+		lower_a * weight_a +
+		lower_b * weight_b +
+		lower_c * weight_c +
+		lower_d * weight_d +
+		lower_e * weight_e
+	);
+
+	vec3 weight_scaler = vec3(1.0) / (weight_a + weight_b + weight_c + weight_d + weight_e);
+
+	// Normalize weight
+	upper_col *= weight_scaler;
+	lower_col *= weight_scaler;
+	
+	// Apply scanline brightness
+	upper_col *= scanline_brightness;
+	lower_col *= scanline_brightness;
+	
+	
+	// Scanline size (and roughly the apperent brightness of this line)
+	vec3 upper_thickness = mix(vec3(min_scanline_thickness), vec3(1.0), upper_col);
+	vec3 lower_thickness = mix(vec3(min_scanline_thickness), vec3(1.0), lower_col);
+	
+	// Vertical sawtooth wave used to generate scanlines
+	// Almost the same as fract(uv.y + 0.5), but prevents a rare visual bug
+	float sawtooth = (uv.y + 0.5) - float(y);
+
+	vec3 upper_line = vec3(sawtooth) / upper_thickness;
+	upper_line = smoothstep(1.0, 0.0, upper_line);
+
+	vec3 lower_line = vec3(1.0 - sawtooth) / lower_thickness;
+	lower_line = smoothstep(1.0, 0.0, lower_line);
+
+	// Correct line brightness below min_scanline_thickness
+	upper_line *= upper_col / upper_thickness;
+	lower_line *= lower_col / lower_thickness;
+
+	// Combine the upper and lower scanlines
+	return upper_line + lower_line;
+}
+
+vec4 generate_mask(vec2 fragcoord)
+{
+	switch (mask_type)
+	{
+		case 1: // Dots
+			const vec3 pattern[] = {vec3(1,0,0), vec3(0,1,0), vec3(0,0,1), vec3(0,0,0)};
+
+			ivec2 icoords = ivec2(fragcoord);
+
+			return vec4(pattern[(icoords.y * 2 + icoords.x) % 4], 0.25);
+			
+		case 2: // Grille
+			const vec3 pattern[] = {vec3(0,1,0), vec3(1,0,1)};
+
+			return vec4(pattern[int(fragcoord.x) % 2], 0.5);
+			
+		case 3: // Wide grille
+			const vec3 pattern[] = {
+				vec3(1,0,0), vec3(0,1,0), vec3(0,0,1), vec3(0,0,0)};
+
+			return vec4(pattern[int(fragcoord.x) % 4], 0.25);
+			
+		case 4: // Grille wide soft
+			const vec3 pattern[] = {
+				vec3(1.0,0.125,0.0),
+				vec3(0.125,1.0,0.125),
+				vec3(0.0,0.125,1.0),
+				vec3(0.125,0.0,0.125)};
+
+			return vec4(pattern[int(fragcoord.x) % 4], 0.3125);
+			
+		case 5: // Slotmask
+			const vec3 pattern[] = {
+				vec3(1,0,1), vec3(0,1,0), vec3(1,0,1), vec3(0,1,0),
+				vec3(0,0,1), vec3(0,1,0), vec3(1,0,0), vec3(0,0,0),
+				vec3(1,0,1), vec3(0,1,0), vec3(1,0,1), vec3(0,1,0),
+				vec3(1,0,0), vec3(0,0,0), vec3(0,0,1), vec3(0,1,0)
+			};
+			
+			ivec2 icoords = ivec2(fragcoord) % 4;
+			
+			return vec4(pattern[icoords.y * 4 + icoords.x], 0.375);
+			
+		default:
+			return vec4(0.5);
+	}
+}
+
+// Add phosphor mask/grill
+vec3 mask(vec3 linear_color, vec2 fragcoord)
+{
+	// Get the pattern for the mask. Mask.w equals avg. brightness of the mask
+	vec4 mask = generate_mask(fragcoord);
+	
+	// Dim the color if brightness is reduced to preserve mask details
+	linear_color *= mix(mask.w, 1.0, mask_brightness);
+
+	// How bright the color needs to be to maintain 100% brightness while masked
+	vec3 target_color = linear_color / mask.w;
+
+	// Target color limited to the 0 to 1 range.
+	vec3 primary_col = clamp(target_color, 0.0, 1.0);
+
+	// This calculates how bright the secondary subpixels will need to be
+	vec3 highlights = target_color - primary_col;
+	highlights /= 1.0 / mask.w - 1.0;
+
+	primary_col *= mask.rgb;
+
+	// Add the secondary subpixels
+	primary_col += highlights * (1.0 - mask.rgb);
+
+	return primary_col;
+}
+
+void fragment()
+{
+	// Warp UV coordinates
+	vec2 warped_coords = warp(UV, aspect, curve);
+	
+	// Add wobble
+	warped_coords.x += wobble;
+
+	// Sample the scanlines
+	vec3 col = scanlines(warped_coords);
+
+	// Apply phosphor mask
+	col = mask(col, FRAGCOORD.xy);
+
+	// Convert back to srgb
+	col = linear_to_srgb(col);
+
+	COLOR.rgb = col;
+}"
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_r657h"]
+viewport_path = NodePath("CRT_Root/GameViewport")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_f0urt"]
+resource_local_to_scene = true
+shader = SubResource("Shader_r657h")
+shader_parameter/tex = SubResource("ViewportTexture_r657h")
+shader_parameter/mask_type = 4
+shader_parameter/curve = 0.0970000046075
+shader_parameter/sharpness = 0.7050000097375
+shader_parameter/color_offset = 0.01000002422500001
+shader_parameter/mask_brightness = 0.60800002888
+shader_parameter/scanline_brightness = 0.6700000080749999
+shader_parameter/min_scanline_thickness = 0.7240000225150001
+shader_parameter/aspect = 0.5170000008075
+shader_parameter/wobble_strength = 0.302000014345
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_r657h"]
+blend_mode = 1
+
+[node name="BattleScene" type="Node" unique_id=1400712371]
+
+[node name="CRT_Root" type="Control" parent="." unique_id=409621937 node_paths=PackedStringArray("enemy_status_label", "player_status_label", "log_label", "main_menu", "attack_submenu", "action_submenu", "item_submenu", "ui_root", "damage_vignette", "enemy_container", "blood_particles", "remains_sprite", "head_rect", "torso_rect", "arm_left_rect", "arm_right_rect", "leg_left_rect", "leg_right_rect", "death_sound", "hit_video_player", "hit_video_player_2", "heal_video_player")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 76.0
+offset_top = 546.0
+offset_right = -1036.0
+offset_bottom = -62.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_sy5k4")
+enemy_status_label = NodePath("GameViewport/UI/EnemyStatusLabel")
+player_status_label = NodePath("GameViewport/UI/PlayerStatusLabel")
+log_label = NodePath("GameViewport/UI/LogLabel")
+main_menu = NodePath("GameViewport/UI/MainMenu")
+attack_submenu = NodePath("GameViewport/UI/AttackSubMenu")
+action_submenu = NodePath("GameViewport/UI/ActionSubMenu")
+item_submenu = NodePath("GameViewport/UI/ItemSubMenu")
+ui_root = NodePath("GameViewport/UI")
+damage_vignette = NodePath("GameViewport/UI/DamageVignette")
+enemy_container = NodePath("GameViewport/UI/CentralViewport/EnemyContainer")
+blood_particles = NodePath("GameViewport/UI/CentralViewport/EnemyContainer/BloodParticles")
+remains_sprite = NodePath("GameViewport/UI/CentralViewport/EnemyContainer/Guts")
+head_rect = NodePath("GameViewport/UI/CentralViewport/EnemyContainer/Head")
+torso_rect = NodePath("GameViewport/UI/CentralViewport/EnemyContainer/Torso")
+arm_left_rect = NodePath("GameViewport/UI/CentralViewport/EnemyContainer/ArmLeft")
+arm_right_rect = NodePath("GameViewport/UI/CentralViewport/EnemyContainer/ArmRight")
+leg_left_rect = NodePath("GameViewport/UI/CentralViewport/EnemyContainer/LegLeft")
+leg_right_rect = NodePath("GameViewport/UI/CentralViewport/EnemyContainer/LegRight")
+death_sound = NodePath("GameViewport/UI/CentralViewport/EnemyContainer/DeathSoundPlayer")
+death_blood_amount = 200
+hit_video_player = NodePath("GameViewport/UI/HitVideoPlayer")
+hit_video_player_2 = NodePath("GameViewport/UI/HitVideoPlayer2")
+heal_video_player = NodePath("GameViewport/UI/HealVideoPlayer")
+handheld_shake_intensity = 1.0
+handheld_shake_speed = 1.0
+music_volume_db = -8.700000000000003
+sfx_volume_db = -8.200000000000003
+
+[node name="CRT_Display" type="ColorRect" parent="CRT_Root" unique_id=575750956 node_paths=PackedStringArray("subviewport_node")]
+material = SubResource("ShaderMaterial_f0urt")
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -2.0
+anchor_top = -13.625001
+anchor_right = 27.000002
+anchor_bottom = 2.65
+offset_left = -44.546875
+offset_top = -24.999939
+offset_right = 44.546753
+offset_bottom = 25.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("10_f0urt")
+subviewport_node = NodePath("../GameViewport")
+
+[node name="Test" type="Control" parent="CRT_Root" unique_id=220769908]
+visible = false
+anchors_preset = 0
+offset_left = -76.0
+offset_top = -546.0
+offset_right = -36.0
+offset_bottom = -506.0
+
+[node name="Head" type="Sprite2D" parent="CRT_Root/Test" unique_id=1223462757]
+z_index = 1
+texture_filter = 1
+position = Vector2(-386, 43)
+scale = Vector2(2, 2)
+texture = ExtResource("3_112p8")
+
+[node name="Torso" type="Sprite2D" parent="CRT_Root/Test" unique_id=1846694863]
+texture_filter = 1
+position = Vector2(-411, 220)
+scale = Vector2(2, 2)
+texture = ExtResource("4_l6pdb")
+
+[node name="ArmLeft" type="Sprite2D" parent="CRT_Root/Test" unique_id=923117820]
+texture_filter = 1
+position = Vector2(-468, 211)
+scale = Vector2(2, 2)
+texture = ExtResource("6_f0urt")
+
+[node name="ArmRight" type="Sprite2D" parent="CRT_Root/Test" unique_id=856972388]
+texture_filter = 1
+position = Vector2(-334, 162)
+scale = Vector2(2, 2)
+texture = ExtResource("5_r657h")
+
+[node name="LegLeft" type="Sprite2D" parent="CRT_Root/Test" unique_id=1760003296]
+texture_filter = 1
+position = Vector2(-435, 290)
+scale = Vector2(2, 2)
+texture = ExtResource("7_jfkdj")
+
+[node name="LegRight" type="Sprite2D" parent="CRT_Root/Test" unique_id=1183867645]
+texture_filter = 1
+position = Vector2(-351, 293)
+scale = Vector2(2, 2)
+texture = ExtResource("8_wt6go")
+
+[node name="GameViewport" type="SubViewport" parent="CRT_Root" unique_id=33204367]
+size = Vector2i(1152, 648)
+size_2d_override = Vector2i(1152, 648)
+
+[node name="UI" type="Control" parent="CRT_Root/GameViewport" unique_id=2146799630]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 76.0
+offset_top = 546.0
+offset_right = 1076.0
+offset_bottom = 608.0
+
+[node name="CentralViewport" type="Control" parent="CRT_Root/GameViewport/UI" unique_id=605564114]
+anchors_preset = 0
+offset_left = 71.0
+offset_top = -516.0
+offset_right = 929.0
+offset_bottom = -67.0
+mouse_filter = 2
+
+[node name="Background" type="Sprite2D" parent="CRT_Root/GameViewport/UI/CentralViewport" unique_id=525042044]
+z_index = -1
+position = Vector2(444, 299.99997)
+scale = Vector2(0.80882335, 0.80882347)
+texture = ExtResource("2_112p8")
+
+[node name="EnemyContainer" type="Control" parent="CRT_Root/GameViewport/UI/CentralViewport" unique_id=1444396873]
+anchors_preset = 0
+offset_left = 302.0
+offset_top = 27.0
+offset_right = 576.5488
+offset_bottom = 441.0
+
+[node name="BloodParticles" type="CPUParticles2D" parent="CRT_Root/GameViewport/UI/CentralViewport/EnemyContainer" unique_id=1322843409]
+z_index = 3
+position = Vector2(409.7256, 28)
+emitting = false
+amount = 50
+lifetime = 2.07
+one_shot = true
+speed_scale = 0.75
+explosiveness = 1.0
+spread = 180.0
+initial_velocity_min = 80.0
+initial_velocity_max = 120.0
+scale_amount_min = 2.0
+scale_amount_max = 4.0
+color = Color(0.5137255, 0, 0, 1)
+
+[node name="HitSoundPlayer" type="AudioStreamPlayer2D" parent="CRT_Root/GameViewport/UI/CentralViewport/EnemyContainer" unique_id=1432790390]
+position = Vector2(-243, 16)
+volume_db = -7.879
+
+[node name="DeathSoundPlayer" type="AudioStreamPlayer2D" parent="CRT_Root/GameViewport/UI/CentralViewport/EnemyContainer" unique_id=359618764]
+stream = ExtResource("10_bcos8")
+
+[node name="Head" type="TextureRect" parent="CRT_Root/GameViewport/UI/CentralViewport/EnemyContainer" unique_id=525754730]
+texture_filter = 1
+layout_mode = 0
+offset_left = 95.17657
+offset_top = 18.999998
+offset_right = 133.17657
+offset_bottom = 76.0
+scale = Vector2(1.9999994, 1.9999994)
+mouse_filter = 2
+texture = ExtResource("3_112p8")
+
+[node name="Torso" type="TextureRect" parent="CRT_Root/GameViewport/UI/CentralViewport/EnemyContainer" unique_id=1573900989]
+texture_filter = 1
+layout_mode = 0
+offset_left = 47.17657
+offset_top = 106.99999
+offset_right = 107.176575
+offset_bottom = 260.0
+scale = Vector2(1.9999994, 1.9999994)
+mouse_filter = 2
+texture = ExtResource("4_l6pdb")
+
+[node name="ArmLeft" type="TextureRect" parent="CRT_Root/GameViewport/UI/CentralViewport/EnemyContainer" unique_id=1385442074]
+texture_filter = 1
+layout_mode = 0
+offset_left = 8.176574
+offset_top = 121.99999
+offset_right = 52.176575
+offset_bottom = 232.0
+scale = Vector2(1.9999994, 1.9999994)
+mouse_filter = 2
+texture = ExtResource("6_f0urt")
+
+[node name="ArmRight" type="TextureRect" parent="CRT_Root/GameViewport/UI/CentralViewport/EnemyContainer" unique_id=1568288728]
+texture_filter = 1
+layout_mode = 0
+offset_left = 159.17657
+offset_top = 128.0
+offset_right = 183.17657
+offset_bottom = 197.00002
+scale = Vector2(1.9999994, 1.9999994)
+mouse_filter = 2
+texture = ExtResource("5_r657h")
+
+[node name="LegLeft" type="TextureRect" parent="CRT_Root/GameViewport/UI/CentralViewport/EnemyContainer" unique_id=1180684127]
+texture_filter = 1
+layout_mode = 0
+offset_left = 46.176567
+offset_top = 240.99997
+offset_right = 88.176575
+offset_bottom = 323.99997
+scale = Vector2(1.9999994, 1.9999994)
+mouse_filter = 2
+texture = ExtResource("7_jfkdj")
+
+[node name="LegRight" type="TextureRect" parent="CRT_Root/GameViewport/UI/CentralViewport/EnemyContainer" unique_id=72332882]
+texture_filter = 1
+layout_mode = 0
+offset_left = 124.17656
+offset_top = 248.0
+offset_right = 167.17656
+offset_bottom = 328.0
+scale = Vector2(1.9999994, 1.9999994)
+mouse_filter = 2
+texture = ExtResource("8_wt6go")
+
+[node name="Guts" type="TextureRect" parent="CRT_Root/GameViewport/UI/CentralViewport/EnemyContainer" unique_id=561901169]
+visible = false
+layout_mode = 0
+offset_left = -4.000001
+offset_top = 294.00003
+offset_right = 722.0
+offset_bottom = 794.0
+scale = Vector2(0.37037683, 0.2403502)
+mouse_filter = 2
+texture = ExtResource("10_436f3")
+
+[node name="HitVideoPlayer" type="VideoStreamPlayer" parent="CRT_Root/GameViewport/UI" unique_id=830861257]
+z_index = 3
+material = SubResource("CanvasItemMaterial_r657h")
+layout_mode = 0
+offset_left = 100.0
+offset_top = -613.0
+offset_right = 900.0
+offset_bottom = -13.0
+stream = ExtResource("9_r657h")
+
+[node name="HitVideoPlayer2" type="VideoStreamPlayer" parent="CRT_Root/GameViewport/UI" unique_id=480775874]
+z_index = 3
+material = SubResource("CanvasItemMaterial_r657h")
+layout_mode = 0
+offset_left = 100.0
+offset_top = -646.0
+offset_right = 900.0
+offset_bottom = -46.0
+stream = ExtResource("11_wt6go")
+
+[node name="HealVideoPlayer" type="VideoStreamPlayer" parent="CRT_Root/GameViewport/UI" unique_id=130719445]
+z_index = 3
+material = SubResource("CanvasItemMaterial_r657h")
+layout_mode = 0
+offset_left = 100.0
+offset_top = -671.0
+offset_right = 900.0
+offset_bottom = -71.0
+stream = ExtResource("12_3t6p4")
+
+[node name="DamageVignette" type="ColorRect" parent="CRT_Root/GameViewport/UI" unique_id=596587370]
+modulate = Color(1, 1, 1, 0)
+layout_mode = 0
+offset_left = -96.0
+offset_top = -551.00006
+offset_right = -56.0
+offset_bottom = -511.00006
+scale = Vector2(29.71469, 16.572552)
+color = Color(0.57254905, 0.003921569, 0, 1)
+
+[node name="EnemyStatusLabel" type="Label" parent="CRT_Root/GameViewport/UI" unique_id=1862814818]
+layout_mode = 0
+offset_left = 709.0
+offset_top = -482.0
+offset_right = 907.0
+offset_bottom = -459.0
+horizontal_alignment = 2
+
+[node name="MainMenu" type="HBoxContainer" parent="CRT_Root/GameViewport/UI" unique_id=1423755759]
+z_index = 5
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.9850001
+anchor_bottom = 0.71000004
+offset_left = 272.0
+offset_top = -13.0
+offset_right = -263.00006
+offset_bottom = -13.020004
+offset_transform_enabled = true
+theme_override_constants/separation = 41
+alignment = 1
+
+[node name="BtnAttack" type="Button" parent="CRT_Root/GameViewport/UI/MainMenu" unique_id=807805985]
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "Атака"
+
+[node name="BtnAction" type="Button" parent="CRT_Root/GameViewport/UI/MainMenu" unique_id=863084105]
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "Действие"
+
+[node name="BtnItem" type="Button" parent="CRT_Root/GameViewport/UI/MainMenu" unique_id=1326251851]
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "Предмет"
+
+[node name="BtnFlee" type="Button" parent="CRT_Root/GameViewport/UI/MainMenu" unique_id=656378783]
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "Побег"
+
+[node name="AttackSubMenu" type="VBoxContainer" parent="CRT_Root/GameViewport/UI" unique_id=657704664]
+z_index = 5
+layout_mode = 0
+offset_left = 106.0
+offset_top = -355.0
+offset_right = 289.0
+offset_bottom = -104.0
+scale = Vector2(0.95999986, 1)
+offset_transform_position = Vector2(0.92, 0)
+
+[node name="BtnHead" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=345701858]
+layout_mode = 2
+text = "Ударить в голову"
+
+[node name="BtnTorso" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=1845175837]
+layout_mode = 2
+text = "Ударить в торс"
+
+[node name="BtnArmLeft" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=393327279]
+layout_mode = 2
+text = "Ударить в руку"
+
+[node name="BtnArmRight" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=623952334]
+layout_mode = 2
+text = "Ударить в руку"
+
+[node name="BtnLegLeft" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=1457917926]
+layout_mode = 2
+text = "Ударить в ногу"
+
+[node name="BtnLegRight" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=1038535318]
+layout_mode = 2
+text = "Ударить в ногу"
+
+[node name="BtnBack" type="Button" parent="CRT_Root/GameViewport/UI/AttackSubMenu" unique_id=1157140171]
+layout_mode = 2
+text = "Назад"
+
+[node name="ActionSubMenu" type="VBoxContainer" parent="CRT_Root/GameViewport/UI" unique_id=1332488472]
+z_index = 5
+layout_mode = 0
+offset_left = 106.0
+offset_top = -355.0
+offset_right = 289.0
+offset_bottom = -104.0
+scale = Vector2(0.95999986, 1)
+offset_transform_position = Vector2(0.92, 0)
+
+[node name="ItemSubMenu" type="VBoxContainer" parent="CRT_Root/GameViewport/UI" unique_id=247193910]
+z_index = 5
+layout_mode = 0
+offset_left = 106.0
+offset_top = -355.0
+offset_right = 289.0
+offset_bottom = -104.0
+scale = Vector2(0.95999986, 1)
+offset_transform_position = Vector2(0.92, 0)
+
+[node name="PlayerStatusLabel" type="Label" parent="CRT_Root/GameViewport/UI" unique_id=2042505940]
+layout_mode = 0
+offset_left = 700.0
+offset_top = -282.0
+offset_right = 905.0
+offset_bottom = -83.0
+horizontal_alignment = 2
+
+[node name="LogLabel" type="Label" parent="CRT_Root/GameViewport/UI" unique_id=67152286]
+layout_mode = 0
+offset_left = 87.0
+offset_top = -487.0
+offset_right = 250.0
+offset_bottom = -324.0
+
+[node name="UI_BACK" type="TextureRect" parent="CRT_Root/GameViewport/UI" unique_id=1170162403]
+z_index = 4
+texture_filter = 1
+layout_mode = 0
+offset_left = -83.0
+offset_top = -548.0
+offset_right = 557.0
+offset_bottom = -188.0
+scale = Vector2(1.8179175, 1.8119441)
+mouse_filter = 2
+texture = ExtResource("11_jfkdj")
