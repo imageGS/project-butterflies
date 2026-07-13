@@ -23,8 +23,8 @@ const TILE_ITEM := 8
 @export var move_duration: float = 0.25
 @export var turn_duration: float = 0.2
 
-var _player_x: float = 5.0
-var _player_y: float = 4.0
+var _player_x: float = 1.0
+var _player_y: float = 1.0
 var _player_dir: int = Dir.SOUTH
 var _current_angle: float = PI / 2.0
 var _map_data: Array = []
@@ -86,127 +86,145 @@ func _ready():
 	_awareness_timer = _awareness_interval
 
 func _build_test_level():
+	var ascii_rows := [
+		"################################################",
+		"#E....#.........#.......#.....#........#........#",
+		"#.###.#.#######.#.#####.#.###.#.######.#.######.#",
+		"#.#.#...#.....#...#...#...#.#...#....#...#....#..#",
+		"#.#.#####.###.#####.#.#####.#####.#.#####.##.#.#.#",
+		"#.#.......#.#.....#.#.....#.....#.#.....#..#.#.#.#",
+		"#.#######.#.#####.#.#####.#####.#.#####.#.##.#.#.#",
+		"#.......#.#.....#.#.....#.....#.#.....#.#..#.#.#.#",
+		"#.#####.#.#####.#.#####.#####.#.#####.#.##.#.#.#.#",
+		"#.#...#.#.#...#.#.....#.....#.#.....#.#..#.#...#.#",
+		"#.#.#.#.#.#.#.#.#####.#####.#.#####.#.##.#.#####.#",
+		"#.#.#.#...#.#.#.....#.....#.#.....#.#..#.#.....#.#",
+		"#.#.#.#####.#.#####.#####.#.#####.#.##.#.#####.#.#",
+		"#.#.#.....#.#.....#.....#.#.....#.#..#...#...#.#.#",
+		"#.#.#####.#.#####.#####.#.#####.#.##.#####.#.#.#.#",
+		"#...#...#.#.....#.....#.#.....#.#..#.....#.#.#...#",
+		"#####.#.#.#####.#####.#.#####.#.##.#####.#.#.###.#",
+		"#...#.#.#.....#.....#.#.....#.#..#.....#.#.#.#...#",
+		"#.#.#.#.#####.#####.#.#####.#.##.#####.#.#.#.#.###",
+		"#.#.#.#.....#.....#.#.....#.#..#.....#.#.#.#.#...#",
+		"#.#.#.#####.#####.#.#####.#.##.#####.#.#.#.#.###.#",
+		"#.#.#.....#.....#.#.....#.#..#.....#...#.#.#...#.#",
+		"#.#.#####.#####.#.#####.#.##.#####L#####.#.###.#.#",
+		"#.#.....#.....#.#.....#.#..#.....#.....#.#...#.#.#",
+		"#.#####.#####.#.#####.#.##.#####.#####.#.###.#.#.#",
+		"#.....#.....#.#.....#.#..#.....#.....#.#...#.#.#.#",
+		"#.###.#####.#.#####.#.##.#####.#####.#.###.#.#.#.#",
+		"#.#.#.....#.#.....#.#..#.....#.....#.#...#...#.#.#",
+		"#.#.#####.#.#####.#.##.#####.#####.#.###.#####.#.#",
+		"#.#.....#...#...#.#..#.....#.....#...#...#.....#.#",
+		"#.#####.#####.#.#.#.#####.#####.#####.#.#.#####.#",
+		"#.....#.....#.#.#.#.....#.....#.....#.#.#.....#.#",
+		"#.###.#####.#.#.#.#####.#####.#####.#.#.#####.#.#",
+		"#.#.#.....#.#...#.....#.....#.....#.#...#...#...#",
+		"#.#.#####.#.#########.#####.#####.#.#####.#.#####",
+		"#.#.#.....#...........#.....#.....#...#...#.#.....#",
+		"#.#####.###########.#####.#####.###.#.#.#.#####.#",
+		"#.....#...........#.....#.....#...#.#.#.#.....#.#",
+		"#####.###########.#####.#####.#.#.#.#.#.#####.#.#",
+		"#...#...........#.....#.....#.#.#.#.#.#.....#.#.#",
+		"#.#.###########.#####.#####.#.#.#.#.#.#####.#.#.#",
+		"#.#...........#.....#.....#.#...#.#.#.....#.#.#.#",
+		"#.###########.#####.#####.#.#####.#.#####.#.#.#.#",
+		"#...........#.....#.....#...#...#.#.....#.#.#...#",
+		"###########.#####.#####.#####.#.#.#####.#.#.###.#",
+		"#.........#.....#.....#.....#.#.#.....#.#.#...#.#",
+		"#.#######.#####.#####.#####.#.#.#####.#.#.###.#X#",
+		"################################################",
+	]
+
 	_map_data = []
-	var w := 40
-	var h := 38
-	for y in range(h):
+	for y in ascii_rows.size():
 		var row: Array = []
-		for x in range(w):
-			row.append(TILE_WALL)
+		var line := ascii_rows[y]
+		for x in line.length():
+			var ch := line[x]
+			match ch:
+				"#": row.append(TILE_WALL)
+				".": row.append(TILE_FLOOR)
+				"+": row.append(TILE_FLOOR)
+				"T": row.append(TILE_FLOOR)
+				"O": row.append(TILE_FLOOR)
+				"D": row.append(TILE_DOOR)
+				"L": row.append(TILE_LOCKED)
+				"K": row.append(TILE_FLOOR)
+				"S": row.append(TILE_STAIRS)
+				" ": row.append(TILE_WALL)
+				"▓": row.append(TILE_FLOOR)
+				"E": row.append(TILE_EXIT)
+				"X": row.append(TILE_FLOOR)
+				"I": row.append(TILE_ITEM)
+				"@": row.append(TILE_FLOOR)
+				_: row.append(TILE_WALL)
 		_map_data.append(row)
 
-	# ── БЛОК A ──
-	# A-тамбур (лестница)
-	_carve(3, 3, 9, 8)
-	_carve(3, 3, 7, 5, TILE_STAIRS)
-	_set_tile(4, 2, TILE_EXIT); _set_tile(5, 2, TILE_EXIT); _set_tile(6, 2, TILE_EXIT)
-	_set_tile(5, 8, TILE_DOOR); _set_tile(6, 8, TILE_DOOR)
+	# ─── ИНЪЕКЦИИ ПОВЕРХ СКЕЛЕТА ───
+	# 1. Магистральное кольцо (ширина 2)
+	_carve(2, 1, 45, 2)      # верх
+	_carve(2, 44, 45, 45)    # низ
+	_carve(1, 3, 2, 43)      # лево
+	_carve(45, 3, 46, 43)    # право
 
-	# A-главный зал
-	_carve(1, 9, 12, 20)
-	# Ниша 1
-	_carve(1, 11, 2, 13); _set_tile(3, 12, TILE_DOOR)
-	# Ниша 2
-	_carve(1, 15, 2, 17); _set_tile(3, 16, TILE_DOOR)
-	# Выход на запад
-	_set_tile(1, 20, TILE_EXIT)
+	# 2. Диагональные срезы
+	_carve_diag(6, 6, 18, 18)   # срез A
+	_carve_diag(40, 8, 28, 20)  # срез B
+	_carve_diag(10, 40, 24, 28) # срез C
 
-	# A-пристройка
-	_carve(4, 21, 10, 24)
-	_set_tile(6, 20, TILE_DOOR); _set_tile(7, 20, TILE_DOOR)
-	_set_tile(4, 22, TILE_EXIT)
+	# 3. Сокровищница за L
+	_carve(35, 22, 37, 24)     # комната
+	_set_tile(36, 23, TILE_ITEM)
+	_set_tile(34, 22, TILE_DOOR)  # вход с L
 
-	# Связь A→B
-	_set_tile(12, 14, TILE_DOOR); _set_tile(12, 15, TILE_DOOR)
-	# Синий переход W (A → гориз. коридор)
-	_carve(8, 21, 17, 21, TILE_SPECIAL)
+	# 4. Ключ в тупике
+	_set_tile(2, 46, TILE_ITEM)
 
-	# ── БЛОК B ──
-	# B-верхняя длинная комната
-	_carve(15, 5, 24, 9)
-	_set_tile(16, 9, TILE_DOOR); _set_tile(17, 9, TILE_DOOR)
+	# 5. Центральная спираль → выход X
+	var spiral: Array[Vector2i] = [
+		Vector2i(24, 20), Vector2i(24, 19), Vector2i(23, 19), Vector2i(22, 19),
+		Vector2i(22, 20), Vector2i(22, 21), Vector2i(23, 21), Vector2i(24, 21),
+		Vector2i(24, 22), Vector2i(25, 22), Vector2i(25, 21), Vector2i(25, 20),
+		Vector2i(25, 19), Vector2i(25, 18), Vector2i(24, 18), Vector2i(23, 18),
+		Vector2i(22, 18), Vector2i(22, 17), Vector2i(23, 17), Vector2i(24, 17),
+		Vector2i(25, 17), Vector2i(25, 16), Vector2i(24, 16), Vector2i(23, 16),
+		Vector2i(22, 16), Vector2i(22, 15), Vector2i(23, 15), Vector2i(24, 15),
+		Vector2i(25, 15), Vector2i(25, 14), Vector2i(24, 14), Vector2i(23, 14),
+		Vector2i(23, 13), Vector2i(24, 13), Vector2i(25, 13), Vector2i(25, 12),
+		Vector2i(24, 12), Vector2i(23, 12), Vector2i(23, 11), Vector2i(24, 11),
+		Vector2i(25, 11), Vector2i(25, 10), Vector2i(24, 10), Vector2i(23, 10),
+	]
+	for pt in spiral:
+		_set_tile(pt.x, pt.y, TILE_FLOOR)
+	_set_tile(24, 24, TILE_FLOOR)  # центр спирали = X
+	_set_tile(46, 46, TILE_FLOOR)  # выход снизу
 
-	# B-комната с лутом
-	_carve(14, 10, 19, 14)
-	_set_tile(15, 11, TILE_ITEM)
-	_set_tile(19, 12, TILE_DOOR)
-	_set_tile(16, 14, TILE_DOOR)
+	# 6. Пролом-секрет ▓
+	_set_tile(19, 22, TILE_FLOOR)
+	_carve(19, 20, 20, 21)      # секретная камера
+	_set_tile(19, 20, TILE_ITEM)
 
-	# B-нижние камеры
-	_carve(14, 15, 20, 20)
-	_carve(17, 15, 20, 17); _set_tile(16, 16, TILE_DOOR)
-	_carve(14, 15, 16, 17); _set_tile(16, 19, TILE_DOOR)
-	_carve(14, 18, 16, 20); _set_tile(17, 17, TILE_DOOR)
+	# 7. Тупики с лутом
+	_set_tile(3, 5, TILE_ITEM)
+	_set_tile(45, 9, TILE_ITEM)
+	_set_tile(7, 33, TILE_ITEM)
+	_set_tile(41, 37, TILE_ITEM)
+	_set_tile(15, 43, TILE_ITEM)
 
-	# B-верхняя запертая
-	_carve(21, 10, 25, 14)
-	_set_tile(21, 12, TILE_LOCKED)
-	# Чёрный скос
-	_set_tile(20, 14, TILE_WALL); _set_tile(21, 14, TILE_WALL)
+	# Убедиться что (1,1) вход
+	_set_tile(1, 1, TILE_EXIT)
 
-	# B-нижняя запертая
-	_carve(21, 15, 25, 20)
-	_set_tile(21, 17, TILE_LOCKED)
+	# 8. Спавны врагов — добавляем как entity
 
-	# Связь B→A
-	_set_tile(14, 14, TILE_DOOR); _set_tile(14, 15, TILE_DOOR)
-	# Лестница B → верт.коридор
-	_carve(26, 16, 29, 16, TILE_STAIRS)
-
-	# ── БЛОК C ──
-	# Вертикальный коридор
-	_carve(29, 3, 31, 24)
-	# Заблокированный выход сверху
-	_set_tile(29, 2, TILE_BLOCKED); _set_tile(30, 2, TILE_BLOCKED); _set_tile(29, 3, TILE_BLOCKED);
-	_set_tile(30, 3, TILE_BLOCKED)
-	# Боковой карман
-	_carve(32, 6, 33, 7); _set_tile(31, 6, TILE_DOOR)
-
-	# Горизонтальный коридор
-	_carve(8, 22, 31, 24)
-
-	# C-столовая
-	_carve(32, 18, 39, 27)
-	_set_tile(31, 23, TILE_STAIRS); _set_tile(32, 23, TILE_STAIRS)
-	_set_tile(37, 24, TILE_ITEM)
-	_set_tile(35, 27, TILE_DOOR)
-
-	# C-кухня
-	_carve(34, 28, 38, 31)
-	_set_tile(35, 27, TILE_DOOR)
-	# Кладовка
-	_carve(37, 32, 38, 33); _set_tile(37, 31, TILE_DOOR)
-
-	# C-левый блок камер
-	_carve(10, 25, 23, 30)
-	_carve(10, 25, 13, 27); _set_tile(13, 26, TILE_DOOR); _set_tile(11, 26, TILE_ITEM)
-	_carve(10, 28, 13, 30); _set_tile(13, 29, TILE_DOOR)
-	_carve(14, 25, 18, 30); _set_tile(14, 27, TILE_DOOR); _set_tile(16, 28, TILE_ITEM)
-	_carve(19, 25, 23, 30); _set_tile(19, 27, TILE_DOOR); _set_tile(21, 28, TILE_ITEM)
-	_set_tile(15, 24, TILE_DOOR)
-
-	# C-раздевалка
-	_carve(25, 27, 33, 33)
-	_set_tile(26, 28, TILE_ITEM); _set_tile(28, 28, TILE_ITEM)
-	_set_tile(30, 28, TILE_ITEM); _set_tile(32, 28, TILE_ITEM)
-	_set_tile(26, 31, TILE_ITEM); _set_tile(28, 31, TILE_ITEM)
-	_set_tile(30, 31, TILE_ITEM); _set_tile(32, 31, TILE_ITEM)
-	_set_tile(28, 27, TILE_DOOR)
-	_set_tile(28, 33, TILE_DOOR)
-
-	# ── БЛОК D ──
-	# D-южный коридор
-	_carve(2, 34, 38, 35)
-
-	# Выступы
-	_carve(3, 31, 6, 33); _set_tile(4, 33, TILE_DOOR)
-	_carve(8, 31, 12, 33); _set_tile(10, 33, TILE_DOOR)
-
-	# Левая казарма
-	_carve(3, 36, 17, 37); _set_tile(9, 35, TILE_DOOR)
-
-	# Правая казарма
-	_carve(19, 36, 34, 37); _set_tile(26, 35, TILE_DOOR)
+func _carve_diag(x1: int, y1: int, x2: int, y2: int):
+	var steps := max(abs(x2 - x1), abs(y2 - y1))
+	for i in steps + 1:
+		var t := float(i) / float(steps) if steps > 0 else 0.0
+		var px := int(round(lerp(float(x1), float(x2), t)))
+		var py := int(round(lerp(float(y1), float(y2), t)))
+		_set_tile(px, py, TILE_FLOOR)
 
 func _carve(x1: int, y1: int, x2: int, y2: int, tile: int = TILE_FLOOR):
 	for y in range(y1, y2 + 1):
@@ -220,10 +238,19 @@ func _set_tile(x: int, y: int, tile: int):
 
 func _setup_entities():
 	_entities = []
-	# Враг в B-камерах
-	_entities.append({ "grid_x": 18, "grid_y": 18, "color": Color(0.8, 0.2, 0.2), "type": "enemy", "texture": load("res://sprites/enemy/bunny/bunny_enemy.png") })
+	# Враги на @ позициях
+	var spawns: Array[Vector2i] = [
+		Vector2i(9, 9), Vector2i(25, 15), Vector2i(15, 27),
+	]
+	for sp in spawns:
+		_entities.append({
+			"grid_x": sp.x, "grid_y": sp.y,
+			"color": Color(0.8, 0.2, 0.2),
+			"type": "enemy",
+			"texture": load("res://sprites/enemy/bunny/bunny_enemy.png"),
+		})
 
-	# NPC-странник в C-столовой
+	# NPC-странник
 	var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
 	if file:
 		var data: Dictionary = JSON.parse_string(file)
@@ -553,8 +580,8 @@ func _close_dialogue():
 func _is_walkable(x: int, y: int) -> bool:
 	if x < 0 or x >= _map_data[0].size() or y < 0 or y >= _map_data.size():
 		return false
-	var t := _map_data[y][x]
-	return t != TILE_WALL and t != TILE_BLOCKED
+	var tile_val: int = _map_data[y][x]
+	return tile_val != TILE_WALL and tile_val != TILE_BLOCKED
 
 func _start_move(tx: int, ty: int):
 	_is_animating = true
