@@ -80,5 +80,3 @@ func _close_dialogue():
 	_is_dialogue_open = false
 	if dialogue_box:
 		dialogue_box.close()
-
-
