@@ -85,9 +85,14 @@ func _ready():
 	_astar.cell_size = Vector2i(1, 1)
 	_astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
 	_astar.update()
-	for y in _map_data.size():
-		for x in _map_data[y].size():
-			if _map_data[y][x] == TILE_WALL or _map_data[y][x] == TILE_BLOCKED:
+	var aw: int = _map_data[0].size()
+	var ah: int = _map_data.size()
+	for y in ah:
+		if y >= _map_data.size(): continue
+		var row = _map_data[y]
+		for x in row.size():
+			if x >= aw: continue
+			if row[x] == TILE_WALL or row[x] == TILE_BLOCKED:
 				_astar.set_point_solid(Vector2i(x, y), true)
 	_setup_entities()
 	_current_angle = DIR_ANGLES[_player_dir]

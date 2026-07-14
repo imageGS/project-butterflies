@@ -234,16 +234,29 @@ func _get_ent_texture(ent: Dictionary) -> Texture2D:
 	var texs: Dictionary = ent.get("textures", {})
 	if texs.is_empty():
 		return ent.get("texture", null)
+
 	if ent.get("chase_active", false):
 		var chase: Texture2D = texs.get("chase", null)
 		if chase: return chase
-	var facing: int = ent.get("facing", -1)
-	match facing:
-		0: return texs.get("back", null)
+
+	var ex: float = ent.get("anim_x", float(ent.grid_x))
+	var ey: float = ent.get("anim_y", float(ent.grid_y))
+	var dx: float = cam_x - (ex + 0.5)
+	var dy: float = cam_y - (ey + 0.5)
+	var view_angle: float = atan2(dy, dx)
+
+	var facing: int = ent.get("facing", 2)
+	var enemy_angle: float = [-PI / 2.0, 0.0, PI / 2.0, PI][facing]
+	var diff: float = view_angle - enemy_angle
+	while diff > PI: diff -= TAU
+	while diff < -PI: diff += TAU
+
+	var sector: int = posmod(int(round(diff / (PI * 0.5))), 4)
+	match sector:
+		0: return texs.get("front", null)
 		1: return texs.get("right", null)
-		2: return texs.get("front", null)
-		3: return texs.get("left", null)
-		_: return texs.get("front", null)
+		2: return texs.get("back", null)
+		_: return texs.get("left", null)
 
 func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array):
 	cam_x = cx
