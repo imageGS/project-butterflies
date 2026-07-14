@@ -763,7 +763,7 @@ func _update_enemies(delta: float):
 			_try_detect(ent, px, py)
 
 		if ent.get("chase_active", false):
-			_enemy_chase(ent, px, py)
+			_enemy_chase(ent, px, py, delta)
 		else:
 			_enemy_patrol(ent)
 
@@ -835,11 +835,18 @@ func _enemy_patrol(ent: Dictionary):
 				ent.facing = d
 			return
 
-func _enemy_chase(ent: Dictionary, px: int, py: int):
+func _enemy_chase(ent: Dictionary, px: int, py: int, delta: float):
 	var dist: int = abs(ent.grid_x - px) + abs(ent.grid_y - py)
-	if dist > 8 or _is_blocked(ent.grid_x, ent.grid_y, px, py):
-		_stop_chase(ent)
-		return
+	var blocked: bool = _is_blocked(ent.grid_x, ent.grid_y, px, py)
+
+	if dist > 8 or blocked:
+		var timer: float = ent.get("chase_lost_timer", 2.0) - delta
+		ent.chase_lost_timer = timer
+		if timer <= 0.0:
+			_stop_chase(ent)
+			return
+	else:
+		ent.erase("chase_lost_timer")
 
 	var f: int = ent.facing
 	var best_dir: int = f
@@ -878,10 +885,11 @@ func _enemy_step_to(ent: Dictionary, nx: int, ny: int, facing: int):
 
 func _stop_chase(ent: Dictionary):
 	ent.chase_active = false
+	ent.erase("chase_lost_timer")
 	var ca: AudioStreamPlayer = ent.get("chase_audio")
 	if ca and ca.playing:
 		var tw := create_tween()
-		tw.tween_property(ca, "volume_db", -80.0, 0.8)
+		tw.tween_property(ca, "volume_db", -80.0, 1.5)
 		await tw.finished
 		ca.stop()
 
