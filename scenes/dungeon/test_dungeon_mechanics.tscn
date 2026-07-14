@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://r533lqkw3jph" path="res://scripts/dungeon/dungeon_renderer.gd" id="1_k2c7o"]
 [ext_resource type="Script" uid="uid://dklw7i5r0a06u" path="res://scripts/dungeon/test_dungeon_mechanics.gd" id="2_r7h3n"]
 [ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="3_r657h"]
-[ext_resource type="Script" uid="uid://dsi67p8ck8fw5" path="res://scripts/ui/crt_display.gd" id="4_r657h"]
 [ext_resource type="Texture2D" uid="uid://3aub1ayemjdp" path="res://assets/textures/UI_BACK.png" id="5_r657h"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
@@ -49,15 +48,17 @@ mouse_filter = 2
 size = Vector2i(1152, 648)
 size_2d_override = Vector2i(1152, 648)
 
-[node name="UIRoot" type="Control" parent="CRT_Root/GameViewport"]
+[node name="UI" type="Control" parent="CRT_Root/GameViewport"]
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 0
+offset_left = 76.0
+offset_top = 546.0
+offset_right = 1076.0
+offset_bottom = 608.0
+mouse_filter = 2
 
-[node name="UI_BACK" type="TextureRect" parent="CRT_Root/GameViewport/UIRoot"]
+[node name="UI_BACK" type="TextureRect" parent="CRT_Root/GameViewport/UI"]
+z_index = 4
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -67,16 +68,24 @@ grow_vertical = 2
 mouse_filter = 2
 texture = ExtResource("5_r657h")
 
-[node name="DungeonView" type="Control" parent="CRT_Root/GameViewport/UIRoot"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+[node name="CentralViewport" type="Control" parent="CRT_Root/GameViewport/UI"]
+layout_mode = 0
+anchors_preset = 0
+offset_left = 71.0
+offset_top = -516.0
+offset_right = 929.0
+offset_bottom = -67.0
+mouse_filter = 2
+
+[node name="DungeonView" type="Control" parent="CRT_Root/GameViewport/UI/CentralViewport"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 858.0
+offset_bottom = 449.0
 script = ExtResource("1_k2c7o")
 
-[node name="InfoLabel" type="Label" parent="CRT_Root/GameViewport/UIRoot/DungeonView"]
+[node name="InfoLabel" type="Label" parent="CRT_Root/GameViewport/UI/CentralViewport/DungeonView"]
 layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
@@ -85,7 +94,7 @@ offset_bottom = 40.0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 18
 
-[node name="AwarenessLabel" type="Label" parent="CRT_Root/GameViewport/UIRoot/DungeonView"]
+[node name="AwarenessLabel" type="Label" parent="CRT_Root/GameViewport/UI/CentralViewport/DungeonView"]
 layout_mode = 0
 offset_left = 40.0
 offset_top = 80.0

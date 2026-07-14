@@ -72,9 +72,9 @@ var _dialogue_active: bool = false
 var _dialogue_busy: bool = false
 var _passive_cache: Dictionary = {}
 
-@onready var _renderer: Control = $CRT_Root/GameViewport/UIRoot/DungeonView
-@onready var _label: Label = $CRT_Root/GameViewport/UIRoot/DungeonView/InfoLabel
-@onready var _awareness_label: Label = $CRT_Root/GameViewport/UIRoot/DungeonView/AwarenessLabel
+@onready var _renderer: Control = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView
+@onready var _label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/InfoLabel
+@onready var _awareness_label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/AwarenessLabel
 
 func _ready():
 	_build_test_level()
