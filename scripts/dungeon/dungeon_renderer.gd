@@ -15,7 +15,6 @@ var _ready_drawn: bool = false
 var _wall_zbuf: Array[float] = []
 
 var entities_on_map: Array = []
-var _bunny_texture: Texture2D = preload("res://sprites/enemy/bunny/bunny_enemy.png")
 
 func _ready():
 	if not _ready_drawn:
@@ -27,7 +26,7 @@ func _draw():
 		_setup_view()
 
 	var fov: float = deg_to_rad(90.0)
-	var num_strips: int = int(_view_w / _strip_w)
+	var num_strips: int = int(float(_view_w) / _strip_w)
 	var half_h: float = _view_h / 2.0
 
 	_draw_floor_ceiling()

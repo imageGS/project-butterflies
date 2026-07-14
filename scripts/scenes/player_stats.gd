@@ -23,8 +23,8 @@ const SKILL_NAMES_RU := ["Хладнокровие", "Стойкость", "По
 
 var inventory: Array[Item] = []
 
-func get_skill(name: String) -> int:
-	match name:
+func get_skill(skill_name: String) -> int:
+	match skill_name:
 		"composure": return composure
 		"stamina": return stamina
 		"agility": return agility
@@ -32,8 +32,8 @@ func get_skill(name: String) -> int:
 		"intuition": return intuition
 	return 1
 
-func set_skill(name: String, value: int):
-	match name:
+func set_skill(skill_name: String, value: int):
+	match skill_name:
 		"composure": composure = value
 		"stamina": stamina = value
 		"agility": agility = value

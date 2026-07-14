@@ -7,7 +7,7 @@
 [ext_resource type="Texture2D" uid="uid://3aub1ayemjdp" path="res://assets/textures/UI_BACK.png" id="5_r657h"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
-viewport_path = NodePath("../GameViewport")
+viewport_path = NodePath("CRT_Root/GameViewport")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dg"]
 resource_local_to_scene = true
