@@ -15,6 +15,7 @@ var _ready_drawn: bool = false
 
 var entities_on_map: Array = []
 var _bunny_texture: Texture2D = preload("res://sprites/enemy/bunny/bunny_enemy.png")
+var _wall_dists: Array[float] = []
 
 func _ready():
 	if not _ready_drawn:
@@ -30,6 +31,7 @@ func _draw():
 	var half_h: float = _view_h / 2.0
 
 	_draw_floor_ceiling()
+	_wall_dists.resize(num_strips)
 
 	for i in range(num_strips):
 		var ray_angle: float = player_angle - fov * 0.5 + (i / float(num_strips)) * fov
@@ -37,6 +39,7 @@ func _draw():
 		if result.hit:
 			var perp: float = result.distance
 			if perp < 0.01: perp = 0.01
+			_wall_dists[i] = perp
 			var wall_h: float = _view_h / perp
 			var wall_top: float = half_h - wall_h * 0.5
 			var c: Color = Color(0.4, 0.4, 0.5)
@@ -45,6 +48,8 @@ func _draw():
 			var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
 			c *= shade
 			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
+		else:
+			_wall_dists[i] = INF
 
 	for ent: Dictionary in entities_on_map:
 		var ent_x: float = ent.grid_x + 0.5
@@ -54,17 +59,24 @@ func _draw():
 		var dist: float = sqrt(dx * dx + dy * dy)
 		if dist < 0.01: continue
 
-		if _is_ray_blocked(cam_x, cam_y, ent_x, ent_y):
-			continue
-
 		var angle: float = atan2(dy, dx) - player_angle
 		while angle > PI: angle -= TAU
 		while angle < -PI: angle += TAU
 		if abs(angle) > fov * 0.5: continue
 
 		var screen_x: int = int((angle / fov + 0.5) * _view_w)
-		var perp_dist: float = dist * cos(angle)
+		var strip_idx: int = clampi(screen_x / _strip_w, 0, num_strips - 1)
+		var wall_dist: float = _wall_dists[strip_idx]
+		if wall_dist == INF: continue
+
+		if _is_ray_blocked(cam_x, cam_y, ent_x, ent_y):
+			continue
+
+		var perp_dist: float = dist * abs(cos(angle))
 		if perp_dist < 0.01: perp_dist = 0.01
+
+		if perp_dist >= wall_dist:
+			continue
 
 		var scale_h: float = _view_h / (perp_dist * 1.5)
 		var tex: Texture2D = ent.get("texture") if ent.has("texture") else null
@@ -130,7 +142,7 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	return { "hit": hit, "distance": perp, "side": side, "mx": map_x, "my": map_y }
 
 func _is_ray_blocked(x1: float, y1: float, x2: float, y2: float) -> bool:
-	var steps: int = int(max(abs(x2 - x1), abs(y2 - y1)) * 2.0) + 2
+	var steps: int = int(max(abs(x2 - x1), abs(y2 - y1)) * 4.0) + 4
 	var end_gx: int = int(round(x2))
 	var end_gy: int = int(round(y2))
 	for i in range(1, steps):
