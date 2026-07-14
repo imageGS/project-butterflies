@@ -29,6 +29,7 @@ var _player_dir: int = Dir.SOUTH
 var _current_angle: float = PI / 2.0
 var _map_data: Array = []
 var _entities: Array = []
+var _astar: AStarGrid2D
 
 var _is_animating := false
 var _anim_timer := 0.0
@@ -79,6 +80,15 @@ var _passive_cache: Dictionary = {}
 
 func _ready():
 	_build_test_level()
+	_astar = AStarGrid2D.new()
+	_astar.region = Rect2i(0, 0, _map_data[0].size(), _map_data.size())
+	_astar.cell_size = Vector2i(1, 1)
+	_astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
+	_astar.update()
+	for y in _map_data.size():
+		for x in _map_data[y].size():
+			if _map_data[y][x] == TILE_WALL or _map_data[y][x] == TILE_BLOCKED:
+				_astar.set_point_solid(Vector2i(x, y), true)
 	_setup_entities()
 	_current_angle = DIR_ANGLES[_player_dir]
 	_setup_dialogue_ui()
@@ -828,25 +838,26 @@ func _enemy_patrol(ent: Dictionary):
 		idx = (idx + 1) % route.size()
 		target = route[idx]
 		ent.route_idx = idx
-	var dx: int = int(sign(target.x - ent.grid_x))
-	var dy: int = int(sign(target.y - ent.grid_y))
-	if dx != 0: dy = 0
-	var nx: int = ent.grid_x + dx
-	var ny: int = ent.grid_y + dy
-	if _is_walkable(nx, ny):
+	var from: Vector2i = Vector2i(ent.grid_x, ent.grid_y)
+	var path: PackedVector2Array = _astar.get_id_path(from, target)
+	if path.size() < 2:
+		_enemy_step(ent)
+		return
+	var next: Vector2i = Vector2i(path[1])
+	if _is_walkable(next.x, next.y):
 		ent._from_x = float(ent.grid_x)
 		ent._from_y = float(ent.grid_y)
-		ent.grid_x = nx
-		ent.grid_y = ny
+		ent.grid_x = next.x
+		ent.grid_y = next.y
 		ent.move_progress = 0.0
-		ent.stuck_count = 0
 		_play_enemy_step(ent)
+		var dx: int = next.x - from.x
+		var dy: int = next.y - from.y
 		if dx > 0: ent.facing = Dir.EAST
 		elif dx < 0: ent.facing = Dir.WEST
 		elif dy > 0: ent.facing = Dir.SOUTH
 		elif dy < 0: ent.facing = Dir.NORTH
 	else:
-		ent.route_idx = (idx + 1) % route.size()
 		_enemy_step(ent)
 
 func _enemy_step(ent: Dictionary):
@@ -879,25 +890,24 @@ func _chase_player(ent: Dictionary):
 	if not ent.get("chase_active", false):
 		ent.chase_active = true
 
-	var dx: float = _player_x - float(ent.grid_x)
-	var dy: float = _player_y - float(ent.grid_y)
-	var target_dir: int = Dir.SOUTH
-	var adx: float = abs(dx)
-	var ady: float = abs(dy)
-	if adx >= ady:
-		target_dir = Dir.EAST if dx > 0 else Dir.WEST
-	else:
-		target_dir = Dir.SOUTH if dy > 0 else Dir.NORTH
-
-	if ent.facing != target_dir:
-		var diff: int = (target_dir - ent.facing + 4) % 4
-		if diff <= 2:
-			ent.facing = (ent.facing + 1) % 4
-		else:
-			ent.facing = (ent.facing + 3) % 4
-		return
-
-	_enemy_step(ent)
+	var from: Vector2i = Vector2i(ent.grid_x, ent.grid_y)
+	var to: Vector2i = Vector2i(roundi(_player_x), roundi(_player_y))
+	var path: PackedVector2Array = _astar.get_id_path(from, to)
+	if path.size() < 2: return
+	var next: Vector2i = Vector2i(path[1])
+	if _is_walkable(next.x, next.y):
+		ent._from_x = float(ent.grid_x)
+		ent._from_y = float(ent.grid_y)
+		ent.grid_x = next.x
+		ent.grid_y = next.y
+		ent.move_progress = 0.0
+		_play_enemy_step(ent)
+		var dx: int = next.x - from.x
+		var dy: int = next.y - from.y
+		if dx > 0: ent.facing = Dir.EAST
+		elif dx < 0: ent.facing = Dir.WEST
+		elif dy > 0: ent.facing = Dir.SOUTH
+		elif dy < 0: ent.facing = Dir.NORTH
 	if roundi(_player_x) == ent.grid_x and roundi(_player_y) == ent.grid_y:
 		TransitionManager.change_scene("res://scenes/battle/node.tscn")
 
