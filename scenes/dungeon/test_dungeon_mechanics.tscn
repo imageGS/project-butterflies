@@ -46,7 +46,6 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="GameViewport" type="SubViewport" parent="CRT_Root"]
-transparent_bg = true
 size = Vector2i(1152, 648)
 size_2d_override = Vector2i(1152, 648)
 
