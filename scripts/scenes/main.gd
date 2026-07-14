@@ -853,12 +853,6 @@ func _on_execute_pressed():
 	await play_enemy_death()
 	end_battle("win")
 
-func _broken_limb_count() -> int:
-	var c: int = 0
-	for name in LIMB_NAMES:
-		if rat.limbs[name].is_destroyed(): c += 1
-	return c
-
 func update_all_status():
 	if enemy_status_label:
 		enemy_status_label.text = _build_status_text(rat, "Жива")
