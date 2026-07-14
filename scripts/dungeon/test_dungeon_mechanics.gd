@@ -243,23 +243,24 @@ func _setup_entities():
 	var tex_b := load("res://sprites/enemy/bunny/bunny_enemy_back.png")
 	var tex_l := load("res://sprites/enemy/bunny/bunny_enemy_left.png")
 	var tex_r := load("res://sprites/enemy/bunny/bunny_enemy_right.png")
+	# Каждый враг: pos, соседние точки для патруля (маршрут)
 	var spawns: Array[Dictionary] = [
-		{ "pos": Vector2i(9, 9), "route": [Vector2i(9,9), Vector2i(11,9), Vector2i(11,11), Vector2i(9,11)] },
-		{ "pos": Vector2i(25, 15), "route": [Vector2i(25,15), Vector2i(27,15), Vector2i(27,17), Vector2i(25,17)] },
-		{ "pos": Vector2i(15, 27), "route": [Vector2i(15,27), Vector2i(17,27), Vector2i(17,29), Vector2i(15,29)] },
+		{ "pos": Vector2i(3, 6), "route": [Vector2i(3,6), Vector2i(5,6), Vector2i(5,7), Vector2i(3,7)] },
+		{ "pos": Vector2i(14, 10), "route": [Vector2i(14,10), Vector2i(14,12), Vector2i(16,12), Vector2i(16,10)] },
+		{ "pos": Vector2i(15, 30), "route": [Vector2i(15,30), Vector2i(13,30), Vector2i(13,28), Vector2i(15,28)] },
 	]
 	for s in spawns:
 		_entities.append({
 			"grid_x": s.pos.x, "grid_y": s.pos.y,
+			"anim_x": float(s.pos.x), "anim_y": float(s.pos.y),
 			"color": Color(0.8, 0.2, 0.2),
 			"type": "enemy",
 			"facing": Dir.SOUTH,
 			"textures": { "front": tex_f, "back": tex_b, "left": tex_l, "right": tex_r },
 			"route": s.route,
 			"route_idx": 0,
-			"state": "idle",
+			"move_progress": 1.0,
 			"action_timer": randf_range(0.5, 1.5),
-			"action_interval": 1.2,
 			"detected_player": false,
 		})
 
@@ -720,14 +721,25 @@ func _check_entity():
 func _update_enemies(delta: float):
 	for ent in _entities:
 		if ent.type != "enemy": continue
-		if ent.get("detected_player", false):
-			_chase_player(ent)
+		var mp: float = ent.get("move_progress", 1.0)
+		if mp < 1.0:
+			ent.move_progress = min(mp + delta * 8.0, 1.0)
+			var t: float = ent.move_progress
+			t = t * t * (3.0 - 2.0 * t)
+			ent.anim_x = lerp(ent.get("_from_x", float(ent.grid_x)), float(ent.grid_x), t)
+			ent.anim_y = lerp(ent.get("_from_y", float(ent.grid_y)), float(ent.grid_y), t)
+			if ent.move_progress >= 1.0:
+				ent.anim_x = float(ent.grid_x)
+				ent.anim_y = float(ent.grid_y)
 			_refresh()
 			continue
 
-		ent.action_timer = ent.get("action_timer", 0.0) - delta
-		if ent.action_timer > 0.0:
+		if ent.get("detected_player", false):
+			_chase_player(ent)
 			continue
+
+		ent.action_timer = ent.get("action_timer", 0.0) - delta
+		if ent.action_timer > 0.0: continue
 
 		if _enemy_sees_player(ent):
 			ent.detected_player = true
@@ -735,9 +747,8 @@ func _update_enemies(delta: float):
 			_refresh()
 			continue
 
-		ent.action_timer = ent.get("action_interval", 3.0) + randf_range(-0.5, 0.5)
+		ent.action_timer = randf_range(1.0, 2.0)
 		_enemy_do_action(ent)
-		_refresh()
 
 func _enemy_sees_player(ent: Dictionary) -> bool:
 	var dx: float = _player_x - float(ent.grid_x)
@@ -779,18 +790,25 @@ func _is_blocked(x1: int, y1: int, x2: int, y2: int) -> bool:
 
 func _enemy_do_action(ent: Dictionary):
 	var roll: int = randi() % 10
-	if roll < 4:
+	if roll < 5:
 		_enemy_move_route(ent)
-	elif roll < 6:
+	elif roll < 7:
 		_enemy_turn(ent, (randi() % 2) * 2 - 1)
-	elif roll < 8:
-		ent.facing = (ent.facing + randi() % 4) % 4
 	else:
-		ent.state = "idle"
+		ent.facing = (ent.facing + randi() % 4) % 4
+
+func _start_enemy_move(ent: Dictionary, nx: int, ny: int):
+	if not _is_walkable(nx, ny): return
+	ent._from_x = float(ent.grid_x)
+	ent._from_y = float(ent.grid_y)
+	ent.grid_x = nx
+	ent.grid_y = ny
+	ent.move_progress = 0.0
 
 func _enemy_move_route(ent: Dictionary):
 	var route: Array = ent.get("route", [])
 	if route.is_empty(): return
+	if ent.get("move_progress", 1.0) < 1.0: return
 	var idx: int = ent.get("route_idx", 0)
 	var target: Vector2i = route[idx]
 	if target.x == ent.grid_x and target.y == ent.grid_y:
@@ -803,18 +821,18 @@ func _enemy_move_route(ent: Dictionary):
 	if dx != 0: dy = 0
 	var nx: int = ent.grid_x + dx
 	var ny: int = ent.grid_y + dy
-	if _is_walkable(nx, ny):
-		ent.grid_x = nx
-		ent.grid_y = ny
-		if dx > 0: ent.facing = Dir.EAST
-		elif dx < 0: ent.facing = Dir.WEST
-		elif dy > 0: ent.facing = Dir.SOUTH
-		else: ent.facing = Dir.NORTH
+
+	_start_enemy_move(ent, nx, ny)
+	if dx > 0: ent.facing = Dir.EAST
+	elif dx < 0: ent.facing = Dir.WEST
+	elif dy > 0: ent.facing = Dir.SOUTH
+	elif dy < 0: ent.facing = Dir.NORTH
 
 func _enemy_turn(ent: Dictionary, dir: int):
 	ent.facing = (ent.facing + dir + 4) % 4
 
 func _chase_player(ent: Dictionary):
+	if ent.get("move_progress", 1.0) < 1.0: return
 	if not _enemy_sees_player(ent):
 		ent.detected_player = false
 		return
@@ -823,13 +841,11 @@ func _chase_player(ent: Dictionary):
 	if dx != 0: dy = 0
 	var nx: int = ent.grid_x + dx
 	var ny: int = ent.grid_y + dy
-	if _is_walkable(nx, ny):
-		ent.grid_x = nx
-		ent.grid_y = ny
-		if dx > 0: ent.facing = Dir.EAST
-		elif dx < 0: ent.facing = Dir.WEST
-		elif dy > 0: ent.facing = Dir.SOUTH
-		else: ent.facing = Dir.NORTH
+	_start_enemy_move(ent, nx, ny)
+	if dx > 0: ent.facing = Dir.EAST
+	elif dx < 0: ent.facing = Dir.WEST
+	elif dy > 0: ent.facing = Dir.SOUTH
+	elif dy < 0: ent.facing = Dir.NORTH
 	if roundi(_player_x) == ent.grid_x and roundi(_player_y) == ent.grid_y:
 		TransitionManager.change_scene("res://scenes/battle/node.tscn")
 

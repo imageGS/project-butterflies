@@ -73,8 +73,10 @@ func _draw():
 
 	var visible_entities: Array[Dictionary] = []
 	for ent: Dictionary in entities_on_map:
-		var sprite_x: float = ent.grid_x + 0.5 - cam_x
-		var sprite_y: float = ent.grid_y + 0.5 - cam_y
+		var ex: float = ent.get("anim_x", float(ent.grid_x))
+		var ey: float = ent.get("anim_y", float(ent.grid_y))
+		var sprite_x: float = ex + 0.5 - cam_x
+		var sprite_y: float = ey + 0.5 - cam_y
 		var dist: float = sqrt(sprite_x * sprite_x + sprite_y * sprite_y)
 		if dist < 0.01: continue
 
