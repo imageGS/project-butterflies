@@ -995,6 +995,7 @@ func _try_awareness():
 func _setup_minimap():
 	_minimap = Control.new()
 	_minimap.name = "MiniMap"
+	_minimap.z_index = 5
 	_minimap.modulate = Color(1, 1, 1, 0.7)
 	$CRT_Root/GameViewport/UI.add_child(_minimap)
 	_minimap.draw.connect(_draw_minimap)
@@ -1005,6 +1006,7 @@ func _draw_minimap():
 	var mh: int = 13 * cs
 	_minimap.set_size(Vector2(mw, mh))
 	_minimap.position = Vector2(829, 0)
+	_minimap.draw_rect(Rect2(0, 0, mw, mh), Color(0, 0, 0, 0.6))
 
 	var mx: int = roundi(_player_x)
 	var my: int = roundi(_player_y)
