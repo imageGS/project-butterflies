@@ -2,8 +2,16 @@
 
 [ext_resource type="Script" uid="uid://cqbjyvmc1wyqb" path="res://scripts/scenes/main_menu.gd" id="1"]
 [ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="2"]
-[ext_resource type="Texture2D" uid="uid://q68tip712kag" path="res://sprites/logo.png" id="2_jix8l"]
-[ext_resource type="Script" uid="uid://dsi67p8ck8fw5" path="res://scripts/ui/crt_display.gd" id="3"]
+[ext_resource type="Texture2D" path="res://assets/textures/main_menu/menu_background.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/textures/main_menu/silhuette.png" id="4"]
+[ext_resource type="Texture2D" path="res://assets/textures/main_menu/butterfly_main_menu.png" id="5"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_empty"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_mm"]
 viewport_path = NodePath("CRT_Root/GameViewport")
@@ -13,20 +21,19 @@ resource_local_to_scene = true
 shader = ExtResource("2")
 shader_parameter/tex = SubResource("ViewportTexture_mm")
 shader_parameter/mask_type = 4
-shader_parameter/curve = 0.0970000046075
-shader_parameter/sharpness = 0.7050000097375
-shader_parameter/color_offset = 0.01000002422500001
-shader_parameter/mask_brightness = 0.60800002888
-shader_parameter/scanline_brightness = 0.6700000080749999
-shader_parameter/min_scanline_thickness = 0.7240000225150001
-shader_parameter/aspect = 0.5170000008075
-shader_parameter/wobble_strength = 0.302000014345
+shader_parameter/curve = 0.097
+shader_parameter/sharpness = 0.705
+shader_parameter/color_offset = 0.01
+shader_parameter/mask_brightness = 0.608
+shader_parameter/scanline_brightness = 0.67
+shader_parameter/min_scanline_thickness = 0.724
+shader_parameter/aspect = 0.517
+shader_parameter/wobble_strength = 0.302
 
-[node name="MainMenu" type="Node" unique_id=158552104 node_paths=PackedStringArray("logo_rect")]
+[node name="MainMenu" type="Node"]
 script = ExtResource("1")
-logo_rect = NodePath("CRT_Root/GameViewport/UIRoot/Logo")
 
-[node name="CRT_Root" type="Control" parent="." unique_id=1882513372]
+[node name="CRT_Root" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -35,30 +42,22 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="CRT_Display" type="ColorRect" parent="CRT_Root" unique_id=1169705037]
+[node name="CRT_Display" type="ColorRect" parent="CRT_Root"]
 material = SubResource("ShaderMaterial_mm")
 layout_mode = 1
-anchors_preset = -1
-anchor_left = -2.0
-anchor_top = -13.625001
-anchor_right = 27.000002
-anchor_bottom = 2.65
-offset_left = 1699.0
-offset_top = 8773.001
-offset_right = 17513.236
-offset_bottom = 15800.032
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-scale = Vector2(0.04643808, 0.04643808)
 mouse_filter = 2
-script = ExtResource("3")
 
-[node name="GameViewport" type="SubViewport" parent="CRT_Root" unique_id=1110835882]
+[node name="GameViewport" type="SubViewport" parent="CRT_Root"]
 transparent_bg = true
 size = Vector2i(1152, 648)
 size_2d_override = Vector2i(1152, 648)
 
-[node name="UIRoot" type="Control" parent="CRT_Root/GameViewport" unique_id=615550288]
+[node name="UIRoot" type="Control" parent="CRT_Root/GameViewport"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -66,7 +65,106 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="IntroStatic" type="ColorRect" parent="CRT_Root/GameViewport/UIRoot" unique_id=1984644785]
+[node name="BG" type="TextureRect" parent="CRT_Root/GameViewport/UIRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3")
+stretch_mode = 5
+
+[node name="Silhouette" type="TextureRect" parent="CRT_Root/GameViewport/UIRoot"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.0
+anchor_top = 0.5
+anchor_right = 0.0
+anchor_bottom = 0.5
+offset_left = 0.0
+offset_top = -360.0
+offset_right = 380.0
+offset_bottom = 360.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+modulate = Color(1, 1, 1, 0.1)
+texture = ExtResource("4")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Butterfly" type="TextureRect" parent="CRT_Root/GameViewport/UIRoot"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = -360.0
+offset_right = 0.0
+offset_bottom = 360.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+modulate = Color(1, 1, 1, 0.8)
+texture = ExtResource("5")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MenuList" type="VBoxContainer" parent="CRT_Root/GameViewport/UIRoot"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -210.0
+offset_top = -40.0
+offset_right = 210.0
+offset_bottom = 140.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 14
+alignment = 0
+
+[node name="BtnNewGame" type="Button" parent="CRT_Root/GameViewport/UIRoot/MenuList"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 38
+theme_override_colors/font_color = Color(0.88, 0.84, 0.72, 1)
+theme_override_colors/font_hover_color = Color(0.95, 0.92, 0.82, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_empty")
+text = "Новая игра"
+
+[node name="BtnContinue" type="Button" parent="CRT_Root/GameViewport/UIRoot/MenuList"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+size_flags_horizontal = 4
+disabled = true
+theme_override_font_sizes/font_size = 38
+theme_override_colors/font_color = Color(0.55, 0.5, 0.42, 0.4)
+theme_override_styles/normal = SubResource("StyleBoxFlat_empty")
+text = "Продолжить"
+
+[node name="BtnQuit" type="Button" parent="CRT_Root/GameViewport/UIRoot/MenuList"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 38
+theme_override_colors/font_color = Color(0.88, 0.84, 0.72, 1)
+theme_override_colors/font_hover_color = Color(0.95, 0.92, 0.82, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_empty")
+text = "Выход"
+
+[node name="IntroStatic" type="ColorRect" parent="CRT_Root/GameViewport/UIRoot"]
+visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -75,45 +173,3 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 color = Color(0.08, 0.08, 0.08, 1)
-
-[node name="Logo" type="TextureRect" parent="CRT_Root/GameViewport/UIRoot" unique_id=441479921]
-z_index = 1
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -331.99997
-offset_top = -207.0
-offset_right = 1588.0
-offset_bottom = 873.0
-grow_horizontal = 2
-grow_vertical = 2
-scale = Vector2(0.33297846, 0.33297846)
-mouse_filter = 2
-texture = ExtResource("2_jix8l")
-
-[node name="PressKeyLabel" type="Label" parent="CRT_Root/GameViewport/UIRoot" unique_id=1997379446]
-z_index = 1
-layout_mode = 1
-anchors_preset = -1
-anchor_right = 1.0
-offset_top = 470.0
-offset_bottom = 510.0
-theme_override_colors/font_color = Color(1, 1, 1, 0.7)
-theme_override_font_sizes/font_size = 14
-text = "НАЖМИТЕ ЛЮБУЮ КЛАВИШУ"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="GlitchOverlay" type="ColorRect" parent="CRT_Root/GameViewport/UIRoot" unique_id=1208079862]
-z_index = 2
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-color = Color(1, 1, 1, 0)
