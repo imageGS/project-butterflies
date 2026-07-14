@@ -71,7 +71,7 @@ func _draw():
 		var screen_x: int = int((_view_w / 2.0) * (1.0 + transform_x / transform_y))
 		if screen_x < -_view_w or screen_x >= _view_w * 2: continue
 
-		var scale_h: float = _view_h / (transform_y * 1.5)
+		var scale_h: float = _view_h / (transform_y * 1.2)
 		var tex: Texture2D = ent.get("texture") if ent.has("texture") else null
 		var spr_w: float = scale_h
 		var tex_w: float = 1.0
