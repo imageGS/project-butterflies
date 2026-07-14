@@ -519,6 +519,7 @@ func _player_attack(part: String) -> bool:
 		play_hit_feedback(part, false)
 	else:
 		_log("Попадание в %s (−%d). [%d HP]" % [LIMB_NAMES_RU[part], dmg, limb.hp])
+		_play_impact(part, false)
 
 	sync_enemy_sprites()
 	update_all_status()
