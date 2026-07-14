@@ -906,8 +906,15 @@ func play_hit_feedback(limb_name: String, finisher: bool = false):
 			tw.tween_property(enemy_container, "position", enemy_container.position + Vector2(0, 120), 0.5).set_ease(Tween.EASE_OUT)
 
 func play_player_hit_feedback():
+	if enemy_container:
+		var orig := enemy_container.scale
+		var sw := create_tween()
+		sw.tween_property(enemy_container, "scale", orig * 1.2, 0.08)
+		sw.tween_property(enemy_container, "scale", orig, 0.12)
+
 	hit_shake_amount = 8.0
 	_play_player_hit()
+	_play_impact("torso", false)
 	if damage_vignette:
 		damage_vignette.modulate.a = 0.6
 		var tween := create_tween()
