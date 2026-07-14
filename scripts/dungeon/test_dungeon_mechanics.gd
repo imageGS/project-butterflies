@@ -254,10 +254,6 @@ func _setup_entities():
 		var audio := AudioStreamPlayer.new()
 		audio.volume_db = -4.0
 		add_child(audio)
-		var chase_audio := AudioStreamPlayer.new()
-		chase_audio.stream = load("res://audio/music/chase.mp3")
-		chase_audio.volume_db = -80.0
-		add_child(chase_audio)
 		_entities.append({
 			"grid_x": s.pos.x, "grid_y": s.pos.y,
 			"anim_x": float(s.pos.x), "anim_y": float(s.pos.y),
@@ -269,7 +265,6 @@ func _setup_entities():
 			"move_timer": randf_range(0.5, 1.0),
 			"chase_active": false,
 			"audio_player": audio,
-			"chase_audio": chase_audio,
 		})
 
 	# Интерактивные объекты
@@ -785,11 +780,6 @@ func _try_detect(ent: Dictionary, px: int, py: int):
 
 	if randf() < chase_chance and not ent.get("chase_active", false):
 		ent.chase_active = true
-		var ca: AudioStreamPlayer = ent.get("chase_audio")
-		if ca:
-			ca.stop()
-			ca.volume_db = -12.0
-			ca.play()
 
 func _is_blocked(x1: int, y1: int, x2: int, y2: int) -> bool:
 	var steps: int = int(sqrt(float((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))) * 2.0) + 1
@@ -844,7 +834,8 @@ func _enemy_chase(ent: Dictionary, px: int, py: int, delta: float):
 		var timer: float = ent.get("chase_lost_timer", 2.0) - delta
 		ent.chase_lost_timer = timer
 		if timer <= 0.0:
-			_stop_chase(ent)
+			ent.chase_active = false
+			ent.erase("chase_lost_timer")
 			return
 	else:
 		ent.erase("chase_lost_timer")
@@ -883,15 +874,6 @@ func _enemy_step_to(ent: Dictionary, nx: int, ny: int, facing: int):
 	ent.facing = facing
 	ent.move_progress = 0.0
 	_play_enemy_step(ent)
-
-func _stop_chase(ent: Dictionary):
-	ent.chase_active = false
-	ent.erase("chase_lost_timer")
-	var ca: AudioStreamPlayer = ent.get("chase_audio")
-	if ca and ca.playing:
-		var tw := create_tween()
-		tw.tween_property(ca, "volume_db", -80.0, 1.5)
-		tw.tween_callback(ca.stop)
 
 func _show_tip(msg: String):
 	if not _dialogue_active and _awareness_label:
