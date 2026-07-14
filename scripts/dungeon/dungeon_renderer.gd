@@ -83,7 +83,8 @@ func _draw():
 
 		var draw_x1: int = max(0, int(screen_x - spr_w * 0.5))
 		var draw_x2: int = min(_view_w, int(screen_x + spr_w * 0.5))
-		var spr_y: float = half_h - scale_h * 0.6
+		var feet_y: float = half_h + half_h / transform_y
+		var spr_y: float = feet_y - scale_h
 
 		visible_entities.append({
 			"depth": transform_y,
