@@ -51,6 +51,7 @@ func _draw():
 		else:
 			_wall_dists[i] = INF
 
+	var visible_entities: Array[Dictionary] = []
 	for ent: Dictionary in entities_on_map:
 		var ent_x: float = ent.grid_x + 0.5
 		var ent_y: float = ent.grid_y + 0.5
@@ -58,6 +59,25 @@ func _draw():
 		var dy: float = ent_y - cam_y
 		var dist: float = sqrt(dx * dx + dy * dy)
 		if dist < 0.01: continue
+
+		var hit_wall: bool = false
+		var hx: float = cam_x
+		var hy: float = cam_y
+		var steps: int = int(dist * 2.0) + 1
+		for s in range(1, steps):
+			var t: float = float(s) / float(steps)
+			var gx: int = int(round(lerp(cam_x, ent_x, t)))
+			var gy: int = int(round(lerp(cam_y, ent_y, t)))
+			if gx == int(round(ent_x)) and gy == int(round(ent_y)):
+				break
+			if gx >= 0 and gx < map_data[0].size() and gy >= 0 and gy < map_data.size():
+				var cell: int = map_data[gy][gx]
+				if cell == TILE_WALL or cell == TILE_BLOCKED:
+					hit_wall = true
+					break
+
+		if hit_wall:
+			continue
 
 		var angle: float = atan2(dy, dx) - player_angle
 		while angle > PI: angle -= TAU
@@ -68,33 +88,33 @@ func _draw():
 		var perp_dist: float = dist * abs(cos(angle))
 		if perp_dist < 0.01: perp_dist = 0.01
 
-		var scale_h: float = _view_h / (perp_dist * 1.5)
-		var half_spr_w: float = scale_h * 0.3
-
-		var left_sx: int = clampi(int((screen_x - half_spr_w) / _strip_w), 0, num_strips - 1)
-		var ctr_sx: int = clampi(int(screen_x / _strip_w), 0, num_strips - 1)
-		var right_sx: int = clampi(int((screen_x + half_spr_w) / _strip_w), 0, num_strips - 1)
-
-		var blocked_count: int = 0
-		var check_strips: Array[int] = [left_sx, ctr_sx, right_sx]
-		for si in check_strips:
-			if si < _wall_dists.size() and _wall_dists[si] != INF:
-				if perp_dist >= _wall_dists[si]:
-					blocked_count += 1
-
-		if blocked_count >= 2:
-			continue
-
 		var tex: Texture2D = ent.get("texture") if ent.has("texture") else null
-		var y: float = half_h - scale_h * 0.6
+		var scale_h: float = _view_h / (perp_dist * 1.5)
+		var spr_w: float = scale_h
+		var spr_h: float = scale_h
 		if tex:
 			var tex_w: float = tex.get_width()
 			var tex_h: float = tex.get_height()
-			var spr_h: float = scale_h
-			var spr_w: float = spr_h * tex_w / tex_h
-			draw_texture_rect(tex, Rect2(screen_x - spr_w * 0.5, y, spr_w, spr_h), false, Color.WHITE)
+			spr_w = scale_h * tex_w / tex_h
+
+		visible_entities.append({
+			"dist": perp_dist,
+			"screen_x": screen_x,
+			"spr_w": spr_w,
+			"spr_h": scale_h,
+			"tex": tex,
+			"color": ent.get("color", Color.WHITE),
+			"ent": ent,
+		})
+
+	visible_entities.sort_custom(func(a, b): return a.dist > b.dist)
+
+	for ve in visible_entities:
+		var y: float = half_h - ve.spr_h * 0.6
+		if ve.tex:
+			draw_texture_rect(ve.tex, Rect2(ve.screen_x - ve.spr_w * 0.5, y, ve.spr_w, ve.spr_h), false, Color.WHITE)
 		else:
-			draw_rect(Rect2(screen_x - 12, y, 24, scale_h), ent.get("color", Color.WHITE))
+			draw_rect(Rect2(ve.screen_x - 12, y, 24, ve.spr_h), ve.color)
 
 func _setup_view():
 	_view_w = int(size.x)
