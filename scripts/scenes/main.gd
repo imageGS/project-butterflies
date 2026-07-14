@@ -205,8 +205,10 @@ func _play_impact(limb_name: String, finisher: bool = false):
 	_impact_player.play()
 
 func _play_miss():
-	if miss_sound:
-		miss_sound.play()
+	if not _impact_player: return
+	var i: int = randi() % 3 + 1
+	_impact_player.stream = load("res://audio/gore/miss_%d.wav" % i)
+	_impact_player.play()
 
 func _play_player_hit():
 	if player_hit_sound:
@@ -876,12 +878,17 @@ func _build_status_text(c: Combatant, alive_word: String) -> String:
 # ==================================================== Визуальная отдача
 func play_hit_feedback(limb_name: String, finisher: bool = false):
 	if enemy_container:
+		var orig := enemy_container.scale
+		var sw := create_tween()
+		sw.tween_property(enemy_container, "scale", orig * 1.15, 0.06)
+		sw.tween_property(enemy_container, "scale", orig, 0.1)
+
 		var pos := enemy_container.position
-		var tween := create_tween()
-		tween.tween_property(enemy_container, "position", pos + Vector2(6, 0), 0.04)
-		tween.tween_property(enemy_container, "position", pos - Vector2(6, 0), 0.04)
-		tween.tween_property(enemy_container, "position", pos + Vector2(0, -4), 0.04)
-		tween.tween_property(enemy_container, "position", pos, 0.04)
+		var tw := create_tween()
+		tw.tween_property(enemy_container, "position", pos + Vector2(6, 0), 0.04)
+		tw.tween_property(enemy_container, "position", pos - Vector2(6, 0), 0.04)
+		tw.tween_property(enemy_container, "position", pos + Vector2(0, -4), 0.04)
+		tw.tween_property(enemy_container, "position", pos, 0.04)
 
 	var rect: TextureRect = enemy_parts.get(limb_name)
 	if rect and blood_particles:
