@@ -676,18 +676,6 @@ func _close_dialogue():
 	_dialogue_active = false
 	_dialogue_overlay.visible = false
 
-func _is_blocked(x1: int, y1: int, x2: int, y2: int) -> bool:
-	var steps: int = int(sqrt(float((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))) * 2.0) + 1
-	for i in range(1, steps):
-		var t: float = float(i) / float(steps)
-		var gx: int = int(round(lerp(float(x1), float(x2), t)))
-		var gy: int = int(round(lerp(float(y1), float(y2), t)))
-		if gx == x2 and gy == y2: break
-		if gx >= 0 and gx < _map_data[0].size() and gy >= 0 and gy < _map_data.size():
-			if _map_data[gy][gx] == TILE_WALL or _map_data[gy][gx] == TILE_BLOCKED:
-				return true
-	return false
-
 func _is_walkable(x: int, y: int) -> bool:
 	if x < 0 or x >= _map_data[0].size() or y < 0 or y >= _map_data.size():
 		return false
