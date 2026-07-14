@@ -343,13 +343,16 @@ func new_rat():
 
 # Приводит видимость спрайтов в точное соответствие состоянию крысы
 func sync_enemy_sprites():
-	if not rat:
-		return
+	if not rat: return
 	for limb_name in enemy_parts:
 		var rect: TextureRect = enemy_parts[limb_name]
-		var limb = rat.limbs.get(limb_name)
+		var limb: Limb = rat.limbs.get(limb_name)
 		if rect and limb:
-			rect.visible = limb.is_alive
+			rect.visible = not limb.is_destroyed()
+			if limb.is_broken():
+				rect.modulate = Color(1, 0.4, 0.4, 1)
+			else:
+				rect.modulate = Color(1, 1, 1, 1)
 
 func update_attack_buttons():
 	if not rat:
@@ -358,7 +361,7 @@ func update_attack_buttons():
 		var btn: Button = attack_buttons[limb_name]
 		var limb = rat.limbs.get(limb_name)
 		if btn and limb:
-			btn.disabled = not limb.is_alive
+			btn.disabled = limb.is_destroyed()
 
 # ==================================================== Главное меню
 func _on_attack_pressed():
@@ -380,7 +383,7 @@ func _on_action_pressed():
 	main_menu.hide()
 	action_submenu.show()
 	if _execute_btn and rat:
-		_execute_btn.visible = _broken_limb_count() >= 3
+		_execute_btn.visible = rat.destroyed_limb_count() >= 2
 	_log("Выберите тип атаки...")
 
 func _on_item_pressed():
@@ -422,7 +425,8 @@ func _on_limb_selected(limb_name: String):
 	if selection_mode in [SelectionMode.ATTACK, SelectionMode.ACTION]:
 		if not rat.is_alive():
 			return
-		if rat.limbs.has(limb_name) and not rat.limbs[limb_name].is_alive:
+		if rat.limbs.has(limb_name) and rat.limbs[limb_name].is_destroyed():
+			continue
 			return
 
 	# Для предмета — можно лечить и сломанные
@@ -501,28 +505,30 @@ func _player_attack(part: String) -> bool:
 		return false
 
 	var limb: Limb = rat.limbs[part]
-	var fragile_hit: bool = limb.fragile
+	var was_broken: bool = limb.is_broken()
 	var dmg: int = limb.take_damage(PLAYER_DAMAGE)
-	var msg: String = "Вы попали в %s! (d20=%d+%d=%d" % [part, roll, agility, total]
-	if fragile_hit: msg += " x1.5!"
-	else: msg += ")"
-	_log(msg)
+	rat.take_total_damage(2)
 
-	var was_finisher: bool = not limb.is_alive
-	if was_finisher:
-		_log("\nКонечность %s уничтожена!" % part, true)
+	if was_broken and limb.is_destroyed():
+		_log("Вы РАЗРУШИЛИ %s! (dmg=%d)" % [LIMB_NAMES_RU[part], dmg], true)
+		PlayerStats.change_humanity(-1)
 		enemy_stunned = true
+		play_hit_feedback(part, true)
+	elif limb.is_broken() and not was_broken:
+		_log("Вы СЛОМАЛИ %s! (dmg=%d)" % [LIMB_NAMES_RU[part], dmg], true)
+		enemy_stunned = true
+		play_hit_feedback(part, false)
 	else:
-		_log("   %s становится хрупкой!" % part)
+		_log("Попадание в %s (−%d). [%d HP]" % [LIMB_NAMES_RU[part], dmg, limb.hp])
 
-	play_hit_feedback(part, was_finisher)
+	sync_enemy_sprites()
+	update_all_status()
 
-	# Крыса ещё жива — обычная синхронизация конечностей.
-	# Если умерла — спрайтами займётся play_enemy_death(), тут не трогаем.
-	if rat.is_alive():
-		sync_enemy_sprites()
-	else:
-		_log("\nКРЫСА УБИТА!", true)
+	if not rat.is_alive():
+		_log("\nВРАГ ПОВЕРЖЕН!", true)
+		return true
+
+	return false
 		return true
 
 	return false
@@ -584,57 +590,48 @@ func switch_to_enemy_turn():
 	disable_player_ui()
 	if enemy_stunned:
 		enemy_stunned = false
-		_log("Враг ошеломлён болью и пропускает ход!", true)
+		_log("Враг ошеломлён и пропускает ход!", true)
+		state = State.PLAYER_INPUT
+		enable_player_ui()
+		return
+	if rat.limbs["head"].is_broken() or rat.limbs["head"].is_destroyed():
+		_log("Голова врага сломана — пропуск хода!", true)
 		state = State.PLAYER_INPUT
 		enable_player_ui()
 		return
 	await get_tree().create_timer(ENEMY_TURN_DELAY).timeout
-
-	# КРИТИЧНО: за время таймера всё могло измениться
-	if state != State.ENEMY_ACTING:
-		return                       # бой окончен / состояние сменилось
+	if state != State.ENEMY_ACTING: return
 	if not rat.is_alive():
 		await play_enemy_death()
-		end_battle("win")            # крыса умерла за время ожидания
+		end_battle("win")
 		return
-
 	enemy_attack()
 
 func enemy_attack():
-	# Двойная страховка: враг ходит ТОЛЬКО в своём состоянии
-	if state != State.ENEMY_ACTING:
-		return
-	if not rat.is_alive():
-		await play_enemy_death()
-		end_battle("win")
-		return
-
+	if state != State.ENEMY_ACTING: return
+	if not rat.is_alive(): return
 	var target_limb: String = rat.get_random_alive_limb()
-	if target_limb == "":
-		await play_enemy_death()
-		end_battle("win")
-		return
-
-	_log("\nКрыса атакует вашу %s!" % target_limb, true)
-
+	if target_limb == "": return
+	_log("\nКрыса атакует вашу %s!" % LIMB_NAMES_RU[target_limb], true)
 	var roll := _roll_d20()
 	var enemy_skill: int = rat.get_skill("agility")
 	var total := roll + enemy_skill
 	var dc: int = 8 + player.get_skill("agility")
-
 	if total >= dc:
 		var limb: Limb = player.limbs[target_limb]
+		var was_b: bool = limb.is_broken()
 		limb.take_damage(ENEMY_DAMAGE)
-		if limb.fragile:
-			_log(" Попадание x1.5 по хрупкому! (%d+%d=%d >= %d)" % [roll, enemy_skill, total, dc], true)
-		if not player.limbs[target_limb].is_alive:
-			_log("\nВаша конечность %s уничтожена!" % target_limb, true)
+		player.take_total_damage(2)
+		if was_b and limb.is_destroyed():
+			_log("Попадание! %s РАЗРУШЕНА! (%d+%d=%d)" % [LIMB_NAMES_RU[target_limb], roll, enemy_skill, total], true)
+		elif limb.is_broken() and not was_b:
+			_log("Попадание! %s СЛОМАНА! (%d+%d=%d)" % [LIMB_NAMES_RU[target_limb], roll, enemy_skill, total], true)
+		else:
+			_log("Попадание! (%d+%d=%d >= %d)" % [roll, enemy_skill, total, dc], true)
 		play_player_hit_feedback()
 	else:
-		_log(" Промах! (%d+%d=%d < %d)" % [roll, enemy_skill, total, dc], true)
-
+		_log("Промах! (%d+%d=%d < %d)" % [roll, enemy_skill, total, dc], true)
 	update_all_status()
-
 	if not player.is_alive():
 		end_battle("lose")
 	else:
@@ -788,8 +785,9 @@ func _player_action_coroutine(limb_name: String):
 
 	if total >= dc:
 		rat.limbs[limb_name].take_damage(dmg)
+		rat.take_total_damage(3)
 		_log("%s: d20=%d+%d=%d >= %d — попадание! (%d урона по %s)" % [action["name"], roll, skill_val, total, dc, dmg, LIMB_NAMES_RU[limb_name]])
-		var was_finisher: bool = not rat.limbs[limb_name].is_alive
+		var was_finisher: bool = rat.limbs[limb_name].is_broken()
 		if was_finisher:
 			_log("\n%s уничтожена!" % limb_name.capitalize(), true)
 		play_hit_feedback(limb_name, was_finisher)
@@ -819,9 +817,11 @@ func _use_item(limb_name: String):
 
 	_play_heal_video()
 
-	if not limb.is_alive:
-		limb.is_alive = true
-	limb.hp = min(limb.hp + item.heal_amount, LIMB_MAX_HP[limb_name])
+	if limb.is_broken() or limb.is_destroyed():
+		limb.broken = false
+		limb.destroyed = false
+		limb.hp = 1
+	limb.hp = min(limb.hp + item.heal_amount, limb.max_hp)
 
 	_log("Вы использовали %s на %s (+%d HP)" % [item.name, LIMB_NAMES_RU[limb_name], item.heal_amount])
 	player.inventory.remove_at(item_index)
@@ -856,7 +856,7 @@ func _on_execute_pressed():
 func _broken_limb_count() -> int:
 	var c: int = 0
 	for name in LIMB_NAMES:
-		if not rat.limbs[name].is_alive:
+		if rat.limbs[name].is_destroyed(): c += 1
 			c += 1
 	return c
 
@@ -868,9 +868,15 @@ func update_all_status():
 
 func _build_status_text(c: Combatant, alive_word: String) -> String:
 	var text := "== %s ==\n" % c.char_name
+	text += "HP: %d/%d\n" % [c.total_hp, c.max_total_hp]
 	for key in c.limbs:
-		var limb = c.limbs[key]
-		text += "%s: %s\n" % [key, (str(limb.hp) + " hp") if limb.is_alive else "СЛОМАНА"]
+		var limb: Limb = c.limbs[key]
+		if limb.is_destroyed():
+			text += "%s: УНИЧТОЖЕНА\n" % key
+		elif limb.is_broken():
+			text += "%s: СЛОМАНА\n" % key
+		else:
+			text += "%s: %d hp\n" % [key, limb.hp]
 	text += "%s: %s" % [alive_word, str(c.is_alive())]
 	return text
 

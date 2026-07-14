@@ -2,55 +2,60 @@ class_name Combatant
 extends RefCounted
 
 var char_name: String
-var skills: Dictionary          # {"stamina": 5, ...}
-var limbs: Dictionary = {}      # {"head": Limb, ...}
-var inventory: Array = []       # Array of Item
+var skills: Dictionary
+var limbs: Dictionary = {}
+var inventory: Array = []
+var total_hp: int = 20
+var max_total_hp: int = 20
 
 func _init(_name: String, _skills: Dictionary):
 	char_name = _name
 	skills = _skills
 	limbs = {
-		"head":       Limb.new("head", 5, "смерть/вырубание"),
-		"torso":      Limb.new("torso", 10, "тяжёлое ранение"),
-		"arm_left":   Limb.new("arm_left", 6, "нельзя атаковать левой"),
-		"arm_right":  Limb.new("arm_right", 6, "нельзя атаковать правой"),
-		"leg_left":   Limb.new("leg_left", 6, "штраф к бегу/уклонению"),
-		"leg_right":  Limb.new("leg_right", 6, "штраф к бегу/уклонению"),
+		"head":       Limb.new("head", 8, "пропуск хода"),
+		"torso":      Limb.new("torso", 14, "удвоение урона по пулу HP"),
+		"arm_left":   Limb.new("arm_left", 8, "нельзя атаковать левой"),
+		"arm_right":  Limb.new("arm_right", 8, "нельзя атаковать правой"),
+		"leg_left":   Limb.new("leg_left", 8, "штраф к защите"),
+		"leg_right":  Limb.new("leg_right", 8, "штраф к защите"),
 	}
 
-# Возвращает значение навыка с учётом штрафов за сломанные конечности
 func get_skill(skill_name: String) -> int:
 	var base: int = skills.get(skill_name, 0)
 	var penalty: int = 0
-	if not limbs["arm_left"].is_alive:
-		penalty += 2
-	if not limbs["arm_right"].is_alive:
-		penalty += 2
-	if not limbs["leg_left"].is_alive:
-		penalty += 2
-	if not limbs["leg_right"].is_alive:
-		penalty += 2
+	for key in limbs:
+		var l: Limb = limbs[key]
+		if l.destroyed:
+			penalty += 3
+		elif l.broken:
+			penalty += 1
 	return max(0, base - penalty)
 
-# Без штрафов (для базовых проверок)
 func get_skill_raw(skill_name: String) -> int:
 	return skills.get(skill_name, 0)
 
 func is_alive() -> bool:
-	return limbs["head"].is_alive and limbs["torso"].is_alive
+	return total_hp > 0
 
-func print_status():
-	print("--- ", char_name, " ---")
+func take_total_damage(amount: int):
+	total_hp = max(0, total_hp - amount)
+
+func destroyed_limb_count() -> int:
+	var c: int = 0
 	for key in limbs:
-		var limb = limbs[key]
-		var status = str(limb.hp) + " hp" if limb.is_alive else "СЛОМАНА"
-		print("  ", key, ": ", status)
+		if limbs[key].destroyed: c += 1
+	return c
+
+func broken_limb_count() -> int:
+	var c: int = 0
+	for key in limbs:
+		if limbs[key].broken: c += 1
+	return c
 
 func get_random_alive_limb() -> String:
-	var alive_limbs = []
+	var alive_limbs := []
 	for key in limbs:
-		if limbs[key].is_alive:
+		if not limbs[key].destroyed:
 			alive_limbs.append(key)
-	if alive_limbs.size() == 0:
-		return ""
+	if alive_limbs.is_empty(): return ""
 	return alive_limbs[randi() % alive_limbs.size()]
