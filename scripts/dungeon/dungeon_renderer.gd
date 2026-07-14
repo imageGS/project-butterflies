@@ -195,9 +195,9 @@ func _get_ent_texture(ent: Dictionary) -> Texture2D:
 		return ent.get("texture", null)
 	var facing: int = ent.get("facing", -1)
 	match facing:
-		0: return texs.get("back", null)
+		0: return texs.get("front", null)
 		1: return texs.get("left", null)
-		2: return texs.get("front", null)
+		2: return texs.get("back", null)
 		3: return texs.get("right", null)
 		_: return texs.get("front", null)
 

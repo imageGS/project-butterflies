@@ -251,7 +251,7 @@ func _setup_entities():
 	]
 	for s in spawns:
 		var audio := AudioStreamPlayer.new()
-		audio.volume_db = -6.0
+		audio.volume_db = -10.0
 		add_child(audio)
 		_entities.append({
 			"grid_x": s.pos.x, "grid_y": s.pos.y,
@@ -359,6 +359,7 @@ func _play_enemy_step(ent: Dictionary):
 	var player: AudioStreamPlayer = ent.get("audio_player")
 	if not player or player.playing: return
 	player.stream = _footstep_sounds[randi() % _footstep_sounds.size()]
+	player.pitch_scale = 0.9 + randf() * 0.2
 	player.play()
 
 func _setup_audio():
