@@ -44,14 +44,13 @@ func _draw():
 		_wall_zbuf[i] = perp
 
 		if result.get("fog", false):
-			var fog_h: float = _view_h / perp
-			var fog_top: float = half_h - fog_h * 0.5
-			var fog_alpha: float = 1.0
-			if perp < fog_distance + fog_fade:
-				fog_alpha = 1.0 - (perp - fog_distance) / fog_fade
+			var fog_blend: float = clamp((perp - fog_distance) / fog_fade, 0.0, 1.0)
+			if fog_blend <= 0.0: continue
+			var fh: float = _view_h / perp
+			var ft: float = half_h - fh * 0.5
 			var fc: Color = fog_color
-			fc.a = clamp(fog_alpha, 0.0, 1.0)
-			draw_rect(Rect2(i * _strip_w, fog_top, _strip_w + 1, fog_h), fc)
+			fc.a = fog_blend * 0.85
+			draw_rect(Rect2(i * _strip_w, ft, _strip_w + 1, fh), fc)
 			continue
 
 		var wall_h: float = _view_h / perp
@@ -235,7 +234,7 @@ func _get_ent_texture(ent: Dictionary) -> Texture2D:
 	var texs: Dictionary = ent.get("textures", {})
 	if texs.is_empty():
 		return ent.get("texture", null)
-	if ent.get("detected_player", false):
+	if ent.get("chase_active", false) and ent.get("move_progress", 1.0) < 1.0:
 		var chase: Texture2D = texs.get("chase", null)
 		if chase: return chase
 	var facing: int = ent.get("facing", -1)

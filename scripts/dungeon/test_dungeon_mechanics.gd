@@ -265,6 +265,7 @@ func _setup_entities():
 			"move_timer": randf_range(0.5, 1.0),
 			"move_interval": 1.2,
 			"detected_player": false,
+			"chase_active": false,
 			"stuck_count": 0,
 			"audio_player": audio,
 		})
@@ -746,20 +747,24 @@ func _update_enemies(delta: float):
 			_tick_enemy_anim(ent, delta)
 			continue
 
-		if not ent.get("detected_player", false):
+		if not ent.get("chase_active", false):
 			if _enemy_sees_player(ent):
 				ent.detected_player = true
 				_show_tip("Вы заметили движение в вашу сторону!")
+				ent.move_timer = 0.3
 				continue
 
-		if ent.get("detected_player", false):
+		if ent.get("detected_player", false) or ent.get("chase_active", false):
+			ent.move_timer = ent.get("move_timer", 0.0) - delta
+			if ent.move_timer > 0.0: continue
+			ent.move_timer = 0.6
 			_chase_player(ent)
 			continue
 
 		ent.move_timer = ent.get("move_timer", 0.0) - delta
 		if ent.move_timer > 0.0: continue
-		ent.move_timer = ent.get("move_interval", 1.2) + randf_range(-0.2, 0.2)
-		_enemy_step(ent)
+	ent.move_timer = (ent.get("move_interval", 1.2) + randf_range(-0.2, 0.2)) * 1.6
+	_enemy_step(ent)
 
 func _enemy_sees_player(ent: Dictionary) -> bool:
 	var dx: float = _player_x - float(ent.grid_x)
@@ -836,7 +841,10 @@ func _chase_player(ent: Dictionary):
 	if ent.get("move_progress", 1.0) < 1.0: return
 	if not _enemy_sees_player(ent):
 		ent.detected_player = false
+		ent.chase_active = false
 		return
+	if not ent.get("chase_active", false):
+		ent.chase_active = true
 
 	var dx: float = _player_x - float(ent.grid_x)
 	var dy: float = _player_y - float(ent.grid_y)
