@@ -195,10 +195,10 @@ func _get_ent_texture(ent: Dictionary) -> Texture2D:
 		return ent.get("texture", null)
 	var facing: int = ent.get("facing", -1)
 	match facing:
-		0: return texs.get("back", null)    # NORTH → back
-		1: return texs.get("right", null)   # EAST → right
-		2: return texs.get("front", null)   # SOUTH → front
-		3: return texs.get("left", null)    # WEST → left
+		0: return texs.get("back", null)
+		1: return texs.get("left", null)
+		2: return texs.get("front", null)
+		3: return texs.get("right", null)
 		_: return texs.get("front", null)
 
 func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array):

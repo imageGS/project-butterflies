@@ -250,6 +250,9 @@ func _setup_entities():
 		{ "pos": Vector2i(25, 2), "dir": Dir.EAST },
 	]
 	for s in spawns:
+		var audio := AudioStreamPlayer.new()
+		audio.volume_db = -6.0
+		add_child(audio)
 		_entities.append({
 			"grid_x": s.pos.x, "grid_y": s.pos.y,
 			"anim_x": float(s.pos.x), "anim_y": float(s.pos.y),
@@ -262,6 +265,7 @@ func _setup_entities():
 			"move_interval": 1.2,
 			"detected_player": false,
 			"stuck_count": 0,
+			"audio_player": audio,
 		})
 
 	# Интерактивные объекты
@@ -352,12 +356,10 @@ func _setup_dialogue_ui():
 
 func _play_enemy_step(ent: Dictionary):
 	if _footstep_sounds.is_empty(): return
-	var step := _footstep_player.duplicate()
-	step.volume_db = -8.0
-	add_child(step)
-	step.stream = _footstep_sounds[randi() % _footstep_sounds.size()]
-	step.play()
-	step.finished.connect(func(): if is_instance_valid(step): step.queue_free(), CONNECT_ONE_SHOT)
+	var player: AudioStreamPlayer = ent.get("audio_player")
+	if not player or player.playing: return
+	player.stream = _footstep_sounds[randi() % _footstep_sounds.size()]
+	player.play()
 
 func _setup_audio():
 	_footstep_player = AudioStreamPlayer.new()
