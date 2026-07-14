@@ -830,7 +830,7 @@ func _tick_enemy_anim(ent: Dictionary, delta: float):
 func _enemy_patrol(ent: Dictionary):
 	var route: Array = ent.get("route", [])
 	if route.is_empty():
-		_enemy_step(ent)
+		_enemy_random_walk(ent)
 		return
 	var idx: int = ent.get("route_idx", 0)
 	var target: Vector2i = route[idx]
@@ -838,27 +838,53 @@ func _enemy_patrol(ent: Dictionary):
 		idx = (idx + 1) % route.size()
 		target = route[idx]
 		ent.route_idx = idx
-	var from: Vector2i = Vector2i(ent.grid_x, ent.grid_y)
-	var path: PackedVector2Array = _astar.get_id_path(from, target)
+	var path: PackedVector2Array = _astar.get_id_path(Vector2i(ent.grid_x, ent.grid_y), target)
 	if path.size() < 2:
-		_enemy_step(ent)
+		_enemy_random_walk(ent)
 		return
+	_follow_path_turn(ent, path)
+
+func _follow_path_turn(ent: Dictionary, path: PackedVector2Array):
 	var next: Vector2i = Vector2i(path[1])
-	if _is_walkable(next.x, next.y):
-		ent._from_x = float(ent.grid_x)
-		ent._from_y = float(ent.grid_y)
+	var cur: Vector2i = Vector2i(ent.grid_x, ent.grid_y)
+	var dx: int = next.x - cur.x
+	var dy: int = next.y - cur.y
+	var target_dir: int = Dir.SOUTH
+	if dx > 0: target_dir = Dir.EAST
+	elif dx < 0: target_dir = Dir.WEST
+	elif dy > 0: target_dir = Dir.SOUTH
+	elif dy < 0: target_dir = Dir.NORTH
+
+	var f: int = ent.facing
+	if f == target_dir:
+		ent._from_x = float(cur.x)
+		ent._from_y = float(cur.y)
 		ent.grid_x = next.x
 		ent.grid_y = next.y
 		ent.move_progress = 0.0
 		_play_enemy_step(ent)
-		var dx: int = next.x - from.x
-		var dy: int = next.y - from.y
-		if dx > 0: ent.facing = Dir.EAST
-		elif dx < 0: ent.facing = Dir.WEST
-		elif dy > 0: ent.facing = Dir.SOUTH
-		elif dy < 0: ent.facing = Dir.NORTH
+		return
+
+	var diff: int = (target_dir - f + 4) % 4
+	if diff == 1 or diff == 2:
+		ent.facing = (f + 1) % 4
 	else:
-		_enemy_step(ent)
+		ent.facing = (f + 3) % 4
+
+func _enemy_random_walk(ent: Dictionary):
+	var vec: Vector2i = DIR_VECTORS[ent.facing]
+	var nx: int = ent.grid_x + vec.x
+	var ny: int = ent.grid_y + vec.y
+	if _is_walkable(nx, ny):
+		ent._from_x = float(ent.grid_x)
+		ent._from_y = float(ent.grid_y)
+		ent.grid_x = nx
+		ent.grid_y = ny
+		ent.move_progress = 0.0
+		_play_enemy_step(ent)
+	else:
+		var turn: int = -1 if randi() % 2 == 0 else 1
+		ent.facing = (ent.facing + turn + 4) % 4
 
 func _enemy_step(ent: Dictionary):
 	var vec: Vector2i = DIR_VECTORS[ent.facing]
@@ -890,24 +916,10 @@ func _chase_player(ent: Dictionary):
 	if not ent.get("chase_active", false):
 		ent.chase_active = true
 
-	var from: Vector2i = Vector2i(ent.grid_x, ent.grid_y)
 	var to: Vector2i = Vector2i(roundi(_player_x), roundi(_player_y))
-	var path: PackedVector2Array = _astar.get_id_path(from, to)
+	var path: PackedVector2Array = _astar.get_id_path(Vector2i(ent.grid_x, ent.grid_y), to)
 	if path.size() < 2: return
-	var next: Vector2i = Vector2i(path[1])
-	if _is_walkable(next.x, next.y):
-		ent._from_x = float(ent.grid_x)
-		ent._from_y = float(ent.grid_y)
-		ent.grid_x = next.x
-		ent.grid_y = next.y
-		ent.move_progress = 0.0
-		_play_enemy_step(ent)
-		var dx: int = next.x - from.x
-		var dy: int = next.y - from.y
-		if dx > 0: ent.facing = Dir.EAST
-		elif dx < 0: ent.facing = Dir.WEST
-		elif dy > 0: ent.facing = Dir.SOUTH
-		elif dy < 0: ent.facing = Dir.NORTH
+	_follow_path_turn(ent, path)
 	if roundi(_player_x) == ent.grid_x and roundi(_player_y) == ent.grid_y:
 		TransitionManager.change_scene("res://scenes/battle/node.tscn")
 
