@@ -763,8 +763,8 @@ func _update_enemies(delta: float):
 
 		ent.move_timer = ent.get("move_timer", 0.0) - delta
 		if ent.move_timer > 0.0: continue
-	ent.move_timer = (ent.get("move_interval", 1.2) + randf_range(-0.2, 0.2)) * 1.6
-	_enemy_step(ent)
+		ent.move_timer = (ent.get("move_interval", 1.2) + randf_range(-0.2, 0.2)) * 1.6
+		_enemy_step(ent)
 
 func _enemy_sees_player(ent: Dictionary) -> bool:
 	var dx: float = _player_x - float(ent.grid_x)
