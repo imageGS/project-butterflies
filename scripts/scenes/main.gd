@@ -844,8 +844,8 @@ func play_hit_feedback(limb_name: String, finisher: bool = false):
 		if l and r and l.is_destroyed() and r.is_destroyed():
 			if not enemy_container.has_meta("original_pos"):
 				enemy_container.set_meta("original_pos", enemy_container.position)
-			var tw := create_tween()
-			tw.tween_property(enemy_container, "position", enemy_container.position + Vector2(0, 120), 0.5).set_ease(Tween.EASE_OUT)
+			var ft := create_tween()
+			ft.tween_property(enemy_container, "position", enemy_container.position + Vector2(0, 120), 0.5).set_ease(Tween.EASE_OUT)
 
 func play_player_hit_feedback():
 	if enemy_container:
