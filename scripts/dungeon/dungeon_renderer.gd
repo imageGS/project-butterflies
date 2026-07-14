@@ -234,7 +234,7 @@ func _get_ent_texture(ent: Dictionary) -> Texture2D:
 	var texs: Dictionary = ent.get("textures", {})
 	if texs.is_empty():
 		return ent.get("texture", null)
-	if ent.get("chase_active", false) and ent.get("move_progress", 1.0) < 1.0:
+	if ent.get("chase_active", false):
 		var chase: Texture2D = texs.get("chase", null)
 		if chase: return chase
 	var facing: int = ent.get("facing", -1)

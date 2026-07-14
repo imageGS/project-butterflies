@@ -246,9 +246,9 @@ func _setup_entities():
 	var tex_r := load("res://sprites/enemy/bunny/bunny_enemy_right.png")
 	# Каждый враг: pos, соседние точки для патруля (маршрут)
 	var spawns: Array[Dictionary] = [
-		{ "pos": Vector2i(2, 10), "dir": Dir.SOUTH },
-		{ "pos": Vector2i(46, 10), "dir": Dir.SOUTH },
-		{ "pos": Vector2i(25, 2), "dir": Dir.EAST },
+		{ "pos": Vector2i(2, 10), "dir": Dir.SOUTH, "route": [Vector2i(2,10), Vector2i(2,12), Vector2i(4,12), Vector2i(4,10)] },
+		{ "pos": Vector2i(46, 10), "dir": Dir.SOUTH, "route": [Vector2i(46,10), Vector2i(46,12), Vector2i(44,12), Vector2i(44,10)] },
+		{ "pos": Vector2i(25, 2), "dir": Dir.EAST, "route": [Vector2i(25,2), Vector2i(27,2), Vector2i(27,4), Vector2i(25,4)] },
 	]
 	for s in spawns:
 		var audio := AudioStreamPlayer.new()
@@ -261,6 +261,8 @@ func _setup_entities():
 			"type": "enemy",
 			"facing": s.dir,
 			"textures": { "front": tex_f, "back": tex_b, "left": tex_l, "right": tex_r, "chase": load("res://sprites/enemy/bunny/bunny_enemy_chase.png") },
+			"route": s.route,
+			"route_idx": 0,
 			"move_progress": 1.0,
 			"move_timer": randf_range(0.5, 1.0),
 			"move_interval": 1.2,
@@ -763,8 +765,8 @@ func _update_enemies(delta: float):
 
 		ent.move_timer = ent.get("move_timer", 0.0) - delta
 		if ent.move_timer > 0.0: continue
-		ent.move_timer = (ent.get("move_interval", 1.2) + randf_range(-0.2, 0.2)) * 1.6
-		_enemy_step(ent)
+		ent.move_timer = (ent.get("move_interval", 1.2) + randf_range(-0.3, 0.3)) * 2.0
+		_enemy_patrol(ent)
 
 func _enemy_sees_player(ent: Dictionary) -> bool:
 	var dx: float = _player_x - float(ent.grid_x)
@@ -815,6 +817,38 @@ func _tick_enemy_anim(ent: Dictionary, delta: float):
 		ent.anim_y = float(ent.grid_y)
 		ent.stuck_count = 0
 	_refresh()
+
+func _enemy_patrol(ent: Dictionary):
+	var route: Array = ent.get("route", [])
+	if route.is_empty():
+		_enemy_step(ent)
+		return
+	var idx: int = ent.get("route_idx", 0)
+	var target: Vector2i = route[idx]
+	if target.x == ent.grid_x and target.y == ent.grid_y:
+		idx = (idx + 1) % route.size()
+		target = route[idx]
+		ent.route_idx = idx
+	var dx: int = int(sign(target.x - ent.grid_x))
+	var dy: int = int(sign(target.y - ent.grid_y))
+	if dx != 0: dy = 0
+	var nx: int = ent.grid_x + dx
+	var ny: int = ent.grid_y + dy
+	if _is_walkable(nx, ny):
+		ent._from_x = float(ent.grid_x)
+		ent._from_y = float(ent.grid_y)
+		ent.grid_x = nx
+		ent.grid_y = ny
+		ent.move_progress = 0.0
+		ent.stuck_count = 0
+		_play_enemy_step(ent)
+		if dx > 0: ent.facing = Dir.EAST
+		elif dx < 0: ent.facing = Dir.WEST
+		elif dy > 0: ent.facing = Dir.SOUTH
+		elif dy < 0: ent.facing = Dir.NORTH
+	else:
+		ent.route_idx = (idx + 1) % route.size()
+		_enemy_step(ent)
 
 func _enemy_step(ent: Dictionary):
 	var vec: Vector2i = DIR_VECTORS[ent.facing]
@@ -893,5 +927,3 @@ func _try_awareness():
 func _refresh():
 	if _renderer:
 		_renderer.update_view(_player_x + 0.5, _player_y + 0.5, _current_angle, _map_data, _entities)
-	if _label:
-		_label.text = DIR_NAMES[_player_dir]
