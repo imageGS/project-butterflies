@@ -76,7 +76,6 @@ var _passive_cache: Dictionary = {}
 @onready var _renderer: Control = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView
 @onready var _label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/InfoLabel
 @onready var _awareness_label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/AwarenessLabel
-@onready var _chase_overlay: ColorRect = $CRT_Root/GameViewport/UI/CentralViewport/ChaseOverlay
 
 func _ready():
 	_build_test_level()
@@ -256,7 +255,7 @@ func _setup_entities():
 		audio.volume_db = -4.0
 		add_child(audio)
 		var chase_audio := AudioStreamPlayer.new()
-		chase_audio.stream = load("res://audio/sfx/chase.mp3")
+		chase_audio.stream = load("res://audio/music/chase.mp3")
 		chase_audio.volume_db = -80.0
 		add_child(chase_audio)
 		_entities.append({
@@ -744,18 +743,14 @@ func _check_entity():
 				TransitionManager.change_scene("res://scenes/battle/node.tscn")
 
 func _update_enemies(delta: float):
-	var any_chase := false
 	for ent in _entities:
 		if ent.type != "enemy": continue
 		if ent.get("move_progress", 1.0) < 1.0:
 			_tick_enemy_anim(ent, delta)
-			if ent.get("chase_active", false): any_chase = true
 			continue
 
 		ent.move_timer = ent.get("move_timer", 0.0) - delta
-		if ent.move_timer > 0.0:
-			if ent.get("chase_active", false): any_chase = true
-			continue
+		if ent.move_timer > 0.0: continue
 
 		var interval: float = 0.7 if ent.get("chase_active", false) else 1.5
 		ent.move_timer = interval + randf_range(-0.1, 0.1)
@@ -769,11 +764,8 @@ func _update_enemies(delta: float):
 
 		if ent.get("chase_active", false):
 			_enemy_chase(ent, px, py)
-			any_chase = true
 		else:
 			_enemy_patrol(ent)
-
-	_set_chase_overlay(any_chase)
 
 func _try_detect(ent: Dictionary, px: int, py: int):
 	var dx: int = px - ent.grid_x
@@ -892,14 +884,6 @@ func _stop_chase(ent: Dictionary):
 		tw.tween_property(ca, "volume_db", -80.0, 0.8)
 		await tw.finished
 		ca.stop()
-
-func _set_chase_overlay(active: bool):
-	if not _chase_overlay: return
-	var target: float = 0.2 if active else 0.0
-	var current: float = _chase_overlay.modulate.a
-	if abs(target - current) < 0.01: return
-	var tw := create_tween()
-	tw.tween_property(_chase_overlay, "modulate:a", target, 0.4)
 
 func _show_tip(msg: String):
 	if not _dialogue_active and _awareness_label:
