@@ -23,8 +23,8 @@ const TILE_ITEM := 8
 @export var move_duration: float = 0.25
 @export var turn_duration: float = 0.2
 
-var _player_x: float = 1.0
-var _player_y: float = 1.0
+var _player_x: float = 10.0
+var _player_y: float = 3.0
 var _player_dir: int = Dir.SOUTH
 var _current_angle: float = PI / 2.0
 var _map_data: Array = []
@@ -228,8 +228,10 @@ func _build_test_level():
 	_set_tile(41, 37, TILE_ITEM)
 	_set_tile(15, 43, TILE_ITEM)
 
-	# Убедиться что (1,1) вход
-	_set_tile(1, 1, TILE_EXIT)
+	# Выходы на внешнем кольце
+	_set_tile(10, 1, TILE_EXIT)
+	_set_tile(2, 10, TILE_EXIT)
+	_set_tile(46, 10, TILE_EXIT)
 
 	# 8. Спавны врагов — добавляем как entity
 
