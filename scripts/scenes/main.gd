@@ -338,6 +338,10 @@ func new_rat():
 
 	if remains_sprite:
 		remains_sprite.visible = false  # прячем труп прошлой крысы
+		remains_sprite.position = Vector2(-4, 294)
+	if enemy_container:
+		enemy_container.position = Vector2.ZERO
+		enemy_container.remove_meta("original_pos")
 
 	sync_enemy_sprites()
 	update_attack_buttons()
@@ -570,6 +574,8 @@ func play_enemy_death():
 	# 7. Показываем останки на месте крысы
 	if remains_sprite:
 		remains_sprite.visible = true
+		if enemy_container and enemy_container.has_meta("original_pos"):
+			remains_sprite.position.y -= 120
 
 func _set_melt(v: float, sm: ShaderMaterial):
 	sm.set("shader_parameter/progress", v)
@@ -878,11 +884,6 @@ func _build_status_text(c: Combatant, alive_word: String) -> String:
 # ==================================================== Визуальная отдача
 func play_hit_feedback(limb_name: String, finisher: bool = false):
 	if enemy_container:
-		var orig := enemy_container.scale
-		var sw := create_tween()
-		sw.tween_property(enemy_container, "scale", orig * 1.15, 0.06)
-		sw.tween_property(enemy_container, "scale", orig, 0.1)
-
 		var pos := enemy_container.position
 		var tw := create_tween()
 		tw.tween_property(enemy_container, "position", pos + Vector2(6, 0), 0.04)
@@ -902,6 +903,8 @@ func play_hit_feedback(limb_name: String, finisher: bool = false):
 		var l: Limb = rat.limbs.get("leg_left")
 		var r: Limb = rat.limbs.get("leg_right")
 		if l and r and l.is_destroyed() and r.is_destroyed():
+			if not enemy_container.has_meta("original_pos"):
+				enemy_container.set_meta("original_pos", enemy_container.position)
 			var tw := create_tween()
 			tw.tween_property(enemy_container, "position", enemy_container.position + Vector2(0, 120), 0.5).set_ease(Tween.EASE_OUT)
 
