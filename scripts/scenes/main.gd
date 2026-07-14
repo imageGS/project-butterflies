@@ -891,6 +891,10 @@ func play_hit_feedback(limb_name: String, finisher: bool = false):
 
 	_play_impact(limb_name, finisher)
 
+	if finisher and limb_name in ["leg_left", "leg_right"] and enemy_container:
+		var tw := create_tween()
+		tw.tween_property(enemy_container, "position", enemy_container.position + Vector2(0, 40), 0.3).set_ease(Tween.EASE_OUT)
+
 func play_player_hit_feedback():
 	hit_shake_amount = 8.0
 	_play_player_hit()
