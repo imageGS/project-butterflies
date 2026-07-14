@@ -16,7 +16,6 @@ var _wall_zbuf: Array[float] = []
 
 var entities_on_map: Array = []
 var _wall_tex: Texture2D = load("res://assets/textures/wall.png")
-var _floor_tex: Texture2D = load("res://assets/textures/floor.png")
 
 func _ready():
 	if not _ready_drawn:
@@ -143,29 +142,14 @@ func _setup_view():
 
 func _draw_floor_ceiling():
 	var half_h: float = _view_h / 2.0
-	if _floor_tex:
-		var fw: float = _floor_tex.get_width()
-		var fh: float = _floor_tex.get_height()
-		var tile_w: float = float(_view_w) * 2.0
-		var tile_h: float = half_h * 2.0
-		for row in 2:
-			var y: float = half_h if row == 1 else 0.0
-			var h: float = half_h
-			if row == 0:
-				var reg: Rect2 = Rect2(0, fh * 0.5, fw, fh * 0.5)
-				draw_texture_rect_region(_floor_tex, Rect2(0, y, _view_w + 1, h + 1), reg, Color(0.15, 0.15, 0.15))
-			else:
-				var shade: float = 1.0
-				draw_texture_rect_region(_floor_tex, Rect2(0, y, _view_w + 1, h + 1), Rect2(0, 0, fw, fh), Color(shade, shade, shade))
-	else:
-		for y in range(_view_h):
-			var t: float = float(y) / float(_view_h)
-			if y < half_h:
-				var c: Color = Color(0.05, 0.05, 0.06).lerp(Color(0.0, 0.0, 0.0), t * 2.0)
-				draw_rect(Rect2(0, y, _view_w, 1), c)
-			else:
-				var c: Color = Color(0.1, 0.08, 0.05).lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
-				draw_rect(Rect2(0, y, _view_w, 1), c)
+	for y in range(_view_h):
+		var t: float = float(y) / float(_view_h)
+		if y < half_h:
+			var c: Color = Color(0.03, 0.03, 0.04).lerp(Color(0.0, 0.0, 0.0), t * 2.0)
+			draw_rect(Rect2(0, y, _view_w, 1), c)
+		else:
+			var c: Color = Color(0.06, 0.05, 0.04).lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
+			draw_rect(Rect2(0, y, _view_w, 1), c)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var dir: Vector2 = Vector2(cos(angle), sin(angle))
