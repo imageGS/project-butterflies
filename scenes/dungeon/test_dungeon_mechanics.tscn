@@ -3,10 +3,14 @@
 [ext_resource type="Script" uid="uid://r533lqkw3jph" path="res://scripts/dungeon/dungeon_renderer.gd" id="1_k2c7o"]
 [ext_resource type="Script" uid="uid://dklw7i5r0a06u" path="res://scripts/dungeon/test_dungeon_mechanics.gd" id="2_r7h3n"]
 [ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="3_r657h"]
+[ext_resource type="Shader" path="res://shaders/chase_glitch.gdshader" id="4_r657h"]
 [ext_resource type="Texture2D" uid="uid://3aub1ayemjdp" path="res://assets/textures/UI_BACK.png" id="5_r657h"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
 viewport_path = NodePath("CRT_Root/GameViewport")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_chase"]
+shader = ExtResource("4_r657h")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dg"]
 resource_local_to_scene = true
@@ -91,6 +95,14 @@ anchors_preset = 0
 offset_right = 858.0
 offset_bottom = 449.0
 script = ExtResource("1_k2c7o")
+
+[node name="ChaseOverlay" type="ColorRect" parent="CRT_Root/GameViewport/UI/CentralViewport"]
+material = SubResource("ShaderMaterial_chase")
+layout_mode = 0
+offset_right = 858.0
+offset_bottom = 449.0
+mouse_filter = 2
+modulate = Color(1, 1, 1, 0)
 
 [node name="InfoLabel" type="Label" parent="CRT_Root/GameViewport/UI/CentralViewport/DungeonView" unique_id=597423150]
 layout_mode = 0
