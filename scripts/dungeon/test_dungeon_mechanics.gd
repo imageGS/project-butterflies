@@ -752,14 +752,14 @@ func _update_enemies(delta: float):
 		ent.move_timer = ent.get("move_timer", 0.0) - delta
 		if ent.move_timer > 0.0: continue
 
-		var interval: float = 0.7 if ent.get("chase_active", false) else 1.5
+		var interval: float = 0.5 if ent.get("chase_active", false) else 0.9
 		ent.move_timer = interval + randf_range(-0.1, 0.1)
 
 		var px: int = roundi(_player_x)
 		var py: int = roundi(_player_y)
 		var dist: int = abs(ent.grid_x - px) + abs(ent.grid_y - py)
 
-		if dist <= 4 and not _is_blocked(ent.grid_x, ent.grid_y, px, py):
+		if dist <= 8 and not _is_blocked(ent.grid_x, ent.grid_y, px, py):
 			_try_detect(ent, px, py)
 
 		if ent.get("chase_active", false):
@@ -787,7 +787,7 @@ func _try_detect(ent: Dictionary, px: int, py: int):
 		ent.chase_active = true
 		var ca: AudioStreamPlayer = ent.get("chase_audio")
 		if ca:
-			ca.volume_db = -6.0
+			ca.volume_db = -12.0
 			ca.play()
 
 func _is_blocked(x1: int, y1: int, x2: int, y2: int) -> bool:
@@ -837,7 +837,7 @@ func _enemy_patrol(ent: Dictionary):
 
 func _enemy_chase(ent: Dictionary, px: int, py: int):
 	var dist: int = abs(ent.grid_x - px) + abs(ent.grid_y - py)
-	if dist > 4 or _is_blocked(ent.grid_x, ent.grid_y, px, py):
+	if dist > 8 or _is_blocked(ent.grid_x, ent.grid_y, px, py):
 		_stop_chase(ent)
 		return
 
