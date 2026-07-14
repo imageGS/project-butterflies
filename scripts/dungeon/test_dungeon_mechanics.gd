@@ -837,19 +837,24 @@ func _enemy_patrol(ent: Dictionary):
 	if route.is_empty():
 		_enemy_random_walk(ent)
 		return
-	var idx: int = ent.get("route_idx", 0)
-	var target: Vector2i = route[idx]
-	if target.x == ent.grid_x and target.y == ent.grid_y:
-		idx = (idx + 1) % route.size()
-		target = route[idx]
-		ent.route_idx = idx
-	var path: PackedVector2Array = _astar.get_id_path(Vector2i(ent.grid_x, ent.grid_y), target)
-	if path.size() < 2:
-		_enemy_random_walk(ent)
-		return
-	_follow_path_turn(ent, path)
 
-func _follow_path_turn(ent: Dictionary, path: PackedVector2Array):
+	if not ent.has("current_path") or ent.current_path.size() < 2:
+		var idx: int = ent.get("route_idx", 0)
+		var target: Vector2i = route[idx]
+		if target.x == ent.grid_x and target.y == ent.grid_y:
+			idx = (idx + 1) % route.size()
+			target = route[idx]
+			ent.route_idx = idx
+		ent.current_path = _astar.get_id_path(Vector2i(ent.grid_x, ent.grid_y), target)
+		if ent.current_path.size() < 2:
+			_enemy_random_walk(ent)
+			return
+
+	_follow_path_turn(ent)
+
+func _follow_path_turn(ent: Dictionary):
+	var path: PackedVector2Array = ent.get("current_path", PackedVector2Array())
+	if path.size() < 2: return
 	var next: Vector2i = Vector2i(path[1])
 	var cur: Vector2i = Vector2i(ent.grid_x, ent.grid_y)
 	var dx: int = next.x - cur.x
@@ -868,6 +873,8 @@ func _follow_path_turn(ent: Dictionary, path: PackedVector2Array):
 		ent.grid_y = next.y
 		ent.move_progress = 0.0
 		_play_enemy_step(ent)
+		if ent.has("current_path") and ent.current_path.size() > 0:
+			ent.current_path.remove_at(0)
 		return
 
 	var diff: int = (target_dir - f + 4) % 4
@@ -917,14 +924,18 @@ func _chase_player(ent: Dictionary):
 	if not _enemy_sees_player(ent):
 		ent.detected_player = false
 		ent.chase_active = false
+		ent.erase("current_path")
 		return
 	if not ent.get("chase_active", false):
 		ent.chase_active = true
+		ent.erase("current_path")
 
-	var to: Vector2i = Vector2i(roundi(_player_x), roundi(_player_y))
-	var path: PackedVector2Array = _astar.get_id_path(Vector2i(ent.grid_x, ent.grid_y), to)
-	if path.size() < 2: return
-	_follow_path_turn(ent, path)
+	if not ent.has("current_path") or ent.current_path.size() < 2:
+		var to: Vector2i = Vector2i(roundi(_player_x), roundi(_player_y))
+		ent.current_path = _astar.get_id_path(Vector2i(ent.grid_x, ent.grid_y), to)
+		if ent.current_path.size() < 2: return
+
+	_follow_path_turn(ent)
 	if roundi(_player_x) == ent.grid_x and roundi(_player_y) == ent.grid_y:
 		TransitionManager.change_scene("res://scenes/battle/node.tscn")
 
