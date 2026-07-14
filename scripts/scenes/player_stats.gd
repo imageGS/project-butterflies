@@ -21,7 +21,7 @@ const SKILL_NAMES_RU := ["Хладнокровие", "Стойкость", "По
 
 @export var death_count: int = 0
 
-var inventory: Array[Item] = []
+var inventory: InventoryGrid = InventoryGrid.new()
 
 func get_skill(skill_name: String) -> int:
 	match skill_name:
@@ -74,7 +74,10 @@ func change_humanity(amount: int):
 
 func create_combatant() -> Combatant:
 	var c := Combatant.new("№13", get_skill_list())
-	c.inventory = inventory.duplicate()
+	var flat: Array = []
+	for i in inventory.size():
+		flat.append(inventory.get_item(i))
+	c.inventory = flat
 	return c
 
 func reset():
@@ -84,4 +87,4 @@ func reset():
 	sanity = 10; max_sanity = 10
 	humanity = 10
 	death_count = 0
-	inventory.clear()
+	inventory.slots.clear()

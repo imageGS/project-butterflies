@@ -73,6 +73,13 @@ var _dialogue_active: bool = false
 var _dialogue_busy: bool = false
 var _passive_cache: Dictionary = {}
 
+var _inv_open: bool = false
+var _inv_overlay: CanvasLayer
+var _inv_cells: Array[ColorRect] = []
+var _inv_item_labels: Array[Label] = []
+const INV_CELL_SIZE := 44
+const INV_GAP := 2
+
 @onready var _renderer: Control = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView
 @onready var _label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/InfoLabel
 @onready var _awareness_label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/AwarenessLabel
@@ -82,9 +89,13 @@ func _ready():
 	_setup_entities()
 	_current_angle = DIR_ANGLES[_player_dir]
 	_setup_dialogue_ui()
+	_setup_inventory_ui()
 	_setup_audio()
 	_refresh()
 	_awareness_timer = _awareness_interval
+	PlayerStats.inventory.try_add(Item.new("Аптечка", "Восстанавливает здоровье", 3, Vector2i(1,2), 1))
+	PlayerStats.inventory.try_add(Item.new("Монета", "Старая, потёртая", 0, Vector2i(1,1), 5))
+	PlayerStats.inventory.try_add(Item.new("Консервы", "Еда с истёкшим сроком", 1, Vector2i(1,1), 2))
 
 func _build_test_level():
 	var ascii_rows: Array[String] = [
@@ -353,6 +364,82 @@ func _setup_dialogue_ui():
 	add_child(_dialogue_overlay)
 	get_viewport().connect("size_changed", _update_dialogue_layout)
 
+func _setup_inventory_ui():
+	_inv_overlay = CanvasLayer.new()
+	_inv_overlay.layer = 110
+	_inv_overlay.visible = false
+	add_child(_inv_overlay)
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.85)
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	_inv_overlay.add_child(bg)
+	var gr := Control.new()
+	gr.name = "InvGrid"
+	_inv_overlay.add_child(gr)
+	PlayerStats.inventory.changed.connect(_draw_inventory)
+	_draw_inventory()
+
+func _draw_inventory():
+	# Clear previous item labels
+	for lbl in _inv_item_labels:
+		if is_instance_valid(lbl): lbl.text = ""
+
+	var vs := get_viewport().get_visible_rect().size
+	var g: InventoryGrid = PlayerStats.inventory
+	var gw: int = g.grid_w * (INV_CELL_SIZE + INV_GAP) - INV_GAP
+	var gh: int = g.grid_h * (INV_CELL_SIZE + INV_GAP) - INV_GAP
+	var ox: float = (vs.x - gw) * 0.5
+	var oy: float = (vs.y - gh) * 0.5
+
+	for child in _inv_overlay.get_children():
+		if child is ColorRect and child.color.a > 0.1:
+			child.set_size(vs)
+			child.position = Vector2.ZERO
+
+	var gr := _inv_overlay.get_node_or_null("InvGrid") as Control
+	if not gr: return
+	gr.position = Vector2(ox, oy)
+
+	var nc: int = g.grid_w * g.grid_h
+	if _inv_cells.size() < nc:
+		for i in range(nc - _inv_cells.size()):
+			var c := ColorRect.new()
+			c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			gr.add_child(c)
+			_inv_cells.append(c)
+			var l := Label.new()
+			l.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+			l.add_theme_font_size_override("font_size", 11)
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			gr.add_child(l)
+			_inv_item_labels.append(l)
+
+	for y in g.grid_h:
+		for x in g.grid_w:
+			var idx: int = y * g.grid_w + x
+			if idx >= _inv_cells.size(): continue
+			_inv_cells[idx].set_size(Vector2(INV_CELL_SIZE, INV_CELL_SIZE))
+			_inv_cells[idx].position = Vector2(x * (INV_CELL_SIZE + INV_GAP), y * (INV_CELL_SIZE + INV_GAP))
+			_inv_cells[idx].color = Color(0.12, 0.12, 0.12, 0.6)
+
+	for i in g.slots.size():
+		var s: Dictionary = g.slots[i]
+		var it: Item = s.item
+		var ix: int = s.x
+		var iy: int = s.y
+		for dy in it.grid_size.y:
+			for dx in it.grid_size.x:
+				var ci: int = (iy + dy) * g.grid_w + (ix + dx)
+				if ci < _inv_cells.size():
+					_inv_cells[ci].color = it.icon_color
+		var li: int = iy * g.grid_w + ix
+		if li < _inv_item_labels.size():
+			var txt: String = it.name
+			if it.stack_count > 1: txt += " x" + str(it.stack_count)
+			_inv_item_labels[li].text = txt
+
 func _play_enemy_step(ent: Dictionary):
 	if _footstep_sounds.is_empty(): return
 	var player: AudioStreamPlayer = ent.get("audio_player")
@@ -384,6 +471,11 @@ func _unhandled_input(event):
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
+			KEY_TAB:
+				if not _dialogue_active:
+					_inv_open = not _inv_open
+					_inv_overlay.visible = _inv_open
+					if _inv_open: _draw_inventory()
 			KEY_W, KEY_UP:
 				if not _dialogue_active:
 					_try_move_forward()
@@ -490,7 +582,7 @@ func _interact_object(obj: Dictionary):
 				_show_tip(obj_name + " — пусто.")
 			else:
 				var item_name: String = loot[0] if loot.size() == 1 else loot[randi() % loot.size()]
-				PlayerStats.inventory.append(Item.new(item_name, "Найден в " + obj_name, 2))
+				PlayerStats.inventory.try_add(Item.new(item_name, "Найден в " + obj_name, 2, Vector2i(1,1), 3))
 				_show_tip(item_name + " добавлен в инвентарь.")
 				data.loot = loot.duplicate()
 				data.loot.erase(item_name)
