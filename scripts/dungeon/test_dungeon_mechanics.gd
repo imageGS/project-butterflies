@@ -752,7 +752,6 @@ func _update_enemies(delta: float):
 		if not ent.get("chase_active", false):
 			if _enemy_sees_player(ent):
 				ent.detected_player = true
-				_show_tip("Вы заметили движение в вашу сторону!")
 				ent.move_timer = 0.3
 				continue
 
@@ -927,3 +926,5 @@ func _try_awareness():
 func _refresh():
 	if _renderer:
 		_renderer.update_view(_player_x + 0.5, _player_y + 0.5, _current_angle, _map_data, _entities)
+	if _label:
+		_label.text = DIR_NAMES[_player_dir]
