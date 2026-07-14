@@ -117,6 +117,7 @@ func _draw():
 		})
 
 	visible_entities.sort_custom(func(a, b): return a.depth > b.depth)
+	_draw_fog()
 
 	for ve in visible_entities:
 		var stripe_start: int = ve.draw_x1 / _strip_w
@@ -188,6 +189,19 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var wall_x: float = oy + perp * dir.y if side == 0 else ox + perp * dir.x
 	wall_x -= floor(wall_x)
 	return { "hit": hit, "distance": perp, "side": side, "mx": map_x, "my": map_y, "wall_x": wall_x, "rdx": dir.x, "rdy": dir.y }
+
+func _draw_fog():
+	var depth: float = _view_w * 0.35
+	for x in range(int(depth)):
+		var a: float = clamp(1.0 - float(x) / depth, 0.0, 1.0) * 0.7
+		if a <= 0.0: break
+		draw_rect(Rect2(x, 0, 1, _view_h), Color(0, 0, 0, a))
+		draw_rect(Rect2(_view_w - x - 1, 0, 1, _view_h), Color(0, 0, 0, a))
+	for y in range(int(depth * 0.5)):
+		var a: float = clamp(1.0 - float(y) / (depth * 0.5), 0.0, 1.0) * 0.7
+		if a <= 0.0: break
+		draw_rect(Rect2(0, y, _view_w, 1), Color(0, 0, 0, a))
+		draw_rect(Rect2(0, _view_h - y - 1, _view_w, 1), Color(0, 0, 0, a))
 
 func _get_ent_texture(ent: Dictionary) -> Texture2D:
 	var texs: Dictionary = ent.get("textures", {})

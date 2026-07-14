@@ -41,6 +41,7 @@ var _anim_to_angle := 0.0
 
 var _footstep_sounds: Array = []
 var _footstep_player: AudioStreamPlayer
+var _audio_listener: AudioListener2D
 
 var _awareness_timer: float = 0.0
 var _awareness_interval: float = 8.0
@@ -251,7 +252,7 @@ func _setup_entities():
 	]
 	for s in spawns:
 		var audio := AudioStreamPlayer.new()
-		audio.volume_db = -10.0
+		audio.volume_db = -4.0
 		add_child(audio)
 		_entities.append({
 			"grid_x": s.pos.x, "grid_y": s.pos.y,
@@ -358,6 +359,14 @@ func _play_enemy_step(ent: Dictionary):
 	if _footstep_sounds.is_empty(): return
 	var player: AudioStreamPlayer = ent.get("audio_player")
 	if not player or player.playing: return
+	var dx: float = float(ent.grid_x) - _player_x
+	var dy: float = float(ent.grid_y) - _player_y
+	var dist: float = sqrt(dx * dx + dy * dy)
+	var hear_radius: float = 6.0
+	if dist >= hear_radius: return
+	var vol: float = linear_to_db(clamp(1.0 - dist / hear_radius, 0.0, 1.0))
+	vol = max(vol, -30.0)
+	player.volume_db = vol
 	player.stream = _footstep_sounds[randi() % _footstep_sounds.size()]
 	player.pitch_scale = 0.9 + randf() * 0.2
 	player.play()
