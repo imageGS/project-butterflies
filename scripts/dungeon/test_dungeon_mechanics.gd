@@ -353,7 +353,15 @@ func _unhandled_input(event):
 					var old_dir = _player_dir
 					_player_dir = (_player_dir + 1) % 4
 					_start_rotate(old_dir)
-			KEY_SPACE, KEY_E:
+			KEY_Q:
+				if not _dialogue_active:
+					_try_strafe_left()
+			KEY_E:
+				if _dialogue_active:
+					_advance_dialogue()
+				elif not _dialogue_active:
+					_try_strafe_right()
+			KEY_SPACE, KEY_F:
 				if _dialogue_active:
 					_advance_dialogue()
 				else:
@@ -388,6 +396,20 @@ func _try_move_backward():
 	var vec: Vector2i = DIR_VECTORS[_player_dir]
 	var nx: int = roundi(_player_x) - vec.x
 	var ny: int = roundi(_player_y) - vec.y
+	if _is_walkable(nx, ny):
+		_start_move(nx, ny)
+
+func _try_strafe_left():
+	var vec: Vector2i = DIR_VECTORS[(_player_dir + 3) % 4]
+	var nx: int = roundi(_player_x) + vec.x
+	var ny: int = roundi(_player_y) + vec.y
+	if _is_walkable(nx, ny):
+		_start_move(nx, ny)
+
+func _try_strafe_right():
+	var vec: Vector2i = DIR_VECTORS[(_player_dir + 1) % 4]
+	var nx: int = roundi(_player_x) + vec.x
+	var ny: int = roundi(_player_y) + vec.y
 	if _is_walkable(nx, ny):
 		_start_move(nx, ny)
 
