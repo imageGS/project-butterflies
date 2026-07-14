@@ -29,7 +29,6 @@ var _player_dir: int = Dir.SOUTH
 var _current_angle: float = PI / 2.0
 var _map_data: Array = []
 var _entities: Array = []
-var _astar: AStarGrid2D
 
 var _is_animating := false
 var _anim_timer := 0.0
@@ -80,20 +79,6 @@ var _passive_cache: Dictionary = {}
 
 func _ready():
 	_build_test_level()
-	_astar = AStarGrid2D.new()
-	_astar.region = Rect2i(0, 0, _map_data[0].size(), _map_data.size())
-	_astar.cell_size = Vector2i(1, 1)
-	_astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
-	_astar.update()
-	var aw: int = _map_data[0].size()
-	var ah: int = _map_data.size()
-	for y in ah:
-		if y >= _map_data.size(): continue
-		var row = _map_data[y]
-		for x in row.size():
-			if x >= aw: continue
-			if row[x] == TILE_WALL or row[x] == TILE_BLOCKED:
-				_astar.set_point_solid(Vector2i(x, y), true)
 	_setup_entities()
 	_current_angle = DIR_ANGLES[_player_dir]
 	_setup_dialogue_ui()
@@ -261,9 +246,9 @@ func _setup_entities():
 	var tex_r := load("res://sprites/enemy/bunny/bunny_enemy_right.png")
 	# Каждый враг: pos, соседние точки для патруля (маршрут)
 	var spawns: Array[Dictionary] = [
-		{ "pos": Vector2i(2, 10), "dir": Dir.SOUTH, "route": [Vector2i(2,10), Vector2i(2,12), Vector2i(4,12), Vector2i(4,10)] },
-		{ "pos": Vector2i(46, 10), "dir": Dir.SOUTH, "route": [Vector2i(46,10), Vector2i(46,12), Vector2i(44,12), Vector2i(44,10)] },
-		{ "pos": Vector2i(25, 2), "dir": Dir.EAST, "route": [Vector2i(25,2), Vector2i(27,2), Vector2i(27,4), Vector2i(25,4)] },
+		{ "pos": Vector2i(2, 10), "dir": Dir.SOUTH },
+		{ "pos": Vector2i(46, 10), "dir": Dir.SOUTH },
+		{ "pos": Vector2i(25, 2), "dir": Dir.EAST },
 	]
 	for s in spawns:
 		var audio := AudioStreamPlayer.new()
@@ -276,14 +261,9 @@ func _setup_entities():
 			"type": "enemy",
 			"facing": s.dir,
 			"textures": { "front": tex_f, "back": tex_b, "left": tex_l, "right": tex_r, "chase": load("res://sprites/enemy/bunny/bunny_enemy_chase.png") },
-			"route": s.route,
-			"route_idx": 0,
 			"move_progress": 1.0,
 			"move_timer": randf_range(0.5, 1.0),
-			"move_interval": 1.2,
-			"detected_player": false,
 			"chase_active": false,
-			"stuck_count": 0,
 			"audio_player": audio,
 		})
 
@@ -696,6 +676,18 @@ func _close_dialogue():
 	_dialogue_active = false
 	_dialogue_overlay.visible = false
 
+func _is_blocked(x1: int, y1: int, x2: int, y2: int) -> bool:
+	var steps: int = int(sqrt(float((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))) * 2.0) + 1
+	for i in range(1, steps):
+		var t: float = float(i) / float(steps)
+		var gx: int = int(round(lerp(float(x1), float(x2), t)))
+		var gy: int = int(round(lerp(float(y1), float(y2), t)))
+		if gx == x2 and gy == y2: break
+		if gx >= 0 and gx < _map_data[0].size() and gy >= 0 and gy < _map_data.size():
+			if _map_data[gy][gx] == TILE_WALL or _map_data[gy][gx] == TILE_BLOCKED:
+				return true
+	return false
+
 func _is_walkable(x: int, y: int) -> bool:
 	if x < 0 or x >= _map_data[0].size() or y < 0 or y >= _map_data.size():
 		return false
@@ -764,47 +756,43 @@ func _update_enemies(delta: float):
 			_tick_enemy_anim(ent, delta)
 			continue
 
-		if not ent.get("detected_player", false) and not ent.get("chase_active", false):
-			if _enemy_sees_player(ent):
-				ent.detected_player = true
-
-		if ent.get("detected_player", false) or ent.get("chase_active", false):
-			ent.move_timer = ent.get("move_timer", 0.0) - delta
-			if ent.move_timer > 0.0: continue
-			ent.move_timer = 0.6
-			_chase_player(ent)
-			continue
-
 		ent.move_timer = ent.get("move_timer", 0.0) - delta
 		if ent.move_timer > 0.0: continue
-		ent.move_timer = ent.get("move_interval", 1.2) + randf_range(-0.2, 0.3)
-		_enemy_patrol(ent)
 
-func _enemy_sees_player(ent: Dictionary) -> bool:
-	var dx: float = _player_x - float(ent.grid_x)
-	var dy: float = _player_y - float(ent.grid_y)
-	var dist: float = sqrt(dx * dx + dy * dy)
-	if dist > 8.0: return false
+		var interval: float = 0.7 if ent.get("chase_active", false) else 1.5
+		ent.move_timer = interval + randf_range(-0.1, 0.1)
 
-	if _is_blocked(ent.grid_x, ent.grid_y, roundi(_player_x), roundi(_player_y)):
-		return false
+		var px: int = roundi(_player_x)
+		var py: int = roundi(_player_y)
+		var dist: int = abs(ent.grid_x - px) + abs(ent.grid_y - py)
 
-	var angle_to_player: float = atan2(dy, dx)
-	var enemy_facing: float = DIR_ANGLES[ent.get("facing", Dir.SOUTH)]
-	var diff: float = abs(angle_to_player - enemy_facing)
-	while diff > PI: diff -= TAU
-	while diff < -PI: diff += TAU
+		if dist <= 4 and not _is_blocked(ent.grid_x, ent.grid_y, px, py):
+			_try_detect(ent, px, py)
 
-	var chance: float = 0.0
-	var abs_diff: float = abs(diff)
-	if abs_diff <= deg_to_rad(45.0):
-		chance = 0.8
-	elif abs_diff <= deg_to_rad(135.0):
-		chance = 0.2
+		if ent.get("chase_active", false):
+			_enemy_chase(ent, px, py)
+		else:
+			_enemy_patrol(ent)
+
+func _try_detect(ent: Dictionary, px: int, py: int):
+	var dx: int = px - ent.grid_x
+	var dy: int = py - ent.grid_y
+	var f: int = ent.facing
+	var vec: Vector2i = DIR_VECTORS[f]
+	var dot: int = vec.x * dx + vec.y * dy
+
+	var chase_chance: float = 0.0
+	if dot > 0:
+		chase_chance = 1.0
+	elif dot == 0:
+		chase_chance = 0.5
 	else:
-		chance = 0.02
+		var moving: bool = _is_animating or _dialogue_active
+		chase_chance = 0.25 if moving else 0.0
 
-	return randf() < chance
+	if randf() < chase_chance:
+		ent.chase_active = true
+		ent.erase("current_path")
 
 func _is_blocked(x1: int, y1: int, x2: int, y2: int) -> bool:
 	var steps: int = int(sqrt(float((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))) * 2.0) + 1
@@ -831,111 +819,64 @@ func _tick_enemy_anim(ent: Dictionary, delta: float):
 	_refresh()
 
 func _enemy_patrol(ent: Dictionary):
-	var route: Array = ent.get("route", [])
-	if route.is_empty():
-		_enemy_random_walk(ent)
+	var f: int = ent.facing
+	var vec: Vector2i = DIR_VECTORS[f]
+	var nx: int = ent.grid_x + vec.x
+	var ny: int = ent.grid_y + vec.y
+	if _is_walkable(nx, ny):
+		_enemy_step_to(ent, nx, ny, f)
 		return
 
-	if not ent.has("current_path") or ent.current_path.size() < 2:
-		var idx: int = ent.get("route_idx", 0)
-		var target: Vector2i = route[idx]
-		if target.x == ent.grid_x and target.y == ent.grid_y:
-			idx = (idx + 1) % route.size()
-			target = route[idx]
-			ent.route_idx = idx
-		ent.current_path = _astar.get_id_path(Vector2i(ent.grid_x, ent.grid_y), target)
-		if ent.current_path.size() < 2:
-			_enemy_random_walk(ent)
+	var dirs: Array[int] = [f, (f + 1) % 4, (f + 3) % 4, (f + 2) % 4]
+	for d in dirs:
+		var v: Vector2i = DIR_VECTORS[d]
+		var tx: int = ent.grid_x + v.x
+		var ty: int = ent.grid_y + v.y
+		if _is_walkable(tx, ty):
+			if d == f:
+				_enemy_step_to(ent, tx, ty, d)
+			else:
+				ent.facing = d
 			return
 
-	_follow_path_turn(ent)
-
-func _follow_path_turn(ent: Dictionary):
-	var path: PackedVector2Array = ent.get("current_path", PackedVector2Array())
-	if path.size() < 2: return
-	var next: Vector2i = Vector2i(path[1])
-	var cur: Vector2i = Vector2i(ent.grid_x, ent.grid_y)
-	var dx: int = next.x - cur.x
-	var dy: int = next.y - cur.y
-	var target_dir: int = Dir.SOUTH
-	if dx > 0: target_dir = Dir.EAST
-	elif dx < 0: target_dir = Dir.WEST
-	elif dy > 0: target_dir = Dir.SOUTH
-	elif dy < 0: target_dir = Dir.NORTH
-
+func _enemy_chase(ent: Dictionary, px: int, py: int):
+	var dx: int = px - ent.grid_x
+	var dy: int = py - ent.grid_y
 	var f: int = ent.facing
-	if f == target_dir:
-		ent._from_x = float(cur.x)
-		ent._from_y = float(cur.y)
-		ent.grid_x = next.x
-		ent.grid_y = next.y
-		ent.move_progress = 0.0
-		_play_enemy_step(ent)
-		if ent.has("current_path") and ent.current_path.size() > 0:
-			ent.current_path.remove_at(0)
-		return
 
-	var diff: int = (target_dir - f + 4) % 4
-	if diff == 1 or diff == 2:
-		ent.facing = (f + 1) % 4
+	var best_dir: int = f
+	var best_prio: int = -1
+	var dirs: Array[int] = [f, (f + 1) % 4, (f + 3) % 4, (f + 2) % 4]
+	for d in dirs:
+		var v: Vector2i = DIR_VECTORS[d]
+		var tx: int = ent.grid_x + v.x
+		var ty: int = ent.grid_y + v.y
+		if not _is_walkable(tx, ty): continue
+		var ndx: int = abs(px - tx)
+		var ndy: int = abs(py - ty)
+		var prio: int = 10 - (ndx + ndy)
+		if d != f: prio -= 1
+		if prio > best_prio:
+			best_prio = prio
+			best_dir = d
+
+	if best_dir == f:
+		var v: Vector2i = DIR_VECTORS[f]
+		_enemy_step_to(ent, ent.grid_x + v.x, ent.grid_y + v.y, f)
 	else:
-		ent.facing = (f + 3) % 4
+		ent.facing = best_dir
 
-func _enemy_random_walk(ent: Dictionary):
-	var vec: Vector2i = DIR_VECTORS[ent.facing]
-	var nx: int = ent.grid_x + vec.x
-	var ny: int = ent.grid_y + vec.y
-	if _is_walkable(nx, ny):
-		ent._from_x = float(ent.grid_x)
-		ent._from_y = float(ent.grid_y)
-		ent.grid_x = nx
-		ent.grid_y = ny
-		ent.move_progress = 0.0
-		_play_enemy_step(ent)
-	else:
-		var turn: int = -1 if randi() % 2 == 0 else 1
-		ent.facing = (ent.facing + turn + 4) % 4
-
-func _enemy_step(ent: Dictionary):
-	var vec: Vector2i = DIR_VECTORS[ent.facing]
-	var nx: int = ent.grid_x + vec.x
-	var ny: int = ent.grid_y + vec.y
-
-	if _is_walkable(nx, ny):
-		ent._from_x = float(ent.grid_x)
-		ent._from_y = float(ent.grid_y)
-		ent.grid_x = nx
-		ent.grid_y = ny
-		ent.move_progress = 0.0
-		ent.stuck_count = 0
-		_play_enemy_step(ent)
-	else:
-		ent.stuck_count = ent.get("stuck_count", 0) + 1
-		var turn_dir: int = -1 if randi() % 2 == 0 else 1
-		ent.facing = (ent.facing + turn_dir + 4) % 4
-		if ent.stuck_count >= 4:
-			ent.facing = (ent.facing + 2) % 4
-			ent.stuck_count = 0
-
-func _chase_player(ent: Dictionary):
-	if ent.get("move_progress", 1.0) < 1.0: return
-	if not _enemy_sees_player(ent):
-		ent.detected_player = false
-		ent.chase_active = false
-		ent.erase("current_path")
-		return
-	if not ent.get("chase_active", false):
-		ent.chase_active = true
-		ent.erase("current_path")
-
-	if not ent.has("current_path") or ent.current_path.size() < 2:
-		var to: Vector2i = Vector2i(roundi(_player_x), roundi(_player_y))
-		ent.current_path = _astar.get_id_path(Vector2i(ent.grid_x, ent.grid_y), to)
-		if ent.current_path.size() < 2: return
-
-	_follow_path_turn(ent)
-	if roundi(_player_x) == ent.grid_x and roundi(_player_y) == ent.grid_y:
+	if abs(ent.grid_x - px) <= 1 and abs(ent.grid_y - py) <= 1 and ent.grid_x == px and ent.grid_y == py:
 		TransitionManager.change_scene("res://scenes/battle/node.tscn")
+
+func _enemy_step_to(ent: Dictionary, nx: int, ny: int, facing: int):
+	ent._from_x = float(ent.grid_x)
+	ent._from_y = float(ent.grid_y)
+	ent.grid_x = nx
+	ent.grid_y = ny
+	ent.facing = facing
+	ent.move_progress = 0.0
+	_play_enemy_step(ent)
 
 func _show_tip(msg: String):
 	if not _dialogue_active and _awareness_label:
