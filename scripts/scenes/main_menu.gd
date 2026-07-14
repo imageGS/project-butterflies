@@ -16,7 +16,7 @@ var _btn_quit: Button
 
 func _ready():
 	_intro_static = get_node_or_null("CRT_Root/GameViewport/UIRoot/IntroStatic")
-	_menu_list = get_node_or_null("CRT_Root/GameViewport/UIRoot/MenuList")
+	_menu_list = get_node_or_null("MenuList")
 	_setup_audio()
 	_setup_buttons()
 	_start_intro()
