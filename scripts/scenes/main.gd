@@ -670,7 +670,9 @@ func end_battle(result: String):
 	elif result == "fled":
 		_log("\n\n--- ВЫ СБЕЖАЛИ! ---", true)
 	else:
-		_log("\n\n--- ПОРАЖЕНИЕ... ---", true)
+		_log("\n\n--- ВЫ ПОТЕРЯЛИ СОЗНАНИЕ... ---", true)
+		PlayerStats.health = PlayerStats.max_health
+		PlayerStats.sanity = PlayerStats.max_sanity
 	await get_tree().create_timer(2.5).timeout
 	TransitionManager.change_scene("res://scenes/dungeon/test_dungeon_mechanics.tscn")
 
