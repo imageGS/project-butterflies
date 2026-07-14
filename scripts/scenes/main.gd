@@ -20,9 +20,15 @@ const ACTIONS := {
 }
 const ACTION_NAMES := ["precise_strike", "power_strike", "quick_strike"]
 
+# Специальные action (monster path)
+const MERCY_ACTIONS := {}
+
 # Режимы выбора цели для атаки/действия/предмета
 enum SelectionMode { NONE, ATTACK, ACTION, ITEM }
 const FLEE_DC := 10
+
+var enemy_stunned: bool = false
+var _execute_btn: Button
 
 # ---------------------------------------------------- Настраиваемые ссылки
 @export_group("UI")
@@ -373,6 +379,8 @@ func _on_action_pressed():
 	selection_mode = SelectionMode.NONE
 	main_menu.hide()
 	action_submenu.show()
+	if _execute_btn and rat:
+		_execute_btn.visible = _broken_limb_count() >= 3
 	_log("Выберите тип атаки...")
 
 func _on_item_pressed():
@@ -492,12 +500,20 @@ func _player_attack(part: String) -> bool:
 		_play_miss()
 		return false
 
-	rat.limbs[part].take_damage(PLAYER_DAMAGE)
-	_log("Вы попали в %s! (d20=%d+%d=%d)" % [part, roll, agility, total])
+	var limb: Limb = rat.limbs[part]
+	var fragile_hit: bool = limb.fragile
+	var dmg: int = limb.take_damage(PLAYER_DAMAGE)
+	var msg: String = "Вы попали в %s! (d20=%d+%d=%d" % [part, roll, agility, total]
+	if fragile_hit: msg += " x1.5!"
+	else: msg += ")"
+	_log(msg)
 
-	var was_finisher: bool = not rat.limbs[part].is_alive
+	var was_finisher: bool = not limb.is_alive
 	if was_finisher:
 		_log("\nКонечность %s уничтожена!" % part, true)
+		enemy_stunned = true
+	else:
+		_log("   %s становится хрупкой!" % part)
 
 	play_hit_feedback(part, was_finisher)
 
@@ -566,6 +582,12 @@ func _get_enemy_center() -> Vector2:
 func switch_to_enemy_turn():
 	state = State.ENEMY_ACTING
 	disable_player_ui()
+	if enemy_stunned:
+		enemy_stunned = false
+		_log("Враг ошеломлён болью и пропускает ход!", true)
+		state = State.PLAYER_INPUT
+		enable_player_ui()
+		return
 	await get_tree().create_timer(ENEMY_TURN_DELAY).timeout
 
 	# КРИТИЧНО: за время таймера всё могло измениться
@@ -601,8 +623,10 @@ func enemy_attack():
 	var dc: int = 8 + player.get_skill("agility")
 
 	if total >= dc:
-		player.limbs[target_limb].take_damage(ENEMY_DAMAGE)
-		_log(" Попадание! (%d+%d=%d >= %d)" % [roll, enemy_skill, total, dc], true)
+		var limb: Limb = player.limbs[target_limb]
+		limb.take_damage(ENEMY_DAMAGE)
+		if limb.fragile:
+			_log(" Попадание x1.5 по хрупкому! (%d+%d=%d >= %d)" % [roll, enemy_skill, total, dc], true)
 		if not player.limbs[target_limb].is_alive:
 			_log("\nВаша конечность %s уничтожена!" % target_limb, true)
 		play_player_hit_feedback()
@@ -668,6 +692,13 @@ func _setup_action_submenu():
 	back_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_connect_button(back_btn, _on_back_pressed)
 	action_submenu.add_child(back_btn)
+
+	_execute_btn = RippleButton.new()
+	_execute_btn.text = "Добить (−1 Человечность)"
+	_execute_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_connect_button(_execute_btn, _on_execute_pressed)
+	action_submenu.add_child(_execute_btn)
+	_execute_btn.hide()
 	action_submenu.hide()
 
 func _setup_item_submenu():
@@ -814,11 +845,26 @@ func _attempt_flee():
 		switch_to_enemy_turn()
 
 # ==================================================== Статусы
+func _on_execute_pressed():
+	action_submenu.hide()
+	PlayerStats.change_humanity(-1)
+	_log("Безжалостное добивание... (−1 Человечность, сейчас: %d)" % PlayerStats.humanity, true)
+	await get_tree().create_timer(0.6).timeout
+	await play_enemy_death()
+	end_battle("win")
+
+func _broken_limb_count() -> int:
+	var c: int = 0
+	for name in LIMB_NAMES:
+		if not rat.limbs[name].is_alive:
+			c += 1
+	return c
+
 func update_all_status():
 	if enemy_status_label:
 		enemy_status_label.text = _build_status_text(rat, "Жива")
 	if player_status_label:
-		player_status_label.text = _build_status_text(player, "Жив")
+		player_status_label.text = _build_status_text(player, "Жив") + "\nЧеловечность: %d" % PlayerStats.humanity
 
 func _build_status_text(c: Combatant, alive_word: String) -> String:
 	var text := "== %s ==\n" % c.char_name
