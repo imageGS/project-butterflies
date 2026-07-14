@@ -1,12 +1,12 @@
-﻿[gd_scene format=3 uid="uid://mainmenu"]
+[gd_scene format=3 uid="uid://mainmenu"]
 
 [ext_resource type="Script" uid="uid://cqbjyvmc1wyqb" path="res://scripts/scenes/main_menu.gd" id="1"]
 [ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="2"]
-[ext_resource type="Script" uid="uid://dsi67p8ck8fw5" path="res://scripts/ui/crt_display.gd" id="6"]
 [ext_resource type="Texture2D" uid="uid://q68tip712kag" path="res://sprites/logo.png" id="2_jix8l"]
 [ext_resource type="Texture2D" uid="uid://u5pbx8b5ynvy" path="res://assets/textures/main_menu/menu_background.png" id="3"]
 [ext_resource type="Texture2D" uid="uid://clcra5s2t14lp" path="res://assets/textures/main_menu/silhuette.png" id="4"]
 [ext_resource type="Texture2D" uid="uid://dn4y1vkkkxrrf" path="res://assets/textures/main_menu/butterfly_main_menu.png" id="5"]
+[ext_resource type="Script" uid="uid://dsi67p8ck8fw5" path="res://scripts/ui/crt_display.gd" id="6"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_mm"]
 viewport_path = NodePath("CRT_Root/GameViewport")
@@ -152,7 +152,6 @@ color = Color(0.08, 0.08, 0.08, 1)
 
 [node name="MenuList" type="VBoxContainer" parent="." unique_id=934626683]
 z_index = 2
-layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
@@ -175,7 +174,7 @@ theme_override_colors/font_color = Color(0.88, 0.84, 0.72, 1)
 theme_override_colors/font_hover_color = Color(0.95, 0.92, 0.82, 1)
 theme_override_font_sizes/font_size = 38
 theme_override_styles/normal = SubResource("StyleBoxFlat_empty")
-text = "╨Э╨╛╨▓╨░╤П ╨╕╨│╤А╨░"
+text = "Новая игра"
 
 [node name="BtnContinue" type="Button" parent="MenuList" unique_id=96835606]
 custom_minimum_size = Vector2(0, 56)
@@ -186,7 +185,7 @@ theme_override_colors/font_color = Color(0.55, 0.5, 0.42, 0.4)
 theme_override_font_sizes/font_size = 38
 theme_override_styles/normal = SubResource("StyleBoxFlat_empty")
 disabled = true
-text = "╨Я╤А╨╛╨┤╨╛╨╗╨╢╨╕╤В╤М"
+text = "Продолжить"
 
 [node name="BtnQuit" type="Button" parent="MenuList" unique_id=583962226]
 custom_minimum_size = Vector2(0, 56)
@@ -197,4 +196,4 @@ theme_override_colors/font_color = Color(0.88, 0.84, 0.72, 1)
 theme_override_colors/font_hover_color = Color(0.95, 0.92, 0.82, 1)
 theme_override_font_sizes/font_size = 38
 theme_override_styles/normal = SubResource("StyleBoxFlat_empty")
-text = "╨Т╤Л╤Е╨╛╨┤"
+text = "Выйти"

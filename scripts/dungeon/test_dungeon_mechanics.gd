@@ -295,6 +295,11 @@ func _setup_entities():
 	for o in objects:
 		_entities.append(o)
 
+	# Маркеры выходов
+	_entities.append({ "grid_x": 10, "grid_y": 1, "color": Color(1, 0.9, 0.2, 0.9), "type": "exit_marker" })
+	_entities.append({ "grid_x": 2, "grid_y": 10, "color": Color(1, 0.9, 0.2, 0.9), "type": "exit_marker" })
+	_entities.append({ "grid_x": 46, "grid_y": 10, "color": Color(1, 0.9, 0.2, 0.9), "type": "exit_marker" })
+
 	# NPC-странник
 	var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
 	if file:
@@ -760,8 +765,23 @@ func _select_response(idx: int):
 	else:
 		_go_to_node(chosen.get("next_fail", chosen.get("next", -1)))
 
+func _ask_leave_station():
+	var exit_dialogue := [
+		{ "text": "Выход из станции. Уйти?", "responses": [
+			{ "text": "Да, уйти в убежище.", "next": 1 },
+			{ "text": "Нет, остаться.", "next": -1 },
+		]},
+		{ "text": "Вы покидаете станцию и направляетесь в убежище.", "responses": [
+			{ "text": "...", "next": -2 },
+		]},
+	]
+	_start_dialogue(exit_dialogue, "Выход")
+
 func _go_to_node(idx: int):
-	if idx < 0:
+	if idx <= -2:
+		_close_dialogue()
+		TransitionManager.change_scene("res://scenes/dungeon/test_dungeon_mechanics.tscn")
+	elif idx < 0:
 		_close_dialogue()
 	else:
 		_dialogue_index = idx
@@ -831,6 +851,9 @@ func _check_entity():
 		if ent.grid_x == rx and ent.grid_y == ry:
 			if ent.type == "enemy":
 				TransitionManager.change_scene("res://scenes/battle/node.tscn")
+	var tile_val: int = _map_data[ry][rx] if ry < _map_data.size() and rx < _map_data[0].size() else TILE_WALL
+	if tile_val == TILE_EXIT and not _dialogue_active:
+		_ask_leave_station()
 
 func _update_enemies(delta: float):
 	for ent in _entities:
