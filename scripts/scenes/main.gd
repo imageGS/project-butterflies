@@ -853,7 +853,6 @@ func _broken_limb_count() -> int:
 	var c: int = 0
 	for name in LIMB_NAMES:
 		if rat.limbs[name].is_destroyed(): c += 1
-			c += 1
 	return c
 
 func update_all_status():
