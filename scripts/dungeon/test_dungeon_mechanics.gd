@@ -250,6 +250,20 @@ func _setup_entities():
 			"texture": load("res://sprites/enemy/bunny/bunny_enemy.png"),
 		})
 
+	# Интерактивные объекты
+	var objects: Array[Dictionary] = [
+		{ "grid_x": 1, "grid_y": 9, "type": "object", "object_type": "container", "data": { "name": "Рюкзак", "description": "Чей-то брошенный рюкзак.", "loot": ["Консервы", "Бинт"] }},
+		{ "grid_x": 16, "grid_y": 13, "type": "object", "object_type": "lore", "data": { "name": "Стена", "description": "Кто-то выцарапал: «NEW DAWN — ЭТО АД». Буквы дрожат." }},
+		{ "grid_x": 28, "grid_y": 15, "type": "object", "object_type": "rest", "data": { "name": "скамья", "description": "Обшарпанная деревянная скамья." }},
+		{ "grid_x": 28, "grid_y": 22, "type": "object", "object_type": "container", "data": { "name": "Ящик", "description": "Деревянный ящик с инструментами.", "loot": ["Аптечка"] }},
+		{ "grid_x": 19, "grid_y": 20, "type": "object", "object_type": "lore", "data": { "name": "Труп", "description": "Тело в форме охранника. В кармане пусто. Нашивка: NEW DAWN." }},
+		{ "grid_x": 36, "grid_y": 23, "type": "object", "object_type": "container", "data": { "name": "Сейф", "description": "Небольшой сейф. Код сбит, но дверца открыта.", "loot": ["Патроны", "Золотая монета"] }},
+		{ "grid_x": 1, "grid_y": 22, "type": "object", "object_type": "lore", "data": { "name": "Газета", "description": "Скомканная газета. Заголовок: «ПРОПАЖА ЛЮДЕЙ В МЕТРО — ПОЛИЦИЯ БЕССИЛЬНА». Дата — полгода назад." }},
+		{ "grid_x": 24, "grid_y": 24, "type": "object", "object_type": "lore", "data": { "name": "Алтарь", "description": "Странная конструкция в центре лабиринта. Свечи, символы. Кто-то проводил здесь ритуал." }},
+	]
+	for o in objects:
+		_entities.append(o)
+
 	# NPC-странник
 	var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
 	if file:
@@ -421,9 +435,39 @@ func _try_interact():
 		if ent.grid_x == fx and ent.grid_y == fy:
 			if ent.type == "enemy":
 				TransitionManager.change_scene("res://scenes/battle/node.tscn")
-			elif ent.type == "npc" and ent.has("dialogue"):
+				return
+			if ent.type == "npc" and ent.has("dialogue"):
 				_start_dialogue(ent.dialogue as Array, ent.get("name", "Незнакомец"))
-			return
+				return
+			if ent.type == "object":
+				_interact_object(ent)
+				return
+
+func _interact_object(obj: Dictionary):
+	var ot: String = obj.get("object_type", "lore")
+	var data: Dictionary = obj.get("data", {})
+	var obj_name: String = data.get("name", "Объект")
+	match ot:
+		"lore":
+			var text: String = data.get("description", "Ничего особенного.")
+			_show_tip(obj_name + ": " + text)
+		"container":
+			var loot: Array = data.get("loot", [])
+			if loot.is_empty():
+				_show_tip(obj_name + " — пусто.")
+			else:
+				var item_name: String = loot[0] if loot.size() == 1 else loot[randi() % loot.size()]
+				PlayerStats.inventory.append(Item.new(item_name, "Найден в " + obj_name, 2))
+				_show_tip(item_name + " добавлен в инвентарь.")
+				data.loot = loot.duplicate()
+				data.loot.erase(item_name)
+		"rest":
+			PlayerStats.restore_sanity(2)
+			PlayerStats.heal(2)
+			_show_tip("Вы отдыхаете у " + obj_name + ". +2 Здоровье, +2 Рассудок.")
+		"hazard":
+			PlayerStats.take_damage(data.get("damage", 2))
+			_show_tip(data.get("description", "Ловушка!") + " -" + str(data.get("damage", 2)) + " HP.")
 
 func _update_dialogue_layout():
 	if not _dialogue_overlay or not _dialogue_overlay.visible:
@@ -657,6 +701,14 @@ func _check_entity():
 		if ent.grid_x == rx and ent.grid_y == ry:
 			if ent.type == "enemy":
 				TransitionManager.change_scene("res://scenes/battle/node.tscn")
+
+func _show_tip(msg: String):
+	if not _dialogue_active and _awareness_label:
+		_awareness_label.text = msg
+		get_tree().create_timer(5.0).timeout.connect(func():
+			if is_instance_valid(_awareness_label):
+				_awareness_label.text = ""
+		, CONNECT_ONE_SHOT)
 
 func _try_awareness():
 	if _dialogue_active:
