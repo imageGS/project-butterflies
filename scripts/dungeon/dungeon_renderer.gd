@@ -49,7 +49,7 @@ func _draw():
 			c *= shade
 			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
 		else:
-			_wall_zbuf[i] = INFINITY
+			_wall_zbuf[i] = INF
 
 	var dir_x: float = cos(player_angle)
 	var dir_y: float = sin(player_angle)
