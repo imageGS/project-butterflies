@@ -844,7 +844,7 @@ func _attempt_flee():
 # ==================================================== Статусы
 func _on_execute_pressed():
 	action_submenu.hide()
-	var snd := load("res://audio/gore/execute_%d.mp3" % (randi() % 2 + 1))
+	var snd := load("res://audio/gore/execute_%d.wav" % (randi() % 2 + 1))
 	_impact_player.stream = snd
 	_impact_player.play()
 	PlayerStats.change_humanity(-1)
