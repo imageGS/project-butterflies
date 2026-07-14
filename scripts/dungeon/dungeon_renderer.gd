@@ -16,6 +16,8 @@ var _wall_zbuf: Array[float] = []
 
 var entities_on_map: Array = []
 var _wall_tex: Texture2D = load("res://assets/textures/wall.png")
+var fog_distance: float = 7.0
+var fog_color: Color = Color(0.08, 0.08, 0.08)
 
 func _ready():
 	if not _ready_drawn:
@@ -36,34 +38,38 @@ func _draw():
 	for i in range(num_strips):
 		var ray_angle: float = player_angle - fov * 0.5 + (i / float(num_strips)) * fov
 		var result: Dictionary = _cast_ray(cam_x, cam_y, ray_angle)
-		if result.hit:
-			var perp: float = result.distance
-			if perp < 0.01: perp = 0.01
-			_wall_zbuf[i] = perp
-			var wall_h: float = _view_h / perp
-			var wall_top: float = half_h - wall_h * 0.5
+		var perp: float = result.distance
+		if perp < 0.01: perp = 0.01
+		_wall_zbuf[i] = perp
 
-			if _wall_tex:
-				var wall_x: float = result.get("wall_x", 0.0)
-				var tex_w: float = _wall_tex.get_width()
-				var tex_h: float = _wall_tex.get_height()
-				var tex_xx: int = int(wall_x * tex_w)
-				if (result.side == 0 and result.get("rdx", 0.0) > 0) or (result.side == 1 and result.get("rdy", 0.0) < 0):
-					tex_xx = int(tex_w) - tex_xx - 1
-				var shade: float = clamp(1.0 - perp * 0.04, 0.3, 1.0)
-				if result.side == 1:
-					shade *= 0.7
-				var region: Rect2 = Rect2(tex_xx, 0, 1, tex_h)
-				draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), region, Color(shade, shade, shade))
-			else:
-				var c: Color = Color(0.4, 0.4, 0.5)
-				if result.side == 0:
-					c = Color(0.3, 0.3, 0.4)
-				var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
-				c *= shade
-				draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
+		if result.get("fog", false):
+			var fog_h: float = _view_h / perp
+			var fog_top: float = half_h - fog_h * 0.5
+			draw_rect(Rect2(i * _strip_w, fog_top, _strip_w + 1, fog_h), fog_color)
+			continue
+
+		var wall_h: float = _view_h / perp
+		var wall_top: float = half_h - wall_h * 0.5
+
+		if _wall_tex:
+			var wall_x: float = result.get("wall_x", 0.0)
+			var tex_w: float = _wall_tex.get_width()
+			var tex_h: float = _wall_tex.get_height()
+			var tex_xx: int = int(wall_x * tex_w)
+			if (result.side == 0 and result.get("rdx", 0.0) > 0) or (result.side == 1 and result.get("rdy", 0.0) < 0):
+				tex_xx = int(tex_w) - tex_xx - 1
+			var shade: float = clamp(1.0 - perp * 0.04, 0.3, 1.0)
+			if result.side == 1:
+				shade *= 0.7
+			var region: Rect2 = Rect2(tex_xx, 0, 1, tex_h)
+			draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), region, Color(shade, shade, shade))
 		else:
-			_wall_zbuf[i] = INF
+			var c: Color = Color(0.4, 0.4, 0.5)
+			if result.side == 0:
+				c = Color(0.3, 0.3, 0.4)
+			var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
+			c *= shade
+			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
 
 	var dir_x: float = cos(player_angle)
 	var dir_y: float = sin(player_angle)
@@ -166,7 +172,8 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var side_y: float = (map_y + 1.0 - oy) * delta_y if dir.y > 0 else (oy - map_y) * delta_y
 	var side: int = 0
 	var hit: bool = false
-	var steps: int = 24
+	var steps: int = int(fog_distance * 3.0) + 3
+	var max_dist: float = fog_distance * fog_distance
 	while steps > 0:
 		steps -= 1
 		if side_x < side_y:
@@ -186,9 +193,11 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 			break
 	var perp: float = side_x - delta_x if side == 0 else side_y - delta_y
 	if perp < 0.0: perp = 0.0
+	if not hit or perp > fog_distance * 1.5:
+		return { "hit": false, "distance": fog_distance * 1.5, "fog": true }
 	var wall_x: float = oy + perp * dir.y if side == 0 else ox + perp * dir.x
 	wall_x -= floor(wall_x)
-	return { "hit": hit, "distance": perp, "side": side, "mx": map_x, "my": map_y, "wall_x": wall_x, "rdx": dir.x, "rdy": dir.y }
+	return { "hit": true, "distance": perp, "fog": false, "side": side, "mx": map_x, "my": map_y, "wall_x": wall_x, "rdx": dir.x, "rdy": dir.y }
 
 func _draw_fog():
 	var depth: float = _view_w * 0.35
