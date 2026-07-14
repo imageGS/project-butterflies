@@ -71,21 +71,6 @@ func _draw():
 		var screen_x: int = int((_view_w / 2.0) * (1.0 + transform_x / transform_y))
 		if screen_x < -_view_w or screen_x >= _view_w * 2: continue
 
-		var steps: int = int(dist * 2.0) + 1
-		var blocked: bool = false
-		for s in range(1, steps):
-			var t: float = float(s) / float(steps)
-			var gx: int = int(round(lerp(cam_x, ent.grid_x + 0.5, t)))
-			var gy: int = int(round(lerp(cam_y, ent.grid_y + 0.5, t)))
-			if gx == int(round(ent.grid_x + 0.5)) and gy == int(round(ent.grid_y + 0.5)):
-				break
-			if gx >= 0 and gx < map_data[0].size() and gy >= 0 and gy < map_data.size():
-				if map_data[gy][gx] == TILE_WALL or map_data[gy][gx] == TILE_BLOCKED:
-					blocked = true
-					break
-		if blocked:
-			continue
-
 		var scale_h: float = _view_h / (transform_y * 1.5)
 		var tex: Texture2D = ent.get("texture") if ent.has("texture") else null
 		var spr_w: float = scale_h
@@ -124,11 +109,12 @@ func _draw():
 			if ve.depth >= _wall_zbuf[si]:
 				continue
 			var sx: int = si * _strip_w
-			var stripe_center: float = sx + _strip_w * 0.5
-			var u: float = (stripe_center - (ve.screen_x - ve.spr_w * 0.5)) / ve.spr_w
-			if ve.tex:
+			if ve.tex and ve.spr_w > 1.0:
+				var stripe_center: float = sx + _strip_w * 0.5
+				var u: float = (stripe_center - (ve.screen_x - ve.spr_w * 0.5)) / ve.spr_w
 				var reg_x: float = u * ve.tex_w
-				var reg: Rect2 = Rect2(reg_x, 0, max(1.0, ve.tex_w / ve.spr_w * _strip_w), ve.tex_h)
+				var reg_w: float = max(1.0, ve.tex_w / ve.spr_w * _strip_w)
+				var reg: Rect2 = Rect2(reg_x, 0, reg_w, ve.tex_h)
 				draw_texture_rect_region(ve.tex, Rect2(sx, ve.spr_y, _strip_w + 1, ve.spr_h), reg, Color.WHITE)
 			else:
 				draw_rect(Rect2(sx, ve.spr_y, _strip_w + 1, ve.spr_h), ve.color)
