@@ -764,11 +764,9 @@ func _update_enemies(delta: float):
 			_tick_enemy_anim(ent, delta)
 			continue
 
-		if not ent.get("chase_active", false):
+		if not ent.get("detected_player", false) and not ent.get("chase_active", false):
 			if _enemy_sees_player(ent):
 				ent.detected_player = true
-				ent.move_timer = 0.3
-				continue
 
 		if ent.get("detected_player", false) or ent.get("chase_active", false):
 			ent.move_timer = ent.get("move_timer", 0.0) - delta
@@ -779,7 +777,7 @@ func _update_enemies(delta: float):
 
 		ent.move_timer = ent.get("move_timer", 0.0) - delta
 		if ent.move_timer > 0.0: continue
-		ent.move_timer = (ent.get("move_interval", 1.2) + randf_range(-0.3, 0.3)) * 2.0
+		ent.move_timer = ent.get("move_interval", 1.2) + randf_range(-0.2, 0.3)
 		_enemy_patrol(ent)
 
 func _enemy_sees_player(ent: Dictionary) -> bool:
