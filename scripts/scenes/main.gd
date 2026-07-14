@@ -426,7 +426,6 @@ func _on_limb_selected(limb_name: String):
 		if not rat.is_alive():
 			return
 		if rat.limbs.has(limb_name) and rat.limbs[limb_name].is_destroyed():
-			continue
 			return
 
 	# Для предмета — можно лечить и сломанные
@@ -526,9 +525,6 @@ func _player_attack(part: String) -> bool:
 
 	if not rat.is_alive():
 		_log("\nВРАГ ПОВЕРЖЕН!", true)
-		return true
-
-	return false
 		return true
 
 	return false
