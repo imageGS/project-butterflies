@@ -340,8 +340,10 @@ func new_rat():
 		remains_sprite.visible = false  # прячем труп прошлой крысы
 		remains_sprite.position = Vector2(-4, 294)
 	if enemy_container:
-		enemy_container.position = Vector2.ZERO
-		enemy_container.remove_meta("original_pos")
+		enemy_container.scale = Vector2.ONE
+		if enemy_container.has_meta("original_pos"):
+			enemy_container.position = enemy_container.get_meta("original_pos")
+			enemy_container.remove_meta("original_pos")
 
 	sync_enemy_sprites()
 	update_attack_buttons()
