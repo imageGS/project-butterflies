@@ -245,9 +245,9 @@ func _setup_entities():
 	var tex_r := load("res://sprites/enemy/bunny/bunny_enemy_right.png")
 	# Каждый враг: pos, соседние точки для патруля (маршрут)
 	var spawns: Array[Dictionary] = [
-		{ "pos": Vector2i(3, 6), "route": [Vector2i(3,6), Vector2i(5,6), Vector2i(5,7), Vector2i(3,7)] },
-		{ "pos": Vector2i(14, 10), "route": [Vector2i(14,10), Vector2i(14,12), Vector2i(16,12), Vector2i(16,10)] },
-		{ "pos": Vector2i(15, 30), "route": [Vector2i(15,30), Vector2i(13,30), Vector2i(13,28), Vector2i(15,28)] },
+		{ "pos": Vector2i(2, 10), "route": [Vector2i(2,10), Vector2i(4,10), Vector2i(4,12), Vector2i(2,12)] },
+		{ "pos": Vector2i(46, 10), "route": [Vector2i(46,10), Vector2i(44,10), Vector2i(44,12), Vector2i(46,12)] },
+		{ "pos": Vector2i(25, 2), "route": [Vector2i(25,2), Vector2i(27,2), Vector2i(27,4), Vector2i(25,4)] },
 	]
 	for s in spawns:
 		_entities.append({
