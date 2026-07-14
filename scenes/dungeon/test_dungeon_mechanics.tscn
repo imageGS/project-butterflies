@@ -22,10 +22,10 @@ shader_parameter/min_scanline_thickness = 0.7240000225150001
 shader_parameter/aspect = 0.5170000008075
 shader_parameter/wobble_strength = 0.302000014345
 
-[node name="TestDungeon" type="Node"]
+[node name="TestDungeon" type="Node" unique_id=1919637851]
 script = ExtResource("2_r7h3n")
 
-[node name="CRT_Root" type="Control" parent="."]
+[node name="CRT_Root" type="Control" parent="." unique_id=640219047]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -34,21 +34,25 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="CRT_Display" type="ColorRect" parent="CRT_Root"]
+[node name="CRT_Display" type="ColorRect" parent="CRT_Root" unique_id=1857243975]
 material = SubResource("ShaderMaterial_dg")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = -48.0
+offset_top = -22.0
+offset_right = 49.093994
+offset_bottom = 31.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="GameViewport" type="SubViewport" parent="CRT_Root"]
+[node name="GameViewport" type="SubViewport" parent="CRT_Root" unique_id=1342651846]
 size = Vector2i(1152, 648)
 size_2d_override = Vector2i(1152, 648)
 
-[node name="UI" type="Control" parent="CRT_Root/GameViewport"]
+[node name="UI" type="Control" parent="CRT_Root/GameViewport" unique_id=907422615]
 layout_mode = 3
 anchors_preset = 0
 offset_left = 76.0
@@ -57,19 +61,24 @@ offset_right = 1076.0
 offset_bottom = 608.0
 mouse_filter = 2
 
-[node name="UI_BACK" type="TextureRect" parent="CRT_Root/GameViewport/UI"]
+[node name="UI_BACK" type="TextureRect" parent="CRT_Root/GameViewport/UI" unique_id=1145214484]
 z_index = 4
+texture_filter = 1
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = -75.99999
+offset_top = -546.0
+offset_right = -76.0
+offset_bottom = -248.0
 grow_horizontal = 2
 grow_vertical = 2
+scale = Vector2(1.151004, 1.8065076)
 mouse_filter = 2
 texture = ExtResource("5_r657h")
 
-[node name="CentralViewport" type="Control" parent="CRT_Root/GameViewport/UI"]
-layout_mode = 0
+[node name="CentralViewport" type="Control" parent="CRT_Root/GameViewport/UI" unique_id=919060473]
 anchors_preset = 0
 offset_left = 71.0
 offset_top = -516.0
@@ -77,15 +86,13 @@ offset_right = 929.0
 offset_bottom = -67.0
 mouse_filter = 2
 
-[node name="DungeonView" type="Control" parent="CRT_Root/GameViewport/UI/CentralViewport"]
-layout_mode = 0
-offset_left = 0.0
-offset_top = 0.0
+[node name="DungeonView" type="Control" parent="CRT_Root/GameViewport/UI/CentralViewport" unique_id=1947318723]
+anchors_preset = 0
 offset_right = 858.0
 offset_bottom = 449.0
 script = ExtResource("1_k2c7o")
 
-[node name="InfoLabel" type="Label" parent="CRT_Root/GameViewport/UI/CentralViewport/DungeonView"]
+[node name="InfoLabel" type="Label" parent="CRT_Root/GameViewport/UI/CentralViewport/DungeonView" unique_id=597423150]
 layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
@@ -94,13 +101,13 @@ offset_bottom = 40.0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 18
 
-[node name="AwarenessLabel" type="Label" parent="CRT_Root/GameViewport/UI/CentralViewport/DungeonView"]
+[node name="AwarenessLabel" type="Label" parent="CRT_Root/GameViewport/UI/CentralViewport/DungeonView" unique_id=1640949735]
 layout_mode = 0
 offset_left = 40.0
-offset_top = 80.0
+offset_top = 390.0
 offset_right = 800.0
-offset_bottom = 120.0
+offset_bottom = 430.0
 theme_override_colors/font_color = Color(0.9, 0.85, 0.7, 1)
 theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
 autowrap_mode = 1
-mouse_filter = 2
