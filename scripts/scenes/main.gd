@@ -844,9 +844,12 @@ func _attempt_flee():
 # ==================================================== Статусы
 func _on_execute_pressed():
 	action_submenu.hide()
+	var snd := load("res://audio/gore/execute_%d.mp3" % (randi() % 2 + 1))
+	_impact_player.stream = snd
+	_impact_player.play()
 	PlayerStats.change_humanity(-1)
 	_log("Безжалостное добивание... (−1 Человечность, сейчас: %d)" % PlayerStats.humanity, true)
-	await get_tree().create_timer(0.6).timeout
+	await get_tree().create_timer(0.8).timeout
 	await play_enemy_death()
 	end_battle("win")
 
