@@ -65,20 +65,26 @@ func _draw():
 		if abs(angle) > fov * 0.5: continue
 
 		var screen_x: int = int((angle / fov + 0.5) * _view_w)
-		var strip_idx: int = clampi(screen_x / _strip_w, 0, num_strips - 1)
-		var wall_dist: float = _wall_dists[strip_idx]
-		if wall_dist == INF: continue
-
-		if _is_ray_blocked(cam_x, cam_y, ent_x, ent_y):
-			continue
-
 		var perp_dist: float = dist * abs(cos(angle))
 		if perp_dist < 0.01: perp_dist = 0.01
 
-		if perp_dist >= wall_dist:
+		var scale_h: float = _view_h / (perp_dist * 1.5)
+		var half_spr_w: float = scale_h * 0.3
+
+		var left_sx: int = clampi(int((screen_x - half_spr_w) / _strip_w), 0, num_strips - 1)
+		var ctr_sx: int = clampi(int(screen_x / _strip_w), 0, num_strips - 1)
+		var right_sx: int = clampi(int((screen_x + half_spr_w) / _strip_w), 0, num_strips - 1)
+
+		var blocked_count: int = 0
+		var check_strips: Array[int] = [left_sx, ctr_sx, right_sx]
+		for si in check_strips:
+			if si < _wall_dists.size() and _wall_dists[si] != INF:
+				if perp_dist >= _wall_dists[si]:
+					blocked_count += 1
+
+		if blocked_count >= 2:
 			continue
 
-		var scale_h: float = _view_h / (perp_dist * 1.5)
 		var tex: Texture2D = ent.get("texture") if ent.has("texture") else null
 		var y: float = half_h - scale_h * 0.6
 		if tex:
@@ -140,26 +146,6 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var perp: float = side_x - delta_x if side == 0 else side_y - delta_y
 	if perp < 0.0: perp = 0.0
 	return { "hit": hit, "distance": perp, "side": side, "mx": map_x, "my": map_y }
-
-func _is_ray_blocked(x1: float, y1: float, x2: float, y2: float) -> bool:
-	var steps: int = int(max(abs(x2 - x1), abs(y2 - y1)) * 4.0) + 4
-	var end_gx: int = int(round(x2))
-	var end_gy: int = int(round(y2))
-	for i in range(1, steps):
-		var t: float = float(i) / float(steps)
-		var gx: int = int(round(lerp(x1, x2, t)))
-		var gy: int = int(round(lerp(y1, y2, t)))
-		if gx == end_gx and gy == end_gy:
-			return false
-		if _is_wall(gx, gy):
-			return true
-	return false
-
-func _is_wall(gx: int, gy: int) -> bool:
-	if gx < 0 or gx >= map_data[0].size() or gy < 0 or gy >= map_data.size():
-		return true
-	var cell: int = map_data[gy][gx]
-	return cell == TILE_WALL or cell == TILE_BLOCKED
 
 func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array):
 	cam_x = cx
