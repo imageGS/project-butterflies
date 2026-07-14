@@ -12,6 +12,7 @@ var _view_w: int = 0
 var _view_h: int = 0
 var _strip_w: int = 4
 var _ready_drawn: bool = false
+var _wall_zbuf: Array[float] = []
 
 var entities_on_map: Array = []
 var _bunny_texture: Texture2D = preload("res://sprites/enemy/bunny/bunny_enemy.png")
@@ -30,6 +31,7 @@ func _draw():
 	var half_h: float = _view_h / 2.0
 
 	_draw_floor_ceiling()
+	_wall_zbuf.resize(num_strips)
 
 	for i in range(num_strips):
 		var ray_angle: float = player_angle - fov * 0.5 + (i / float(num_strips)) * fov
@@ -37,6 +39,7 @@ func _draw():
 		if result.hit:
 			var perp: float = result.distance
 			if perp < 0.01: perp = 0.01
+			_wall_zbuf[i] = perp
 			var wall_h: float = _view_h / perp
 			var wall_top: float = half_h - wall_h * 0.5
 			var c: Color = Color(0.4, 0.4, 0.5)
@@ -45,6 +48,8 @@ func _draw():
 			var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
 			c *= shade
 			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
+		else:
+			_wall_zbuf[i] = INFINITY
 
 	var dir_x: float = cos(player_angle)
 	var dir_y: float = sin(player_angle)
@@ -67,7 +72,7 @@ func _draw():
 		if screen_x < -_view_w or screen_x >= _view_w * 2: continue
 
 		var steps: int = int(dist * 2.0) + 1
-		var occluded: bool = false
+		var blocked: bool = false
 		for s in range(1, steps):
 			var t: float = float(s) / float(steps)
 			var gx: int = int(round(lerp(cam_x, ent.grid_x + 0.5, t)))
@@ -75,36 +80,58 @@ func _draw():
 			if gx == int(round(ent.grid_x + 0.5)) and gy == int(round(ent.grid_y + 0.5)):
 				break
 			if gx >= 0 and gx < map_data[0].size() and gy >= 0 and gy < map_data.size():
-				var cell: int = map_data[gy][gx]
-				if cell == TILE_WALL or cell == TILE_BLOCKED:
-					occluded = true
+				if map_data[gy][gx] == TILE_WALL or map_data[gy][gx] == TILE_BLOCKED:
+					blocked = true
 					break
-		if occluded:
+		if blocked:
 			continue
 
 		var scale_h: float = _view_h / (transform_y * 1.5)
 		var tex: Texture2D = ent.get("texture") if ent.has("texture") else null
 		var spr_w: float = scale_h
+		var tex_w: float = 1.0
+		var tex_h: float = 1.0
 		if tex:
-			spr_w = scale_h * tex.get_width() / tex.get_height()
+			tex_w = tex.get_width()
+			tex_h = tex.get_height()
+			spr_w = scale_h * tex_w / tex_h
+
+		var draw_x1: int = max(0, int(screen_x - spr_w * 0.5))
+		var draw_x2: int = min(_view_w, int(screen_x + spr_w * 0.5))
+		var spr_y: float = half_h - scale_h * 0.6
 
 		visible_entities.append({
-			"dist": transform_y,
-			"screen_x": screen_x,
+			"depth": transform_y,
+			"draw_x1": draw_x1,
+			"draw_x2": draw_x2,
+			"spr_y": spr_y,
 			"spr_w": spr_w,
 			"spr_h": scale_h,
+			"screen_x": screen_x,
 			"tex": tex,
+			"tex_w": tex_w,
+			"tex_h": tex_h,
 			"color": ent.get("color", Color.WHITE),
 		})
 
-	visible_entities.sort_custom(func(a, b): return a.dist > b.dist)
+	visible_entities.sort_custom(func(a, b): return a.depth > b.depth)
 
 	for ve in visible_entities:
-		var y: float = half_h - ve.spr_h * 0.6
-		if ve.tex:
-			draw_texture_rect(ve.tex, Rect2(ve.screen_x - ve.spr_w * 0.5, y, ve.spr_w, ve.spr_h), false, Color.WHITE)
-		else:
-			draw_rect(Rect2(ve.screen_x - 12, y, 24, ve.spr_h), ve.color)
+		var stripe_start: int = ve.draw_x1 / _strip_w
+		var stripe_end: int = (ve.draw_x2 + _strip_w - 1) / _strip_w
+		for si in range(stripe_start, stripe_end):
+			if si >= num_strips: break
+			if ve.depth >= _wall_zbuf[si]:
+				continue
+			var sx: int = si * _strip_w
+			var stripe_center: float = sx + _strip_w * 0.5
+			var u: float = (stripe_center - (ve.screen_x - ve.spr_w * 0.5)) / ve.spr_w
+			if ve.tex:
+				var reg_x: float = u * ve.tex_w
+				var reg: Rect2 = Rect2(reg_x, 0, max(1.0, ve.tex_w / ve.spr_w * _strip_w), ve.tex_h)
+				draw_texture_rect_region(ve.tex, Rect2(sx, ve.spr_y, _strip_w + 1, ve.spr_h), reg, Color.WHITE)
+			else:
+				draw_rect(Rect2(sx, ve.spr_y, _strip_w + 1, ve.spr_h), ve.color)
 
 func _setup_view():
 	_view_w = int(size.x)
