@@ -39,6 +39,11 @@ func is_alive() -> bool:
 
 func take_total_damage(amount: int):
 	total_hp = max(0, total_hp - amount)
+	_check_vitals()
+
+func _check_vitals():
+	if limbs["head"].is_destroyed() or limbs["torso"].is_destroyed():
+		total_hp = 0
 
 func destroyed_limb_count() -> int:
 	var c: int = 0
