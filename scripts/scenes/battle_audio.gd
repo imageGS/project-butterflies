@@ -1,4 +1,5 @@
-extends Node
+class_name BattleAudio
+extends RefCounted
 
 var sfx_volume_db: float = -8.0
 var _impact_player: AudioStreamPlayer
