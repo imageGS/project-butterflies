@@ -86,7 +86,7 @@ func _draw():
 		if screen_x < -_view_w or screen_x >= _view_w * 2: continue
 
 		var scale_h: float = _view_h / (transform_y * 1.2)
-		var tex: Texture2D = ent.get("texture") if ent.has("texture") else null
+		var tex: Texture2D = _get_ent_texture(ent)
 		var spr_w: float = scale_h
 		var tex_w: float = 1.0
 		var tex_h: float = 1.0
@@ -186,6 +186,18 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var wall_x: float = oy + perp * dir.y if side == 0 else ox + perp * dir.x
 	wall_x -= floor(wall_x)
 	return { "hit": hit, "distance": perp, "side": side, "mx": map_x, "my": map_y, "wall_x": wall_x, "rdx": dir.x, "rdy": dir.y }
+
+func _get_ent_texture(ent: Dictionary) -> Texture2D:
+	var texs: Dictionary = ent.get("textures", {})
+	if texs.is_empty():
+		return ent.get("texture", null)
+	var facing: int = ent.get("facing", -1)
+	match facing:
+		0: return texs.get("back", null)    # NORTH → back
+		1: return texs.get("right", null)   # EAST → right
+		2: return texs.get("front", null)   # SOUTH → front
+		3: return texs.get("left", null)    # WEST → left
+		_: return texs.get("front", null)
 
 func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array):
 	cam_x = cx
