@@ -17,6 +17,7 @@ var _wall_zbuf: Array[float] = []
 var entities_on_map: Array = []
 var _wall_tex: Texture2D = load("res://assets/textures/wall.png")
 var fog_distance: float = 7.0
+var fog_fade: float = 2.5
 var fog_color: Color = Color(0.08, 0.08, 0.08)
 
 func _ready():
@@ -45,11 +46,20 @@ func _draw():
 		if result.get("fog", false):
 			var fog_h: float = _view_h / perp
 			var fog_top: float = half_h - fog_h * 0.5
-			draw_rect(Rect2(i * _strip_w, fog_top, _strip_w + 1, fog_h), fog_color)
+			var fog_alpha: float = 1.0
+			if perp < fog_distance + fog_fade:
+				fog_alpha = 1.0 - (perp - fog_distance) / fog_fade
+			var fc: Color = fog_color
+			fc.a = clamp(fog_alpha, 0.0, 1.0)
+			draw_rect(Rect2(i * _strip_w, fog_top, _strip_w + 1, fog_h), fc)
 			continue
 
 		var wall_h: float = _view_h / perp
 		var wall_top: float = half_h - wall_h * 0.5
+
+		var fog_blend: float = 0.0
+		if perp > fog_distance - fog_fade:
+			fog_blend = clamp((perp - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
 
 		if _wall_tex:
 			var wall_x: float = result.get("wall_x", 0.0)
@@ -61,6 +71,7 @@ func _draw():
 			var shade: float = clamp(1.0 - perp * 0.04, 0.3, 1.0)
 			if result.side == 1:
 				shade *= 0.7
+			shade = lerp(shade, 0.0, fog_blend)
 			var region: Rect2 = Rect2(tex_xx, 0, 1, tex_h)
 			draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), region, Color(shade, shade, shade))
 		else:
@@ -68,6 +79,7 @@ func _draw():
 			if result.side == 0:
 				c = Color(0.3, 0.3, 0.4)
 			var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
+			shade = lerp(shade, 0.0, fog_blend)
 			c *= shade
 			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
 
@@ -157,8 +169,15 @@ func _draw_floor_ceiling():
 			var c: Color = Color(0.03, 0.03, 0.04).lerp(Color(0.0, 0.0, 0.0), t * 2.0)
 			draw_rect(Rect2(0, y, _view_w, 1), c)
 		else:
-			var c: Color = Color(0.06, 0.05, 0.04).lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
-			draw_rect(Rect2(0, y, _view_w, 1), c)
+			var row_dist: float = half_h / float(y - half_h + 1)
+			var fog_f: float = clamp((row_dist - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0) if row_dist > fog_distance - fog_fade else 0.0
+			if fog_f >= 0.99:
+				draw_rect(Rect2(0, y, _view_w, 1), fog_color)
+			else:
+				var c: Color = Color(0.06, 0.05, 0.04).lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
+				if fog_f > 0.0:
+					c = c.lerp(fog_color, fog_f)
+				draw_rect(Rect2(0, y, _view_w, 1), c)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var dir: Vector2 = Vector2(cos(angle), sin(angle))
@@ -216,6 +235,9 @@ func _get_ent_texture(ent: Dictionary) -> Texture2D:
 	var texs: Dictionary = ent.get("textures", {})
 	if texs.is_empty():
 		return ent.get("texture", null)
+	if ent.get("detected_player", false):
+		var chase: Texture2D = texs.get("chase", null)
+		if chase: return chase
 	var facing: int = ent.get("facing", -1)
 	match facing:
 		0: return texs.get("front", null)

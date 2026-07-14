@@ -260,7 +260,7 @@ func _setup_entities():
 			"color": Color(0.8, 0.2, 0.2),
 			"type": "enemy",
 			"facing": s.dir,
-			"textures": { "front": tex_f, "back": tex_b, "left": tex_l, "right": tex_r },
+			"textures": { "front": tex_f, "back": tex_b, "left": tex_l, "right": tex_r, "chase": load("res://sprites/enemy/bunny/bunny_enemy_chase.png") },
 			"move_progress": 1.0,
 			"move_timer": randf_range(0.5, 1.0),
 			"move_interval": 1.2,
