@@ -15,7 +15,6 @@ var _ready_drawn: bool = false
 
 var entities_on_map: Array = []
 var _bunny_texture: Texture2D = preload("res://sprites/enemy/bunny/bunny_enemy.png")
-var _wall_dists: Array[float] = []
 
 func _ready():
 	if not _ready_drawn:
@@ -31,7 +30,6 @@ func _draw():
 	var half_h: float = _view_h / 2.0
 
 	_draw_floor_ceiling()
-	_wall_dists.resize(num_strips)
 
 	for i in range(num_strips):
 		var ray_angle: float = player_angle - fov * 0.5 + (i / float(num_strips)) * fov
@@ -39,7 +37,6 @@ func _draw():
 		if result.hit:
 			var perp: float = result.distance
 			if perp < 0.01: perp = 0.01
-			_wall_dists[i] = perp
 			var wall_h: float = _view_h / perp
 			var wall_top: float = half_h - wall_h * 0.5
 			var c: Color = Color(0.4, 0.4, 0.5)
@@ -48,63 +45,56 @@ func _draw():
 			var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
 			c *= shade
 			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
-		else:
-			_wall_dists[i] = INF
+
+	var dir_x: float = cos(player_angle)
+	var dir_y: float = sin(player_angle)
+	var plane_x: float = -dir_y
+	var plane_y: float = dir_x
+	var inv_det: float = 1.0 / (plane_x * dir_y - dir_x * plane_y)
 
 	var visible_entities: Array[Dictionary] = []
 	for ent: Dictionary in entities_on_map:
-		var ent_x: float = ent.grid_x + 0.5
-		var ent_y: float = ent.grid_y + 0.5
-		var dx: float = ent_x - cam_x
-		var dy: float = ent_y - cam_y
-		var dist: float = sqrt(dx * dx + dy * dy)
+		var sprite_x: float = ent.grid_x + 0.5 - cam_x
+		var sprite_y: float = ent.grid_y + 0.5 - cam_y
+		var dist: float = sqrt(sprite_x * sprite_x + sprite_y * sprite_y)
 		if dist < 0.01: continue
 
-		var hit_wall: bool = false
-		var hx: float = cam_x
-		var hy: float = cam_y
+		var transform_x: float = inv_det * (dir_y * sprite_x - dir_x * sprite_y)
+		var transform_y: float = inv_det * (-plane_y * sprite_x + plane_x * sprite_y)
+		if transform_y <= 0.01: continue
+
+		var screen_x: int = int((_view_w / 2.0) * (1.0 + transform_x / transform_y))
+		if screen_x < -_view_w or screen_x >= _view_w * 2: continue
+
 		var steps: int = int(dist * 2.0) + 1
+		var occluded: bool = false
 		for s in range(1, steps):
 			var t: float = float(s) / float(steps)
-			var gx: int = int(round(lerp(cam_x, ent_x, t)))
-			var gy: int = int(round(lerp(cam_y, ent_y, t)))
-			if gx == int(round(ent_x)) and gy == int(round(ent_y)):
+			var gx: int = int(round(lerp(cam_x, ent.grid_x + 0.5, t)))
+			var gy: int = int(round(lerp(cam_y, ent.grid_y + 0.5, t)))
+			if gx == int(round(ent.grid_x + 0.5)) and gy == int(round(ent.grid_y + 0.5)):
 				break
 			if gx >= 0 and gx < map_data[0].size() and gy >= 0 and gy < map_data.size():
 				var cell: int = map_data[gy][gx]
 				if cell == TILE_WALL or cell == TILE_BLOCKED:
-					hit_wall = true
+					occluded = true
 					break
-
-		if hit_wall:
+		if occluded:
 			continue
 
-		var angle: float = atan2(dy, dx) - player_angle
-		while angle > PI: angle -= TAU
-		while angle < -PI: angle += TAU
-		if abs(angle) > fov * 0.5: continue
-
-		var screen_x: int = int((angle / fov + 0.5) * _view_w)
-		var perp_dist: float = dist * abs(cos(angle))
-		if perp_dist < 0.01: perp_dist = 0.01
-
+		var scale_h: float = _view_h / (transform_y * 1.5)
 		var tex: Texture2D = ent.get("texture") if ent.has("texture") else null
-		var scale_h: float = _view_h / (perp_dist * 1.5)
 		var spr_w: float = scale_h
-		var spr_h: float = scale_h
 		if tex:
-			var tex_w: float = tex.get_width()
-			var tex_h: float = tex.get_height()
-			spr_w = scale_h * tex_w / tex_h
+			spr_w = scale_h * tex.get_width() / tex.get_height()
 
 		visible_entities.append({
-			"dist": perp_dist,
+			"dist": transform_y,
 			"screen_x": screen_x,
 			"spr_w": spr_w,
 			"spr_h": scale_h,
 			"tex": tex,
 			"color": ent.get("color", Color.WHITE),
-			"ent": ent,
 		})
 
 	visible_entities.sort_custom(func(a, b): return a.dist > b.dist)
