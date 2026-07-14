@@ -80,6 +80,8 @@ var _inv_item_labels: Array[Label] = []
 const INV_CELL_SIZE := 44
 const INV_GAP := 2
 
+var _minimap: Control
+
 @onready var _renderer: Control = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView
 @onready var _label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/InfoLabel
 @onready var _awareness_label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/AwarenessLabel
@@ -96,6 +98,7 @@ func _ready():
 	PlayerStats.inventory.try_add(Item.new("Аптечка", "Восстанавливает здоровье", 3, Vector2i(1,2), 1))
 	PlayerStats.inventory.try_add(Item.new("Монета", "Старая, потёртая", 0, Vector2i(1,1), 5))
 	PlayerStats.inventory.try_add(Item.new("Консервы", "Еда с истёкшим сроком", 1, Vector2i(1,1), 2))
+	_setup_minimap()
 
 func _build_test_level():
 	var ascii_rows: Array[String] = [
@@ -989,8 +992,48 @@ func _try_awareness():
 				_awareness_label.text = ""
 		, CONNECT_ONE_SHOT)
 
+func _setup_minimap():
+	_minimap = Control.new()
+	_minimap.name = "MiniMap"
+	_minimap.modulate = Color(1, 1, 1, 0.7)
+	$CRT_Root/GameViewport/UI/CentralViewport.add_child(_minimap)
+	_minimap.draw.connect(_draw_minimap)
+
+func _draw_minimap():
+	var tw: int = 25
+	var th: int = 13
+	var cs: int = 5
+	var w_map: int = tw * cs
+	var h_map: int = th * cs
+	_minimap.set_size(Vector2(w_map, h_map))
+	_minimap.position = Vector2(858 - w_map - 10, 449 - h_map - 10)
+
+	var mx: int = roundi(_player_x)
+	var my: int = roundi(_player_y)
+	var ox: int = mx - tw / 2
+	var oy: int = my - th / 2
+
+	for by in range(th):
+		for bx in range(tw):
+			var gx: int = ox + bx
+			var gy: int = oy + by
+			var c: Color
+			if gx == mx and gy == my:
+				c = Color(0.2, 0.9, 0.3, 0.85)
+			elif gx >= 0 and gx < _map_data[0].size() and gy >= 0 and gy < _map_data.size():
+				var t: int = _map_data[gy][gx]
+				if t == TILE_WALL or t == TILE_BLOCKED:
+					c = Color(0.15, 0.12, 0.1, 0.6)
+				else:
+					c = Color(0.25, 0.22, 0.18, 0.35)
+			else:
+				c = Color(0, 0, 0, 0)
+			_minimap.draw_rect(Rect2(bx * cs, by * cs, cs, cs), c)
+
 func _refresh():
 	if _renderer:
 		_renderer.update_view(_player_x + 0.5, _player_y + 0.5, _current_angle, _map_data, _entities)
 	if _label:
 		_label.text = DIR_NAMES[_player_dir]
+	if _minimap:
+		_minimap.queue_redraw()
