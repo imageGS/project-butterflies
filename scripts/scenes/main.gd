@@ -29,7 +29,6 @@ const FLEE_DC := 10
 
 var enemy_stunned: bool = false
 var _execute_btn: Button
-var _audio := BattleAudio.new()
 
 # ---------------------------------------------------- Настраиваемые ссылки
 @export_group("UI")
@@ -102,22 +101,62 @@ var handheld_offset: Vector2 = Vector2.ZERO
 var target_handheld_offset: Vector2 = Vector2.ZERO
 var hit_shake_amount: float = 0.0
 var _breath_parts: Dictionary = {}
+var _impact_player: AudioStreamPlayer
+var _ui_sound_player: AudioStreamPlayer
+
+const BODY_SMALL_1 := preload("res://audio/gore/body_hit_small_1.wav")
+const BODY_SMALL_2 := preload("res://audio/gore/body_hit_small_2.wav")
+const BODY_SMALL_3 := preload("res://audio/gore/body_hit_small_3.wav")
+const BODY_SMALL_4 := preload("res://audio/gore/body_hit_small_4.wav")
+const BODY_FINISHER_1 := preload("res://audio/gore/body_hit_finisher_1.wav")
+const BODY_FINISHER_2 := preload("res://audio/gore/body_hit_finisher_2.wav")
+const BODY_FINISHER_3 := preload("res://audio/gore/body_hit_finisher_3.wav")
+const BODY_FINISHER_4 := preload("res://audio/gore/body_hit_finisher_4.wav")
+const FACE_SMALL_1 := preload("res://audio/gore/face_hit_small_1.wav")
+const FACE_SMALL_2 := preload("res://audio/gore/face_hit_small_2.wav")
+const FACE_SMALL_3 := preload("res://audio/gore/face_hit_small_3.wav")
+const FACE_SMALL_4 := preload("res://audio/gore/face_hit_small_4.wav")
+const FACE_FINISHER_1 := preload("res://audio/gore/face_hit_finisher_1.wav")
+const FACE_FINISHER_2 := preload("res://audio/gore/face_hit_finisher_2.wav")
+const FACE_FINISHER_3 := preload("res://audio/gore/face_hit_finisher_3.wav")
+
+var _impact_banks: Dictionary = {
+	"body_small": [BODY_SMALL_1, BODY_SMALL_2, BODY_SMALL_3, BODY_SMALL_4],
+	"body_finisher": [BODY_FINISHER_1, BODY_FINISHER_2, BODY_FINISHER_3, BODY_FINISHER_4],
+	"face_small": [FACE_SMALL_1, FACE_SMALL_2, FACE_SMALL_3, FACE_SMALL_4],
+	"face_finisher": [FACE_FINISHER_1, FACE_FINISHER_2, FACE_FINISHER_3],
+}
 
 const MUSIC_1 := preload("res://audio/music/scav_fight_1.mp3")
 const MUSIC_2 := preload("res://audio/music/scav_fight_2.mp3")
 var _music_tracks: Array = [MUSIC_1, MUSIC_2]
 
+const UI_SELECT := preload("res://audio/ui/select.ogg")
+const UI_CLICK := preload("res://audio/ui/click.ogg")
+
 # ==================================================== Звуки
 
 func _setup_audio():
-	_audio.setup(self, sfx_volume_db)
-	_audio.load_banks()
+	_impact_player = AudioStreamPlayer.new()
+	_impact_player.name = "ImpactPlayer"
+	_impact_player.bus = &"Master"
+	_impact_player.volume_db = sfx_volume_db
+	add_child(_impact_player)
+
 	if not swing_sound:
 		swing_sound = AudioStreamPlayer2D.new()
 		swing_sound.name = "SwingSound"
 		add_child(swing_sound)
 	if swing_sound:
 		swing_sound.volume_db = sfx_volume_db
+
+	if not miss_sound:
+		miss_sound = AudioStreamPlayer2D.new()
+		miss_sound.name = "MissSound"
+		add_child(miss_sound)
+	if miss_sound:
+		miss_sound.volume_db = sfx_volume_db
+
 	if not player_hit_sound:
 		player_hit_sound = AudioStreamPlayer2D.new()
 		player_hit_sound.name = "PlayerHitSound"
@@ -127,6 +166,12 @@ func _setup_audio():
 
 	if death_sound:
 		death_sound.volume_db = sfx_volume_db
+
+	_ui_sound_player = AudioStreamPlayer.new()
+	_ui_sound_player.name = "UISoundPlayer"
+	_ui_sound_player.bus = &"Master"
+	_ui_sound_player.volume_db = sfx_volume_db
+	add_child(_ui_sound_player)
 
 	if not bgm_player:
 		bgm_player = AudioStreamPlayer2D.new()
@@ -148,15 +193,36 @@ func _play_swing():
 	if swing_sound:
 		swing_sound.play()
 
+func _play_impact(limb_name: String, finisher: bool = false):
+	if not _impact_player:
+		return
+	var is_head := limb_name == "head"
+	var key := ("face" if is_head else "body") + ("_finisher" if finisher else "_small")
+	var bank: Array = _impact_banks.get(key, [])
+	if bank.is_empty():
+		return
+	_impact_player.stream = bank[randi() % bank.size()]
+	_impact_player.play()
+
+func _play_miss():
+	if not _impact_player: return
+	var i: int = randi() % 3 + 1
+	_impact_player.stream = load("res://audio/gore/miss_%d.wav" % i)
+	_impact_player.play()
+
 func _play_player_hit():
 	if player_hit_sound:
 		player_hit_sound.play()
 
 func _play_ui_select():
-	_audio.play_ui_select()
+	if _ui_sound_player:
+		_ui_sound_player.stream = UI_SELECT
+		_ui_sound_player.play()
 
 func _play_ui_click():
-	_audio.play_ui_click()
+	if _ui_sound_player:
+		_ui_sound_player.stream = UI_CLICK
+		_ui_sound_player.play()
 
 # ==================================================== Инициализация
 func _ready():
@@ -442,7 +508,7 @@ func _player_attack(part: String) -> bool:
 
 	if total < PLAYER_HIT_DC:
 		_log("Промах по %s (d20=%d+%d=%d < %d)" % [part, roll, agility, total, PLAYER_HIT_DC])
-		_audio.play_miss()
+		_play_miss()
 		return false
 
 	var limb: Limb = rat.limbs[part]
@@ -461,7 +527,7 @@ func _player_attack(part: String) -> bool:
 		play_hit_feedback(part, false)
 	else:
 		_log("Попадание в %s (−%d). [%d HP]" % [LIMB_NAMES_RU[part], dmg, limb.hp])
-		_audio.play_impact(part, false)
+		_play_impact(part, false)
 
 	sync_enemy_sprites()
 	update_all_status()
@@ -734,7 +800,7 @@ func _player_action_coroutine(limb_name: String):
 		play_hit_feedback(limb_name, was_finisher)
 	else:
 		_log("%s: d20=%d+%d=%d < %d — промах!" % [action["name"], roll, skill_val, total, dc])
-		_audio.play_miss()
+		_play_miss()
 
 	update_all_status()
 	update_attack_buttons()
@@ -788,7 +854,9 @@ func _attempt_flee():
 # ==================================================== Статусы
 func _on_execute_pressed():
 	action_submenu.hide()
-	_audio.play_execute()
+	var snd := load("res://audio/gore/execute_%d.wav" % (randi() % 2 + 1))
+	_impact_player.stream = snd
+	_impact_player.play()
 	PlayerStats.change_humanity(-1)
 	_log("Безжалостное добивание... (−1 Человечность, сейчас: %d)" % PlayerStats.humanity, true)
 	await get_tree().create_timer(0.8).timeout
@@ -817,18 +885,13 @@ func _build_status_text(c: Combatant, alive_word: String) -> String:
 
 # ==================================================== Визуальная отдача
 func play_hit_feedback(limb_name: String, finisher: bool = false):
-	var shake_target: Control = enemy_container
-	if rat and rat.limbs.get("leg_right") and rat.limbs.get("leg_left"):
-		if rat.limbs["leg_left"].is_destroyed() and rat.limbs["leg_right"].is_destroyed():
-			shake_target = enemy_parts.get("head")
-	if not shake_target: return
-
-	var pos := shake_target.position
-	var tw := create_tween()
-	tw.tween_property(shake_target, "position", pos + Vector2(6, 0), 0.04)
-	tw.tween_property(shake_target, "position", pos - Vector2(6, 0), 0.04)
-	tw.tween_property(shake_target, "position", pos + Vector2(0, -4), 0.04)
-	tw.tween_property(shake_target, "position", pos, 0.04)
+	if enemy_container:
+		var pos := enemy_container.position
+		var tw := create_tween()
+		tw.tween_property(enemy_container, "position", pos + Vector2(6, 0), 0.04)
+		tw.tween_property(enemy_container, "position", pos - Vector2(6, 0), 0.04)
+		tw.tween_property(enemy_container, "position", pos + Vector2(0, -4), 0.04)
+		tw.tween_property(enemy_container, "position", pos, 0.04)
 
 	var rect: TextureRect = enemy_parts.get(limb_name)
 	if rect and blood_particles:
@@ -836,7 +899,7 @@ func play_hit_feedback(limb_name: String, finisher: bool = false):
 		blood_particles.global_position = r.position + r.size * 0.5
 		blood_particles.restart()
 
-	_audio.play_impact(limb_name, finisher)
+	_play_impact(limb_name, finisher)
 
 	if finisher and limb_name in ["leg_left", "leg_right"] and enemy_container:
 		var l: Limb = rat.limbs.get("leg_left")
@@ -844,8 +907,8 @@ func play_hit_feedback(limb_name: String, finisher: bool = false):
 		if l and r and l.is_destroyed() and r.is_destroyed():
 			if not enemy_container.has_meta("original_pos"):
 				enemy_container.set_meta("original_pos", enemy_container.position)
-			var ft := create_tween()
-			ft.tween_property(enemy_container, "position", enemy_container.position + Vector2(0, 120), 0.5).set_ease(Tween.EASE_OUT)
+			var tw := create_tween()
+			tw.tween_property(enemy_container, "position", enemy_container.position + Vector2(0, 120), 0.5).set_ease(Tween.EASE_OUT)
 
 func play_player_hit_feedback():
 	if enemy_container:
@@ -856,7 +919,7 @@ func play_player_hit_feedback():
 
 	hit_shake_amount = 8.0
 	_play_player_hit()
-	_audio.play_impact("torso", false)
+	_play_impact("torso", false)
 	if damage_vignette:
 		damage_vignette.modulate.a = 0.6
 		var tween := create_tween()
