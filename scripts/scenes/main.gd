@@ -896,7 +896,7 @@ func play_hit_feedback(limb_name: String, finisher: bool = false):
 		var r: Limb = rat.limbs.get("leg_right")
 		if l and r and l.is_destroyed() and r.is_destroyed():
 			var tw := create_tween()
-			tw.tween_property(enemy_container, "position", enemy_container.position + Vector2(0, 80), 0.4).set_ease(Tween.EASE_OUT)
+			tw.tween_property(enemy_container, "position", enemy_container.position + Vector2(0, 120), 0.5).set_ease(Tween.EASE_OUT)
 
 func play_player_hit_feedback():
 	hit_shake_amount = 8.0
