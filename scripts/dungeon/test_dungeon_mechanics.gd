@@ -996,20 +996,20 @@ func _setup_minimap():
 	_minimap = Control.new()
 	_minimap.name = "MiniMap"
 	_minimap.modulate = Color(1, 1, 1, 0.7)
-	$CRT_Root/GameViewport/UI/CentralViewport.add_child(_minimap)
+	$CRT_Root/GameViewport/UI.add_child(_minimap)
 	_minimap.draw.connect(_draw_minimap)
 
 func _draw_minimap():
-	var tw: int = 25
-	var th: int = 13
 	var cs: int = 5
-	var w_map: int = tw * cs
-	var h_map: int = th * cs
-	_minimap.set_size(Vector2(w_map, h_map))
-	_minimap.position = Vector2(858 - w_map - 10, 449 - h_map - 10)
+	var mw: int = 25 * cs
+	var mh: int = 13 * cs
+	_minimap.set_size(Vector2(mw, mh))
+	_minimap.position = Vector2(829, 0)
 
 	var mx: int = roundi(_player_x)
 	var my: int = roundi(_player_y)
+	var tw: int = mw / cs
+	var th: int = mh / cs
 	var ox: int = mx - tw / 2
 	var oy: int = my - th / 2
 

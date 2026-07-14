@@ -111,3 +111,11 @@ theme_override_colors/font_color = Color(0.9, 0.85, 0.7, 1)
 theme_override_font_sizes/font_size = 16
 horizontal_alignment = 1
 autowrap_mode = 1
+
+[node name="TEST_OBJECT" type="Control" parent="CRT_Root/GameViewport/UI" unique_id=340066635]
+anchors_preset = 0
+offset_left = 829.0
+offset_top = -41.0
+offset_right = 869.0
+offset_bottom = -1.0
+scale = Vector2(5.238067, 2.3961504)
