@@ -258,8 +258,8 @@ func _setup_entities():
 			"route": s.route,
 			"route_idx": 0,
 			"state": "idle",
-			"action_timer": randf_range(1.0, 3.0),
-			"action_interval": 3.0,
+			"action_timer": randf_range(0.5, 1.5),
+			"action_interval": 1.2,
 			"detected_player": false,
 		})
 
