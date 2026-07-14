@@ -900,6 +900,8 @@ func _set_chase_overlay(active: bool):
 	if abs(target - current) < 0.01: return
 	var tw := create_tween()
 	tw.tween_property(_chase_overlay, "modulate:a", target, 0.4)
+
+func _show_tip(msg: String):
 	if not _dialogue_active and _awareness_label:
 		_awareness_label.text = msg
 		get_tree().create_timer(5.0).timeout.connect(func():
