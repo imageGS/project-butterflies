@@ -787,6 +787,7 @@ func _try_detect(ent: Dictionary, px: int, py: int):
 		ent.chase_active = true
 		var ca: AudioStreamPlayer = ent.get("chase_audio")
 		if ca:
+			ca.stop()
 			ca.volume_db = -12.0
 			ca.play()
 
@@ -890,8 +891,7 @@ func _stop_chase(ent: Dictionary):
 	if ca and ca.playing:
 		var tw := create_tween()
 		tw.tween_property(ca, "volume_db", -80.0, 1.5)
-		await tw.finished
-		ca.stop()
+		tw.tween_callback(ca.stop)
 
 func _show_tip(msg: String):
 	if not _dialogue_active and _awareness_label:
