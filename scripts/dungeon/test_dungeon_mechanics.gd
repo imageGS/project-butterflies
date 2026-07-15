@@ -108,7 +108,8 @@ func _ready():
 func _build_test_level():
 	if shelter_mode:
 		_build_shelter()
-		return	var ascii_rows: Array[String] = [
+		return
+	var ascii_rows: Array[String] = [
 		"################################################",
 		"#E....#.........#.......#.....#........#........#",
 		"#.###.#.#######.#.#####.#.###.#.######.#.######.#",
