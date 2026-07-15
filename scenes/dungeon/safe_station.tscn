@@ -1,0 +1,102 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://r533lqkw3jph" path="res://scripts/dungeon/dungeon_renderer.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/dungeon/shelter.gd" id="2"]
+[ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="3"]
+[ext_resource type="Texture2D" uid="uid://3aub1ayemjdp" path="res://assets/textures/UI_BACK.png" id="4"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
+viewport_path = NodePath("CRT_Root/GameViewport")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_dg"]
+resource_local_to_scene = true
+shader = ExtResource("3")
+shader_parameter/tex = SubResource("ViewportTexture_dg")
+shader_parameter/mask_type = 4
+shader_parameter/curve = 0.097
+shader_parameter/sharpness = 0.705
+shader_parameter/color_offset = 0.01
+shader_parameter/mask_brightness = 0.608
+shader_parameter/scanline_brightness = 0.67
+shader_parameter/min_scanline_thickness = 0.724
+shader_parameter/aspect = 0.517
+shader_parameter/wobble_strength = 0.302
+
+[node name="Shelter" type="Node"]
+script = ExtResource("2")
+
+[node name="CRT_Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CRT_Display" type="ColorRect" parent="CRT_Root"]
+material = SubResource("ShaderMaterial_dg")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="GameViewport" type="SubViewport" parent="CRT_Root"]
+size = Vector2i(1152, 648)
+
+[node name="UI" type="Control" parent="CRT_Root/GameViewport"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 76.0
+offset_top = 546.0
+offset_right = 1076.0
+offset_bottom = 608.0
+mouse_filter = 2
+
+[node name="UI_BACK" type="TextureRect" parent="CRT_Root/GameViewport/UI"]
+z_index = 4
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4")
+
+[node name="CentralViewport" type="Control" parent="CRT_Root/GameViewport/UI"]
+anchors_preset = 0
+offset_left = 71.0
+offset_top = -516.0
+offset_right = 929.0
+offset_bottom = -67.0
+mouse_filter = 2
+
+[node name="DungeonView" type="Control" parent="CRT_Root/GameViewport/UI/CentralViewport"]
+anchors_preset = 0
+offset_right = 858.0
+offset_bottom = 449.0
+script = ExtResource("1")
+
+[node name="InfoLabel" type="Label" parent="CRT_Root/GameViewport/UI/CentralViewport/DungeonView"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 200.0
+offset_bottom = 40.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="AwarenessLabel" type="Label" parent="CRT_Root/GameViewport/UI/CentralViewport/DungeonView"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 390.0
+offset_right = 800.0
+offset_bottom = 430.0
+theme_override_colors/font_color = Color(0.9, 0.85, 0.7, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+autowrap_mode = 1
