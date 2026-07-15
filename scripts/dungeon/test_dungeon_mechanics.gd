@@ -86,14 +86,19 @@ var _minimap: Control
 @onready var _label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/InfoLabel
 @onready var _awareness_label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/AwarenessLabel
 
+@export var shelter_mode: bool = false
+
 func _ready():
 	_build_test_level()
 	_setup_entities()
 	_current_angle = DIR_ANGLES[_player_dir]
 	_setup_dialogue_ui()
-	_setup_inventory_ui()
 	_setup_audio()
 	_refresh()
+	if shelter_mode:
+		return
+	_setup_inventory_ui()
+	_setup_minimap()
 	_awareness_timer = _awareness_interval
 	PlayerStats.inventory.try_add(Item.new("Аптечка", "Восстанавливает здоровье", 3, Vector2i(1,2), 1))
 	PlayerStats.inventory.try_add(Item.new("Монета", "Старая, потёртая", 0, Vector2i(1,1), 5))
@@ -101,7 +106,9 @@ func _ready():
 	_setup_minimap()
 
 func _build_test_level():
-	var ascii_rows: Array[String] = [
+	if shelter_mode:
+		_build_shelter()
+		return	var ascii_rows: Array[String] = [
 		"################################################",
 		"#E....#.........#.......#.....#........#........#",
 		"#.###.#.#######.#.#####.#.###.#.######.#.######.#",
@@ -255,6 +262,13 @@ func _set_tile(x: int, y: int, tile: int):
 
 func _setup_entities():
 	_entities = []
+	if shelter_mode:
+		_player_x = 3.0; _player_y = 3.0
+		_entities.append({ "grid_x": 3, "grid_y": 5, "color": Color(0.3, 0.5, 0.7), "type": "object", "object_type": "rest",
+			"data": { "name": "кровать", "description": "Старая кровать." }})
+		_entities.append({ "grid_x": 10, "grid_y": 10, "color": Color(0.4, 0.8, 0.4), "type": "object", "object_type": "lore",
+			"data": { "name": "ТВ", "description": "Работает. Помехи, потом голос: «...проход открыт в западном крыле». И снова помехи." }})
+		return
 	# Враги на @ позициях
 	var tex_f := load("res://sprites/enemy/bunny/bunny_enemy.png")
 	var tex_b := load("res://sprites/enemy/bunny/bunny_enemy_back.png")
@@ -1064,3 +1078,16 @@ func _refresh():
 		_label.text = DIR_NAMES[_player_dir]
 	if _minimap:
 		_minimap.queue_redraw()
+
+func _build_shelter():
+	var w := 15; var h := 20
+	_map_data = []
+	for y in range(h):
+		var row: Array = []; for x in range(w): row.append(TILE_WALL)
+		_map_data.append(row)
+	for y in range(2, 18):
+		for x in range(2, 13):
+			_map_data[y][x] = TILE_FLOOR
+	for y in range(4, 7): _map_data[y][1] = TILE_FLOOR
+	for y in range(12, 15): _map_data[y][13] = TILE_FLOOR
+	_set_tile(7, 1, TILE_EXIT); _set_tile(7, 2, TILE_FLOOR)

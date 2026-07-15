@@ -1,7 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" uid="uid://r533lqkw3jph" path="res://scripts/dungeon/dungeon_renderer.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/dungeon/shelter.gd" id="2"]
+[ext_resource type="Script" uid="uid://dklw7i5r0a06u" path="res://scripts/dungeon/test_dungeon_mechanics.gd" id="2"]
 [ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="3"]
 [ext_resource type="Texture2D" uid="uid://3aub1ayemjdp" path="res://assets/textures/UI_BACK.png" id="4"]
 
@@ -24,6 +24,7 @@ shader_parameter/wobble_strength = 0.302
 
 [node name="Shelter" type="Node"]
 script = ExtResource("2")
+shelter_mode = true
 
 [node name="CRT_Root" type="Control" parent="."]
 layout_mode = 3
