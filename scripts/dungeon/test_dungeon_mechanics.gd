@@ -782,6 +782,7 @@ func _select_response(idx: int):
 		_go_to_node(chosen.get("next_fail", chosen.get("next", -1)))
 
 func _ask_leave_station():
+	var dest: String = "res://scenes/dungeon/test_dungeon_mechanics.tscn" if shelter_mode else "res://scenes/dungeon/safe_station.tscn"
 	var exit_dialogue := [
 		{ "text": "Выход из станции. Уйти?", "responses": [
 			{ "text": "Да, уйти в убежище.", "next": 1 },
@@ -796,7 +797,8 @@ func _ask_leave_station():
 func _go_to_node(idx: int):
 	if idx <= -2:
 		_close_dialogue()
-		TransitionManager.change_scene("res://scenes/dungeon/safe_station.tscn")
+		var target: String = "res://scenes/dungeon/test_dungeon_mechanics.tscn" if shelter_mode else "res://scenes/dungeon/safe_station.tscn"
+		TransitionManager.change_scene(target)
 	elif idx < 0:
 		_close_dialogue()
 	else:

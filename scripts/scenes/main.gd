@@ -674,7 +674,7 @@ func end_battle(result: String):
 		PlayerStats.health = PlayerStats.max_health
 		PlayerStats.sanity = PlayerStats.max_sanity
 	await get_tree().create_timer(2.5).timeout
-	TransitionManager.change_scene("res://scenes/dungeon/test_dungeon_mechanics.tscn")
+	TransitionManager.change_scene("res://scenes/dungeon/safe_station.tscn")
 
 # ==================================================== Подменю действий
 func _setup_action_submenu():
