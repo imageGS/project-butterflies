@@ -26,7 +26,7 @@ var _anim_from_angle := 0.0; var _anim_to_angle := 0.0
 
 func _ready():
 	_build_map()
-	_set_tileup_entities()
+	_setup_entities()
 	_current_angle = DIR_ANGLES[_player_dir]
 	_refresh()
 
