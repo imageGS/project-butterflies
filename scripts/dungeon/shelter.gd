@@ -26,7 +26,7 @@ var _anim_from_angle := 0.0; var _anim_to_angle := 0.0
 
 func _ready():
 	_build_map()
-	_setup_entities()
+	_set_tileup_entities()
 	_current_angle = DIR_ANGLES[_player_dir]
 	_refresh()
 
@@ -47,9 +47,9 @@ func _build_map():
 	for y in range(12, 15): _map_data[y][13] = TILE_FLOOR
 
 	# Выход
-	_set(7, 1, TILE_EXIT)
+	_set_tile(7, 1, TILE_EXIT)
 	# Проход к выходу
-	_set(7, 2, TILE_FLOOR)
+	_set_tile(7, 2, TILE_FLOOR)
 
 func _setup_entities():
 	_entities = []
@@ -58,7 +58,7 @@ func _setup_entities():
 	_entities.append({ "grid_x": 10, "grid_y": 10, "color": Color(0.4, 0.8, 0.4, 0.8), "type": "object", "object_type": "lore",
 		"data": { "name": "Телевизор", "description": "Работает. Помехи, потом лицо диктора: «...станция Акио... западное крыло... проход открыт». Затем снова помехи." }})
 
-func _set(x: int, y: int, t: int):
+func _set_tile(x: int, y: int, t: int) -> void:
 	if y >= 0 and y < _map_data.size() and x >= 0 and x < _map_data[0].size():
 		_map_data[y][x] = t
 
@@ -73,15 +73,15 @@ func _unhandled_input(event):
 			KEY_SPACE, KEY_F: _try_interact()
 
 func _try_move_forward():
-	var v := DIR_VECTORS[_player_dir]; var nx := roundi(_player_x) + v.x; var ny := roundi(_player_y) + v.y
+	var v: Vector2i = DIR_VECTORS[_player_dir]; var nx: int = roundi(_player_x) + v.x; var ny: int = roundi(_player_y) + v.y
 	if _is_walkable(nx, ny): _start_move(nx, ny)
 
 func _try_move_backward():
-	var v := DIR_VECTORS[_player_dir]; var nx := roundi(_player_x) - v.x; var ny := roundi(_player_y) - v.y
+	var v: Vector2i = DIR_VECTORS[_player_dir]; var nx: int = roundi(_player_x) - v.x; var ny: int = roundi(_player_y) - v.y
 	if _is_walkable(nx, ny): _start_move(nx, ny)
 
 func _try_interact():
-	var v := DIR_VECTORS[_player_dir]; var fx := roundi(_player_x) + v.x; var fy := roundi(_player_y) + v.y
+	var v: Vector2i = DIR_VECTORS[_player_dir]; var fx: int = roundi(_player_x) + v.x; var fy: int = roundi(_player_y) + v.y
 	for ent in _entities:
 		if ent.grid_x == fx and ent.grid_y == fy:
 			if ent.type == "object":
