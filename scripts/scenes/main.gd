@@ -332,15 +332,8 @@ func _roll_d20(modifier: int = 0) -> int:
 
 # ==================================================== Враг
 func new_rat():
-	rat = Combatant.new("Крыса-падальщик", {"stamina": 3, "agility": 5})
-	rat.set_enemy_limbs({
-		"head":       {"hp": 8, "debuff": "пропуск хода", "action": {"name": "Визг", "dmg": 0, "desc": "Оглушает, −2 к agility игрока на 2 хода"}},
-		"torso":      {"hp": 14, "debuff": "удвоение урона по пулу", "action": {"name": "Толчок", "dmg": 2, "desc": "Толкает корпусом"}},
-		"arm_right":  {"hp": 8, "debuff": "нет сильной атаки", "action": {"name": "Удар лапой", "dmg": 5, "desc": "Мощный удар когтями"}},
-		"arm_left":   {"hp": 8, "debuff": "нет быстрой атаки", "action": {"name": "Царапанье", "dmg": 3, "desc": "Быстрая атака, трудно увернуться"}},
-		"leg_right":  {"hp": 8, "debuff": "штраф к защите", "action": {"name": "Пинок", "dmg": 4, "desc": "Удар задней лапой"}},
-		"leg_left":   {"hp": 8, "debuff": "штраф к защите", "action": {"name": "Прыжок", "dmg": 1, "desc": "Уклоняется, +2 DC для игрока на ход"}},
-	})
+	var data := load("res://resources/bestiary/rat.tres") as EnemyData
+	rat = data.to_combatant() if data else Combatant.new("Крыса-падальщик", {"stamina": 3, "agility": 5})
 	state = State.PLAYER_INPUT          # сброс состояния при рестарте
 	_log("Появилась свежая крыса!")
 
