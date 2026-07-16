@@ -956,6 +956,14 @@ func _try_awareness():
 		, CONNECT_ONE_SHOT)
 
 func _build_from_station_data():
+
+func _refresh():
+	if _renderer:
+		_renderer.update_view(_player_x + 0.5, _player_y + 0.5, _current_angle, _map_data, _entities)
+	if _label:
+		_label.text = DIR_NAMES[_player_dir]
+
+func _build_from_station_data():
 	var sd: StationData = station_data
 	var text: String = FileAccess.get_file_as_string(sd.map_file)
 	var rows: PackedStringArray = text.split("\n", false)
