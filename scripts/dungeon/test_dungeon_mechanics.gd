@@ -73,13 +73,6 @@ var _dialogue_active: bool = false
 var _dialogue_busy: bool = false
 var _passive_cache: Dictionary = {}
 
-var _inv_open: bool = false
-var _inv_overlay: CanvasLayer
-var _inv_cells: Array[ColorRect] = []
-var _inv_item_labels: Array[Label] = []
-const INV_CELL_SIZE := 44
-const INV_GAP := 2
-
 @onready var _renderer: Control = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView
 @onready var _label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/InfoLabel
 @onready var _awareness_label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/AwarenessLabel
@@ -416,11 +409,6 @@ func _unhandled_input(event):
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
-			KEY_TAB:
-				if not _dialogue_active:
-					_inv_open = not _inv_open
-					_inv_overlay.visible = _inv_open
-					if _inv_open: _draw_inventory()
 			KEY_W, KEY_UP:
 				if not _dialogue_active:
 					_try_move_forward()
