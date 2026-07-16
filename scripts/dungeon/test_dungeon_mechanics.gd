@@ -98,11 +98,24 @@ func _ready():
 		return
 	_setup_inventory_ui()
 	_awareness_timer = _awareness_interval
-
-func _setup_inventory_ui():
 	PlayerStats.inventory.try_add(Item.new("Аптечка", "Восстанавливает здоровье", 3, Vector2i(1,2), 1))
 	PlayerStats.inventory.try_add(Item.new("Монета", "Старая, потёртая", 0, Vector2i(1,1), 5))
 	PlayerStats.inventory.try_add(Item.new("Консервы", "Еда с истёкшим сроком", 1, Vector2i(1,1), 2))
+
+func _setup_inventory_ui():
+	_inv_overlay = CanvasLayer.new()
+	_inv_overlay.layer = 110
+	_inv_overlay.visible = false
+	add_child(_inv_overlay)
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.85)
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	_inv_overlay.add_child(bg)
+	var gr := Control.new()
+	gr.name = "InvGrid"
+	_inv_overlay.add_child(gr)
+	PlayerStats.inventory.changed.connect(_draw_inventory)
+	_draw_inventory()
 
 func _build_test_level():
 	if shelter_mode:
