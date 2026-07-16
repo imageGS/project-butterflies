@@ -333,6 +333,14 @@ func _roll_d20(modifier: int = 0) -> int:
 # ==================================================== Враг
 func new_rat():
 	rat = Combatant.new("Крыса-падальщик", {"stamina": 3, "agility": 5})
+	rat.set_enemy_limbs({
+		"head":       {"hp": 8, "debuff": "пропуск хода", "action": {"name": "Визг", "dmg": 0, "desc": "Оглушает, −2 к agility игрока на 2 хода"}},
+		"torso":      {"hp": 14, "debuff": "удвоение урона по пулу", "action": {"name": "Толчок", "dmg": 2, "desc": "Толкает корпусом"}},
+		"arm_right":  {"hp": 8, "debuff": "нет сильной атаки", "action": {"name": "Удар лапой", "dmg": 5, "desc": "Мощный удар когтями"}},
+		"arm_left":   {"hp": 8, "debuff": "нет быстрой атаки", "action": {"name": "Царапанье", "dmg": 3, "desc": "Быстрая атака, трудно увернуться"}},
+		"leg_right":  {"hp": 8, "debuff": "штраф к защите", "action": {"name": "Пинок", "dmg": 4, "desc": "Удар задней лапой"}},
+		"leg_left":   {"hp": 8, "debuff": "штраф к защите", "action": {"name": "Прыжок", "dmg": 1, "desc": "Уклоняется, +2 DC для игрока на ход"}},
+	})
 	state = State.PLAYER_INPUT          # сброс состояния при рестарте
 	_log("Появилась свежая крыса!")
 
@@ -617,27 +625,39 @@ func switch_to_enemy_turn():
 func enemy_attack():
 	if state != State.ENEMY_ACTING: return
 	if not rat.is_alive(): return
-	var target_limb: String = rat.get_random_alive_limb()
-	if target_limb == "": return
-	_log("\nКрыса атакует вашу %s!" % LIMB_NAMES_RU[target_limb], true)
+	var acts: Dictionary = rat.get_available_actions()
+	if acts.is_empty(): return
+
+	var limb_name: String = acts.keys()[randi() % acts.size()]
+	var act: Dictionary = acts[limb_name]
+	_log("\n%s использует %s!" % [rat.char_name, act.get("name", "атаку")], true)
+
 	var roll := _roll_d20()
 	var enemy_skill: int = rat.get_skill("agility")
 	var total := roll + enemy_skill
 	var dc: int = 8 + player.get_skill("agility")
-	if total >= dc:
+
+	if act.get("dmg", 0) > 0 and total >= dc:
+		var target_limb: String = rat.get_random_alive_limb()
 		var limb: Limb = player.limbs[target_limb]
-		var was_b: bool = limb.is_broken()
-		limb.take_damage(ENEMY_DAMAGE)
-		player.take_total_damage(2)
-		if was_b and limb.is_destroyed():
-			_log("Попадание! %s РАЗРУШЕНА! (%d+%d=%d)" % [LIMB_NAMES_RU[target_limb], roll, enemy_skill, total], true)
-		elif limb.is_broken() and not was_b:
-			_log("Попадание! %s СЛОМАНА! (%d+%d=%d)" % [LIMB_NAMES_RU[target_limb], roll, enemy_skill, total], true)
-		else:
-			_log("Попадание! (%d+%d=%d >= %d)" % [roll, enemy_skill, total, dc], true)
-		play_player_hit_feedback()
+		if limb and not limb.is_destroyed():
+			var was_b: bool = limb.is_broken()
+			limb.take_damage(act.dmg)
+			player.take_total_damage(2)
+			if was_b and limb.is_destroyed():
+				_log("%s РАЗРУШЕНА! (%d+%d=%d)" % [LIMB_NAMES_RU[target_limb], roll, enemy_skill, total], true)
+			elif limb.is_broken() and not was_b:
+				_log("%s СЛОМАНА! (%d+%d=%d)" % [LIMB_NAMES_RU[target_limb], roll, enemy_skill, total], true)
+			else:
+				_log("Попадание! (%d+%d=%d ≥ %d)" % [roll, enemy_skill, total, dc], true)
+			play_player_hit_feedback()
 	else:
-		_log("Промах! (%d+%d=%d < %d)" % [roll, enemy_skill, total, dc], true)
+		_log("%s — без урона." % act.get("name", ""))
+		if act.get("name", "х") == "Прыжок":
+			_log("Ловкость врага временно повышена!")
+		elif act.get("name", "х") == "Визг":
+			_log("Вы оглушены визгом!")
+
 	update_all_status()
 	if not player.is_alive():
 		end_battle("lose")
@@ -685,13 +705,11 @@ func _setup_action_submenu():
 		action_submenu.position = Vector2(106, 155)
 		ui_root.add_child(action_submenu)
 
-	for action_name in ACTION_NAMES:
-		var info = ACTIONS[action_name]
-		var btn := RippleButton.new()
-		btn.text = info["name"] + "\n" + info["desc"]
-		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		_connect_button(btn, _on_action_selected.bind(action_name))
-		action_submenu.add_child(btn)
+	var analyze_btn := RippleButton.new()
+	analyze_btn.text = "Осмотреть (Intuition)"
+	analyze_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_connect_button(analyze_btn, _on_analyze_pressed)
+	action_submenu.add_child(analyze_btn)
 
 	var back_btn := RippleButton.new()
 	back_btn.text = "Назад"
@@ -854,6 +872,23 @@ func _attempt_flee():
 		switch_to_enemy_turn()
 
 # ==================================================== Статусы
+func _on_analyze_pressed():
+	action_submenu.hide()
+	attack_mode_active = false
+	selection_mode = SelectionMode.NONE
+	var acts: Dictionary = rat.get_available_actions()
+	var result := SkillCheck.check(PlayerStats.get_skill("intuition"), 8)
+	if result.success:
+		_log("== ОСМОТР: %s ==" % rat.char_name, true)
+		for limb_name in acts:
+			var a: Dictionary = acts[limb_name]
+			_log("  %s: %s (dmg=%d)" % [LIMB_NAMES_RU[limb_name], a.get("name", "?"), a.get("dmg", 0)])
+		_log("Успех Интуиции (d20=%d)" % result.raw)
+	else:
+		_log("Осмотр не дал результатов... (d20=%d < 8)" % result.raw)
+	_log("Враг получает свободную атаку за ваш ход!", true)
+	switch_to_enemy_turn()
+
 func _on_execute_pressed():
 	action_submenu.hide()
 	var snd := load("res://audio/gore/execute_%d.wav" % (randi() % 2 + 1))

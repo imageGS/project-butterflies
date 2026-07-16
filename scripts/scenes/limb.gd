@@ -7,6 +7,7 @@ var max_hp: int
 var broken: bool = false
 var destroyed: bool = false
 var debuff: String
+var action: Dictionary = {}   # { "name": "Укус", "dmg": 5, "dc": 10, "target": "random", "desc": "" }
 
 func _init(_name: String, _hp: int, _debuff: String):
 	name = _name
