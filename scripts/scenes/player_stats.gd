@@ -20,8 +20,19 @@ const SKILL_NAMES_RU := ["Хладнокровие", "Стойкость", "По
 @export var humanity: int = 10
 
 @export var death_count: int = 0
+@export var cycle: int = 0
 
 var inventory: InventoryGrid = InventoryGrid.new()
+var flags: Dictionary = {}
+
+func has_flag(key: String) -> bool:
+	return flags.get(key, false) == true
+
+func set_flag(key: String):
+	flags[key] = true
+
+func clear_flag(key: String):
+	flags.erase(key)
 
 func get_skill(skill_name: String) -> int:
 	match skill_name:
@@ -106,4 +117,7 @@ func reset():
 	sanity = 10; max_sanity = 10
 	humanity = 10
 	death_count = 0
+	cycle = 0
 	inventory.slots.clear()
+	flags.clear()
+	_limb_snapshot.clear()
