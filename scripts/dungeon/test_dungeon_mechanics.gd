@@ -1089,9 +1089,11 @@ func _refresh():
 
 func _build_from_station_data():
 	var sd: StationData = station_data
+	var text: String = FileAccess.get_file_as_string(sd.map_file)
+	var rows: PackedStringArray = text.split("\n", false)
 	_map_data = []
-	for y in sd.ascii_rows.size():
-		var row: Array = []; var line: String = sd.ascii_rows[y]
+	for y in rows.size():
+		var row: Array = []; var line: String = rows[y]
 		for x in line.length():
 			match line[x]:
 				"#": row.append(TILE_WALL)
