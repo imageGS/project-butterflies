@@ -96,26 +96,7 @@ func _ready():
 	_refresh()
 	if shelter_mode:
 		return
-	_setup_inventory_ui()
 	_awareness_timer = _awareness_interval
-	PlayerStats.inventory.try_add(Item.new("Аптечка", "Восстанавливает здоровье", 3, Vector2i(1,2), 1))
-	PlayerStats.inventory.try_add(Item.new("Монета", "Старая, потёртая", 0, Vector2i(1,1), 5))
-	PlayerStats.inventory.try_add(Item.new("Консервы", "Еда с истёкшим сроком", 1, Vector2i(1,1), 2))
-
-func _setup_inventory_ui():
-	_inv_overlay = CanvasLayer.new()
-	_inv_overlay.layer = 110
-	_inv_overlay.visible = false
-	add_child(_inv_overlay)
-	var bg := ColorRect.new()
-	bg.color = Color(0, 0, 0, 0.85)
-	bg.mouse_filter = Control.MOUSE_FILTER_STOP
-	_inv_overlay.add_child(bg)
-	var gr := Control.new()
-	gr.name = "InvGrid"
-	_inv_overlay.add_child(gr)
-	PlayerStats.inventory.changed.connect(_draw_inventory)
-	_draw_inventory()
 
 func _build_test_level():
 	if shelter_mode:
@@ -403,82 +384,6 @@ func _setup_dialogue_ui():
 
 	add_child(_dialogue_overlay)
 	get_viewport().connect("size_changed", _update_dialogue_layout)
-
-func _setup_inventory_ui():
-	_inv_overlay = CanvasLayer.new()
-	_inv_overlay.layer = 110
-	_inv_overlay.visible = false
-	add_child(_inv_overlay)
-	var bg := ColorRect.new()
-	bg.color = Color(0, 0, 0, 0.85)
-	bg.mouse_filter = Control.MOUSE_FILTER_STOP
-	_inv_overlay.add_child(bg)
-	var gr := Control.new()
-	gr.name = "InvGrid"
-	_inv_overlay.add_child(gr)
-	PlayerStats.inventory.changed.connect(_draw_inventory)
-	_draw_inventory()
-
-func _draw_inventory():
-	# Clear previous item labels
-	for lbl in _inv_item_labels:
-		if is_instance_valid(lbl): lbl.text = ""
-
-	var vs := get_viewport().get_visible_rect().size
-	var g: InventoryGrid = PlayerStats.inventory
-	var gw: int = g.grid_w * (INV_CELL_SIZE + INV_GAP) - INV_GAP
-	var gh: int = g.grid_h * (INV_CELL_SIZE + INV_GAP) - INV_GAP
-	var ox: float = (vs.x - gw) * 0.5
-	var oy: float = (vs.y - gh) * 0.5
-
-	for child in _inv_overlay.get_children():
-		if child is ColorRect and child.color.a > 0.1:
-			child.set_size(vs)
-			child.position = Vector2.ZERO
-
-	var gr := _inv_overlay.get_node_or_null("InvGrid") as Control
-	if not gr: return
-	gr.position = Vector2(ox, oy)
-
-	var nc: int = g.grid_w * g.grid_h
-	if _inv_cells.size() < nc:
-		for i in range(nc - _inv_cells.size()):
-			var c := ColorRect.new()
-			c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			gr.add_child(c)
-			_inv_cells.append(c)
-			var l := Label.new()
-			l.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
-			l.add_theme_font_size_override("font_size", 11)
-			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			gr.add_child(l)
-			_inv_item_labels.append(l)
-
-	for y in g.grid_h:
-		for x in g.grid_w:
-			var idx: int = y * g.grid_w + x
-			if idx >= _inv_cells.size(): continue
-			_inv_cells[idx].set_size(Vector2(INV_CELL_SIZE, INV_CELL_SIZE))
-			_inv_cells[idx].position = Vector2(x * (INV_CELL_SIZE + INV_GAP), y * (INV_CELL_SIZE + INV_GAP))
-			_inv_cells[idx].color = Color(0.12, 0.12, 0.12, 0.6)
-
-	for i in g.slots.size():
-		var s: Dictionary = g.slots[i]
-		var it: Item = s.item
-		var ix: int = s.x
-		var iy: int = s.y
-		for dy in it.grid_size.y:
-			for dx in it.grid_size.x:
-				var ci: int = (iy + dy) * g.grid_w + (ix + dx)
-				if ci < _inv_cells.size():
-					_inv_cells[ci].color = it.icon_color
-		var li: int = iy * g.grid_w + ix
-		if li < _inv_item_labels.size():
-			var txt: String = it.name
-			if it.stack_count > 1: txt += " x" + str(it.stack_count)
-			_inv_item_labels[li].text = txt
 
 func _play_enemy_step(ent: Dictionary):
 	if _footstep_sounds.is_empty(): return
