@@ -834,7 +834,7 @@ func _use_item(limb_name: String):
 	var limb = player.limbs[limb_name]
 
 	_play_heal_video()
-	await get_tree().create_timer(0.8).timeout
+	await get_tree().create_timer(1.8).timeout
 
 	if limb.is_broken() or limb.is_destroyed():
 		limb.broken = false
