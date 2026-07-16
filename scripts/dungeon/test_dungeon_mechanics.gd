@@ -955,8 +955,6 @@ func _try_awareness():
 				_awareness_label.text = ""
 		, CONNECT_ONE_SHOT)
 
-func _build_from_station_data():
-
 func _refresh():
 	if _renderer:
 		_renderer.update_view(_player_x + 0.5, _player_y + 0.5, _current_angle, _map_data, _entities)
