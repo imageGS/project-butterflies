@@ -87,6 +87,7 @@ var _minimap: Control
 @onready var _awareness_label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/AwarenessLabel
 
 @export var shelter_mode: bool = false
+@export var station_data: StationData
 
 func _ready():
 	_build_test_level()
@@ -108,6 +109,9 @@ func _ready():
 func _build_test_level():
 	if shelter_mode:
 		_build_shelter()
+		return
+	if station_data:
+		_build_from_station_data()
 		return
 	var ascii_rows: Array[String] = [
 		"################################################",
@@ -1083,7 +1087,24 @@ func _refresh():
 	if _minimap:
 		_minimap.queue_redraw()
 
+func _build_from_station_data():
+	var sd: StationData = station_data
+	_map_data = []
+	for y in sd.ascii_rows.size():
+		var row: Array = []; var line: String = sd.ascii_rows[y]
+		for x in line.length():
+			match line[x]:
+				"#": row.append(TILE_WALL)
+				"E": row.append(TILE_EXIT)
+				_: row.append(TILE_FLOOR)
+		_map_data.append(row)
+	_player_x = float(sd.spawn.x); _player_y = float(sd.spawn.y); _player_dir = sd.spawn_dir
+	if _renderer: _renderer.fog_distance = sd.fog_distance
+
 func _build_shelter():
+	if station_data:
+		_build_from_station_data()
+		return
 	var w := 15; var h := 20
 	_map_data = []
 	for y in range(h):

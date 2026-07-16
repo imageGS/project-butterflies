@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://dklw7i5r0a06u" path="res://scripts/dungeon/test_dungeon_mechanics.gd" id="2"]
 [ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="3"]
 [ext_resource type="Texture2D" uid="uid://3aub1ayemjdp" path="res://assets/textures/UI_BACK.png" id="4"]
+[ext_resource type="Resource" path="res://resources/stations/shelter.tres" id="5"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
 viewport_path = NodePath("CRT_Root/GameViewport")
@@ -25,6 +26,7 @@ shader_parameter/wobble_strength = 0.302
 [node name="Shelter" type="Node" unique_id=1048476559]
 script = ExtResource("2")
 shelter_mode = true
+station_data = ExtResource("5")
 
 [node name="CRT_Root" type="Control" parent="." unique_id=1813396561]
 layout_mode = 3
