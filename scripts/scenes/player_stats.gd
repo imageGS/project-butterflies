@@ -72,8 +72,27 @@ func restore_sanity(amount: int):
 func change_humanity(amount: int):
 	humanity = clamp(humanity + amount, 0, 10)
 
+var _limb_snapshot: Dictionary = {}
+
+func save_limb_state(c: Combatant):
+	_limb_snapshot.clear()
+	for key in c.limbs:
+		var l: Limb = c.limbs[key]
+		_limb_snapshot[key] = {"hp": l.hp, "broken": l.broken, "destroyed": l.destroyed}
+
+func restore_limb_state(c: Combatant):
+	if _limb_snapshot.is_empty(): return
+	for key in _limb_snapshot:
+		if c.limbs.has(key):
+			var s: Dictionary = _limb_snapshot[key]
+			var l: Limb = c.limbs[key]
+			l.hp = s.get("hp", l.max_hp)
+			l.broken = s.get("broken", false)
+			l.destroyed = s.get("destroyed", false)
+
 func create_combatant() -> Combatant:
 	var c := Combatant.new("№13", get_skill_list())
+	restore_limb_state(c)
 	var flat: Array = []
 	for i in inventory.size():
 		flat.append(inventory.get_item(i))

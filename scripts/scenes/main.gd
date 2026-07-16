@@ -684,6 +684,7 @@ func end_battle(result: String):
 	if state == State.BATTLE_OVER:
 		return
 	state = State.BATTLE_OVER
+	PlayerStats.save_limb_state(player)
 	disable_player_ui()
 	if result == "win":
 		_log("\n\n--- ПОБЕДА! ---", true)

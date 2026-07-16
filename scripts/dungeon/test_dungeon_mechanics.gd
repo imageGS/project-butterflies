@@ -614,6 +614,7 @@ func _interact_object(obj: Dictionary):
 		"rest":
 			PlayerStats.restore_sanity(2)
 			PlayerStats.heal(2)
+			PlayerStats._limb_snapshot.clear()
 			_show_tip("Вы отдыхаете у " + obj_name + ". +2 Здоровье, +2 Рассудок.")
 		"hazard":
 			PlayerStats.take_damage(data.get("damage", 2))
