@@ -609,11 +609,6 @@ func switch_to_enemy_turn():
 		state = State.PLAYER_INPUT
 		enable_player_ui()
 		return
-	if rat.limbs["head"].is_broken() or rat.limbs["head"].is_destroyed():
-		_log("Голова врага сломана — пропуск хода!", true)
-		state = State.PLAYER_INPUT
-		enable_player_ui()
-		return
 	await get_tree().create_timer(ENEMY_TURN_DELAY).timeout
 	if state != State.ENEMY_ACTING: return
 	if not rat.is_alive():
