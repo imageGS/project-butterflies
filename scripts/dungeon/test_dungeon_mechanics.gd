@@ -252,6 +252,14 @@ func _set_tile(x: int, y: int, tile: int):
 
 func _setup_entities():
 	_entities = []
+	if PlayerStats._pending_corpse.x >= 0:
+		_entities.append({
+			"grid_x": PlayerStats._pending_corpse.x, "grid_y": PlayerStats._pending_corpse.y,
+			"color": Color(0.5, 0.1, 0.1, 0.6),
+			"type": "object", "object_type": "lore",
+			"data": { "name": "Труп", "description": "Вы убили это существо в бою." },
+		})
+		PlayerStats._pending_corpse = Vector2i(-1, -1)
 	if shelter_mode:
 		_player_x = 3.0; _player_y = 3.0
 		_entities.append({ "grid_x": 3, "grid_y": 5, "color": Color(0.3, 0.5, 0.7), "type": "object", "object_type": "rest",
@@ -778,6 +786,7 @@ func _check_entity():
 	for ent: Dictionary in _entities:
 		if ent.grid_x == rx and ent.grid_y == ry:
 			if ent.type == "enemy":
+				PlayerStats._pending_corpse = Vector2i(ent.grid_x, ent.grid_y)
 				TransitionManager.change_scene("res://scenes/battle/node.tscn")
 	var tile_val: int = _map_data[ry][rx] if ry < _map_data.size() and rx < _map_data[0].size() else TILE_WALL
 	if tile_val == TILE_EXIT and not _dialogue_active:

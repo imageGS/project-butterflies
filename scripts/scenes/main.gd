@@ -675,13 +675,15 @@ func end_battle(result: String):
 	PlayerStats.save_limb_state(player)
 	disable_player_ui()
 	if result == "win":
-		_log("\n\n--- ПОБЕДА! ---", true)
+		_log("\n\n--- Победа! ---", true)
 	elif result == "fled":
 		_log("\n\n--- ВЫ СБЕЖАЛИ! ---", true)
+		PlayerStats._pending_corpse = Vector2i(-1, -1)
 	else:
 		_log("\n\n--- ВЫ ПОТЕРЯЛИ СОЗНАНИЕ... ---", true)
 		PlayerStats.health = PlayerStats.max_health
 		PlayerStats.sanity = PlayerStats.max_sanity
+		PlayerStats._pending_corpse = Vector2i(-1, -1)
 	await get_tree().create_timer(2.5).timeout
 	TransitionManager.change_scene("res://scenes/dungeon/safe_station.tscn")
 
