@@ -863,6 +863,7 @@ func _process(delta):
 		_check_entity()
 
 var _held_cooldown: float = 0.0
+var _world_frozen: bool = false
 
 func _process_held_input(delta: float):
 	_held_cooldown -= delta
@@ -888,7 +889,7 @@ func _check_entity():
 	for ent: Dictionary in _entities:
 		if ent.grid_x == rx and ent.grid_y == ry:
 			if ent.type == "enemy":
-				_is_animating = true  # freeze player movement during transition
+				_world_frozen = true
 				PlayerStats._pending_corpse = Vector2i(ent.grid_x, ent.grid_y)
 				TransitionManager.change_scene("res://scenes/battle/node.tscn")
 	var tile_val: int = _map_data[ry][rx] if ry < _map_data.size() and rx < _map_data[0].size() else TILE_WALL
@@ -896,7 +897,7 @@ func _check_entity():
 		_ask_leave_station()
 
 func _update_enemies(delta: float):
-	if _is_animating: return
+	if _world_frozen: return
 	for ent in _entities:
 		if ent.type != "enemy": continue
 		if ent.get("move_progress", 1.0) < 1.0:
