@@ -86,6 +86,7 @@ pivot_offset = Vector2(575, 320)
 mouse_filter = 2
 
 [node name="MainHUD" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=1663626559]
+z_index = 1
 texture_filter = 1
 layout_mode = 0
 offset_right = 1151.0

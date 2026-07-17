@@ -741,9 +741,9 @@ func _setup_hud():
 func _toggle_window(win: TextureRect, open_ref: bool, on_pos: Vector2, off_pos: Vector2) -> bool:
 	var tw := create_tween()
 	if open_ref:
-		tw.tween_property(win, "position", off_pos, 0.35).set_ease(Tween.EASE_IN)
+		tw.tween_property(win, "position", off_pos, 0.2).set_ease(Tween.EASE_IN)
 	else:
-		tw.tween_property(win, "position", on_pos, 0.35).set_ease(Tween.EASE_OUT)
+		tw.tween_property(win, "position", on_pos, 0.2).set_ease(Tween.EASE_OUT)
 	return not open_ref
 
 func _shake_hud():
