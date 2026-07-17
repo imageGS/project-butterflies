@@ -4,6 +4,13 @@
 [ext_resource type="Script" uid="uid://dklw7i5r0a06u" path="res://scripts/dungeon/test_dungeon_mechanics.gd" id="2_r7h3n"]
 [ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="3_r657h"]
 [ext_resource type="Texture2D" uid="uid://3aub1ayemjdp" path="res://assets/textures/UI_BACK.png" id="5_r657h"]
+[ext_resource type="Texture2D" path="res://assets/UI/MAIN_HUD.png" id="6_hud"]
+[ext_resource type="Texture2D" path="res://assets/UI/UL_WINDOW.png" id="7_hud"]
+[ext_resource type="Texture2D" path="res://assets/UI/DL_WINDOW.png" id="8_hud"]
+[ext_resource type="Texture2D" path="res://assets/UI/UL_BALL.png" id="9_hud"]
+[ext_resource type="Texture2D" path="res://assets/UI/UR_BALL.png" id="10_hud"]
+[ext_resource type="Texture2D" path="res://assets/UI/DL_BALL.png" id="11_hud"]
+[ext_resource type="Texture2D" path="res://assets/UI/DR_BALL.png" id="12_hud"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
 viewport_path = NodePath("CRT_Root/GameViewport")
@@ -121,3 +128,48 @@ offset_top = -41.0
 offset_right = 869.0
 offset_bottom = -1.0
 scale = Vector2(5.238067, 2.3961504)
+
+[node name="HUDOverlay" type="Control" parent="CRT_Root/GameViewport/UI"]
+z_index = 5
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="MainHUD" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
+layout_mode = 0
+mouse_filter = 2
+texture = ExtResource("6_hud")
+
+[node name="UL_Window" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
+layout_mode = 0
+mouse_filter = 2
+texture = ExtResource("7_hud")
+
+[node name="DL_Window" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
+layout_mode = 0
+mouse_filter = 2
+texture = ExtResource("8_hud")
+
+[node name="UL_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
+layout_mode = 0
+mouse_filter = 2
+texture = ExtResource("9_hud")
+
+[node name="UR_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
+layout_mode = 0
+mouse_filter = 2
+texture = ExtResource("10_hud")
+
+[node name="DL_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
+layout_mode = 0
+mouse_filter = 2
+texture = ExtResource("11_hud")
+
+[node name="DR_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
+layout_mode = 0
+mouse_filter = 2
+texture = ExtResource("12_hud")
