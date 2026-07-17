@@ -450,6 +450,11 @@ func _unhandled_input(event):
 					var old_dir = _player_dir
 					_player_dir = (_player_dir + 1) % 4
 					_start_rotate(old_dir)
+			KEY_R:
+				if not _dialogue_active:
+					var old_dir = _player_dir
+					_player_dir = (_player_dir + 2) % 4
+					_start_rotate(old_dir)
 			KEY_Q:
 				if not _dialogue_active:
 					_try_strafe_left()
