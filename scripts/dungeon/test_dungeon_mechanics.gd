@@ -1064,7 +1064,7 @@ func _try_awareness():
 		, CONNECT_ONE_SHOT)
 
 func _build_height_data():
-	if _map_data.is_empty(): return
+	if _map_data.is_empty() or not _renderer: return
 	_renderer.height_data = []
 	for y in _map_data.size():
 		var row: Array = []; row.resize(_map_data[y].size()); row.fill(0.0)
@@ -1080,7 +1080,6 @@ func _build_height_data():
 func _refresh():
 	if _renderer:
 		_renderer.update_view(_player_x + 0.5, _player_y + 0.5, _current_angle, _map_data, _entities)
-		_renderer.update_height(_renderer.height_data)
 	if _label:
 		_label.text = DIR_NAMES[_player_dir]
 	if _minimap_ctrl:
