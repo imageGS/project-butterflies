@@ -90,6 +90,7 @@ var _ul_on_pos: Vector2
 var _dl_on_pos: Vector2
 var _ul_off_pos: Vector2
 var _dl_off_pos: Vector2
+var _minimap_ctrl: MinimapControl
 
 @export var shelter_mode: bool = false
 @export var station_data: StationData
@@ -733,6 +734,11 @@ func _setup_hud():
 		_ul_on_pos = _ul_window.position
 		_ul_off_pos = _ul_on_pos - Vector2(_ul_window.size.x + 20, 0)
 		_ul_window.position = _ul_off_pos
+		_minimap_ctrl = MinimapControl.new()
+		_minimap_ctrl.name = "Minimap"
+		_minimap_ctrl.set_size(_ul_window.size - Vector2(20, 20))
+		_minimap_ctrl.position = Vector2(10, 10)
+		_ul_window.add_child(_minimap_ctrl)
 	if _dl_window:
 		_dl_on_pos = _dl_window.position
 		_dl_off_pos = _dl_on_pos - Vector2(_dl_window.size.x + 20, 0)
@@ -1020,6 +1026,8 @@ func _refresh():
 		_renderer.update_view(_player_x + 0.5, _player_y + 0.5, _current_angle, _map_data, _entities)
 	if _label:
 		_label.text = DIR_NAMES[_player_dir]
+	if _minimap_ctrl:
+		_minimap_ctrl.update_map(_map_data, roundi(_player_x), roundi(_player_y))
 
 func _build_from_station_data():
 	var sd: StationData = station_data
