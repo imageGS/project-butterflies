@@ -12,6 +12,14 @@ class SSector:
 
 var sectors: Array[SSector] = []
 var walls: Array[SWall] = []
+var cell_sector: Array = []  # [y][x] -> sector index
+
+func get_floor_height(x: int, y: int) -> float:
+	if y < 0 or y >= cell_sector.size(): return 0.0
+	if x < 0 or x >= cell_sector[y].size(): return 0.0
+	var si: int = cell_sector[y][x]
+	if si < 0 or si >= sectors.size(): return 0.0
+	return sectors[si].floor_h
 
 func build_from_grid(map_data: Array, height_data: Array):
 	sectors.clear(); walls.clear()
@@ -29,6 +37,8 @@ func build_from_grid(map_data: Array, height_data: Array):
 				sec.color = Color(randf() * 0.3, randf() * 0.3, randf() * 0.3, 0.3)
 				_flood(map_data, visited, x, y, sec, w, h)
 				sectors.append(sec)
+
+	cell_sector = visited  # save for lookup
 
 	# Build walls for each sector
 	for si in sectors.size():
