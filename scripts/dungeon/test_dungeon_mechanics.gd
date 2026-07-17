@@ -928,15 +928,20 @@ func _try_detect(ent: Dictionary, px: int, py: int):
 	var f: int = ent.facing
 	var vec: Vector2i = DIR_VECTORS[f]
 	var dot: int = vec.x * dx + vec.y * dy
+	var dist: int = abs(ent.grid_x - px) + abs(ent.grid_y - py)
 
+	var max_range: int = 8
 	var chase_chance: float = 0.0
 	if dot > 0:
-		chase_chance = 1.0
+		max_range = 8; chase_chance = 1.0
 	elif dot == 0:
-		chase_chance = 0.5
+		max_range = 6; chase_chance = 0.5
 	else:
+		max_range = 3
 		var moving: bool = _is_animating or _dialogue_active
 		chase_chance = 0.25 if moving else 0.0
+
+	if dist > max_range: return
 
 	if randf() < chase_chance and not ent.get("chase_active", false):
 		ent.chase_active = true
@@ -990,7 +995,7 @@ func _enemy_chase(ent: Dictionary, px: int, py: int, delta: float):
 	var dist: int = abs(ent.grid_x - px) + abs(ent.grid_y - py)
 	var blocked: bool = _is_blocked(ent.grid_x, ent.grid_y, px, py)
 
-	if dist > 8 or blocked:
+	if dist > 10 or blocked:
 		var timer: float = ent.get("chase_lost_timer", 2.0) - delta
 		ent.chase_lost_timer = timer
 		if timer <= 0.0:
