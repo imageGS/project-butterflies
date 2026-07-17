@@ -80,6 +80,7 @@ var _passive_cache: Dictionary = {}
 # HUD elements above UI_BACK (z_index 5+)
 var _hud_balls: Array[TextureRect] = []
 var _hud_ball_angles: Array[float] = [0.0, 0.0, 0.0, 0.0]
+var _hud_base_pos: Vector2
 
 @export var shelter_mode: bool = false
 @export var station_data: StationData
@@ -707,9 +708,17 @@ func _select_response(idx: int):
 func _setup_hud():
 	var hud: Control = $CRT_Root/GameViewport/UI/HUDOverlay
 	if not hud: return
+	_hud_base_pos = hud.position
 	for name in ["UL_Ball", "UR_Ball", "DL_Ball", "DR_Ball"]:
 		var ball: TextureRect = hud.get_node_or_null(name)
 		if ball: _hud_balls.append(ball)
+
+func _shake_hud():
+	var hud: Control = $CRT_Root/GameViewport/UI/HUDOverlay
+	if not hud: return
+	var tw := create_tween()
+	tw.tween_property(hud, "position", _hud_base_pos + Vector2(randf_range(-3, 3), randf_range(-2, 2)), 0.04)
+	tw.tween_property(hud, "position", _hud_base_pos, 0.08)
 
 func _tick_hud_balls(delta: float):
 	for i in _hud_balls.size():
@@ -761,6 +770,7 @@ func _start_move(tx: int, ty: int):
 	if not _footstep_sounds.is_empty():
 		_footstep_player.stream = _footstep_sounds[randi() % _footstep_sounds.size()]
 		_footstep_player.play()
+	_shake_hud()
 	set_process(true)
 
 func _start_rotate(old_dir: int):
@@ -773,6 +783,7 @@ func _start_rotate(old_dir: int):
 	_anim_from_angle = DIR_ANGLES[old_dir]
 	_anim_to_angle = DIR_ANGLES[_player_dir]
 	set_process(true)
+	_shake_hud()
 
 func _process(delta):
 	_awareness_timer -= delta
