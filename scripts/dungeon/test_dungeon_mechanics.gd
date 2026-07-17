@@ -1063,9 +1063,22 @@ func _try_awareness():
 				_awareness_label.text = ""
 		, CONNECT_ONE_SHOT)
 
+func _build_height_data():
+	if _map_data.is_empty(): return
+	_renderer.height_data = []
+	for y in _map_data.size():
+		var row: Array = []; row.resize(_map_data[y].size()); row.fill(0.0)
+		_renderer.height_data.append(row)
+	# Rails = lower level
+	for y in _map_data.size():
+		for x in _map_data[y].size():
+			if _map_data[y][x] == TILE_RAIL:
+				_renderer.height_data[y][x] = -1.0
+
 func _refresh():
 	if _renderer:
 		_renderer.update_view(_player_x + 0.5, _player_y + 0.5, _current_angle, _map_data, _entities)
+		_renderer.update_height(_renderer.height_data)
 	if _label:
 		_label.text = DIR_NAMES[_player_dir]
 	if _minimap_ctrl:
@@ -1088,6 +1101,7 @@ func _build_from_station_data():
 		_map_data.append(row)
 	_player_x = float(sd.spawn.x); _player_y = float(sd.spawn.y); _player_dir = sd.spawn_dir
 	if _renderer: _renderer.fog_distance = sd.fog_distance
+	_build_height_data()
 	if sd.outer_ring:
 		# Рельсы (нижний уровень, 2 тайла сверху)
 		for x in range(0, 48): _set_tile(x, 0, TILE_RAIL); _set_tile(x, 1, TILE_RAIL)
