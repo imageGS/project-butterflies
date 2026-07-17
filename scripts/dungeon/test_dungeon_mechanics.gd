@@ -84,7 +84,8 @@ var _hud_ball_angles: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var _hud_base_pos: Vector2
 
 var _ul_window: TextureRect
-var _dl_window: TextureRect
+	var _dl_window: TextureRect
+	var _stats_panel: StatsPanel
 var _ul_open: bool = false
 var _dl_open: bool = false
 var _ul_on_pos: Vector2
@@ -553,9 +554,11 @@ func _interact_object(obj: Dictionary):
 			PlayerStats.restore_sanity(2)
 			PlayerStats.heal(2)
 			PlayerStats._limb_snapshot.clear()
+			if _stats_panel: _stats_panel.refresh()
 			_show_tip("Вы отдыхаете у " + obj_name + ". +2 Здоровье, +2 Рассудок.")
 		"hazard":
 			PlayerStats.take_damage(data.get("damage", 2))
+			if _stats_panel: _stats_panel.refresh()
 			_show_tip(data.get("description", "Ловушка!") + " -" + str(data.get("damage", 2)) + " HP.")
 
 func _update_dialogue_layout():
@@ -738,6 +741,10 @@ func _setup_hud():
 		_dl_on_pos = _dl_window.position
 		_dl_off_pos = _dl_on_pos - Vector2(_dl_window.size.x + 20, 0)
 		_dl_window.position = _dl_off_pos
+		_stats_panel = StatsPanel.new()
+		_stats_panel.set_size(_dl_window.size - Vector2(20, 20))
+		_stats_panel.position = Vector2(10, 10)
+		_dl_window.add_child(_stats_panel)
 
 func _toggle_window(win: TextureRect, open_ref: bool, on_pos: Vector2, off_pos: Vector2) -> bool:
 	var tw := create_tween()
@@ -1023,6 +1030,8 @@ func _refresh():
 		_label.text = DIR_NAMES[_player_dir]
 	if _minimap_ctrl:
 		_minimap_ctrl.update_map(_map_data, roundi(_player_x), roundi(_player_y))
+	if _stats_panel:
+		_stats_panel.refresh()
 
 func _build_from_station_data():
 	var sd: StationData = station_data
