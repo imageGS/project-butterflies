@@ -437,32 +437,39 @@ func _unhandled_input(event):
 			KEY_W, KEY_UP:
 				if not _dialogue_active:
 					_try_move_forward()
+					_held_cooldown = 0.12
 			KEY_S, KEY_DOWN:
 				if not _dialogue_active:
 					_try_move_backward()
+					_held_cooldown = 0.12
 			KEY_A, KEY_LEFT:
 				if not _dialogue_active:
 					var old_dir = _player_dir
 					_player_dir = (_player_dir + 3) % 4
 					_start_rotate(old_dir)
+					_held_cooldown = 0.08
 			KEY_D, KEY_RIGHT:
 				if not _dialogue_active:
 					var old_dir = _player_dir
 					_player_dir = (_player_dir + 1) % 4
 					_start_rotate(old_dir)
+					_held_cooldown = 0.08
 			KEY_R:
 				if not _dialogue_active:
 					var old_dir = _player_dir
 					_player_dir = (_player_dir + 2) % 4
 					_start_rotate(old_dir)
+					_held_cooldown = 0.08
 			KEY_Q:
 				if not _dialogue_active:
 					_try_strafe_left()
+					_held_cooldown = 0.12
 			KEY_E:
 				if _dialogue_active:
 					_advance_dialogue()
 				elif not _dialogue_active:
 					_try_strafe_right()
+					_held_cooldown = 0.12
 			KEY_SPACE, KEY_F:
 				if _dialogue_active:
 					_advance_dialogue()
