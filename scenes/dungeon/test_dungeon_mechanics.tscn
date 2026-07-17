@@ -179,9 +179,18 @@ offset_bottom = -67.0
 mouse_filter = 2
 
 [node name="DungeonView" type="Control" parent="CRT_Root/GameViewport/UI/CentralViewport" unique_id=1947318723]
-anchors_preset = 0
-offset_right = 858.0
-offset_bottom = 449.0
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -508.0
+offset_top = -183.5
+offset_right = 513.0
+offset_bottom = 277.5
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_k2c7o")
 
 [node name="InfoLabel" type="Label" parent="CRT_Root/GameViewport/UI/CentralViewport/DungeonView" unique_id=597423150]

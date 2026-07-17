@@ -78,6 +78,9 @@ var _passive_cache: Dictionary = {}
 @onready var _awareness_label: Label = $CRT_Root/GameViewport/UI/AwarenessLabel
 
 # HUD elements above UI_BACK (z_index 5+)
+var _hud_balls: Array[TextureRect] = []
+var _hud_ball_angles: Array[float] = [0.0, 0.0, 0.0, 0.0]
+var _prev_player_angle: float = 0.0
 
 @export var shelter_mode: bool = false
 @export var station_data: StationData
@@ -88,6 +91,7 @@ func _ready():
 	_current_angle = DIR_ANGLES[_player_dir]
 	_setup_dialogue_ui()
 	_setup_audio()
+	_setup_hud()
 	_refresh()
 	if shelter_mode:
 		return
@@ -701,8 +705,22 @@ func _select_response(idx: int):
 	else:
 		_go_to_node(chosen.get("next_fail", chosen.get("next", -1)))
 
+func _setup_hud():
+	var hud: Control = $CRT_Root/GameViewport/UI/HUDOverlay
+	if not hud: return
+	for name in ["UL_Ball", "UR_Ball", "DL_Ball", "DR_Ball"]:
+		var ball: TextureRect = hud.get_node_or_null(name)
+		if ball: _hud_balls.append(ball)
+
+func _tick_hud_balls(delta: float):
+	var angle_delta: float = abs(_current_angle - _prev_player_angle)
+	_prev_player_angle = _current_angle
+	if angle_delta < 0.001: return
+	for i in _hud_balls.size():
+		_hud_ball_angles[i] += angle_delta * 0.5 + delta * 0.3
+		_hud_balls[i].rotation = _hud_ball_angles[i]
+
 func _ask_leave_station():
-	var dest: String = "res://scenes/dungeon/test_dungeon_mechanics.tscn" if shelter_mode else "res://scenes/dungeon/safe_station.tscn"
 	var exit_dialogue := [
 		{ "text": "Выход из станции. Уйти?", "responses": [
 			{ "text": "Да, уйти в убежище.", "next": 1 },
@@ -767,6 +785,7 @@ func _process(delta):
 		_try_awareness()
 
 	_update_enemies(delta)
+	_tick_hud_balls(delta)
 
 	if not _is_animating:
 		return
