@@ -69,22 +69,17 @@ func _draw():
 		# Height step: check floor diff between wall cell and previous
 		var step_h: float = 0.0
 		if not height_data.is_empty():
-			var ph: float = _height_at(result.mx - step_x, result.my - step_y) if result.hit else 0.0
-			var wh: float = _height_at(result.mx, result.my) if result.hit else 0.0
+			var ph: float = _height_at(result.mx - result.get("sx", 0), result.my - result.get("sy", 0))
+			var wh: float = _height_at(result.mx, result.my)
 			step_h = (ph - wh) * float(_view_h) * 0.2
 
 		if abs(step_h) > 1.0:
-			var step_top: float = wall_top + (wall_h - step_h) if step_h > 0 else wall_top
-			var step_ht: float = abs(step_h)
+			var st: float = wall_top if step_h > 0 else wall_top + wall_h
+			draw_rect(Rect2(i * _strip_w, st, _strip_w + 1, abs(step_h)), Color(0.12, 0.08, 0.05, 0.9))
 
 		var fog_blend: float = 0.0
 		if perp > fog_distance - fog_fade:
 			fog_blend = clamp((perp - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
-
-		if abs(step_h) > 1.0:
-			var step_top: float = wall_top if step_h > 0 else wall_top + wall_h
-			var step_color: Color = Color(0.12, 0.08, 0.05, 0.9)
-			draw_rect(Rect2(i * _strip_w, step_top, _strip_w + 1, abs(step_h)), step_color)
 
 		if _wall_tex:
 			var wall_x: float = result.get("wall_x", 0.0)
@@ -220,7 +215,6 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var side: int = 0
 	var hit: bool = false
 	var steps: int = int(fog_distance * 3.0) + 3
-	var max_dist: float = fog_distance * fog_distance
 	while steps > 0:
 		steps -= 1
 		if side_x < side_y:
@@ -241,10 +235,10 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var perp: float = side_x - delta_x if side == 0 else side_y - delta_y
 	if perp < 0.0: perp = 0.0
 	if not hit or perp > fog_distance * 1.5:
-		return { "hit": false, "distance": fog_distance * 1.5, "fog": true }
+		return { "hit": false, "distance": fog_distance * 1.5, "fog": true, "sx": 0, "sy": 0 }
 	var wall_x: float = oy + perp * dir.y if side == 0 else ox + perp * dir.x
 	wall_x -= floor(wall_x)
-	return { "hit": true, "distance": perp, "fog": false, "side": side, "mx": map_x, "my": map_y, "wall_x": wall_x, "rdx": dir.x, "rdy": dir.y }
+	return { "hit": true, "distance": perp, "fog": false, "side": side, "mx": map_x, "my": map_y, "wall_x": wall_x, "rdx": dir.x, "rdy": dir.y, "sx": step_x, "sy": step_y }
 
 func _draw_fog():
 	var depth: float = _view_w * 0.35
