@@ -168,8 +168,6 @@ func _setup_view():
 	if _view_h <= 0: _view_h = 449
 
 func _draw_floor_rows(hh: float):
-
-func _draw_floor_rows(hh: float):
 	for y in range(_view_h):
 		var t: float = float(y) / float(_view_h)
 		if y < hh:
