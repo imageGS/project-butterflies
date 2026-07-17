@@ -19,6 +19,7 @@ const TILE_SPECIAL := 5
 const TILE_BLOCKED := 6
 const TILE_EXIT := 7
 const TILE_ITEM := 8
+const TILE_RAIL := 9
 
 @export var move_duration: float = 0.25
 @export var turn_duration: float = 0.2
@@ -1088,7 +1089,12 @@ func _build_from_station_data():
 	_player_x = float(sd.spawn.x); _player_y = float(sd.spawn.y); _player_dir = sd.spawn_dir
 	if _renderer: _renderer.fog_distance = sd.fog_distance
 	if sd.outer_ring:
-		_carve(2, 1, 45, 2)
+		# Рельсы (нижний уровень, 2 тайла сверху)
+		for x in range(0, 48): _set_tile(x, 0, TILE_RAIL); _set_tile(x, 1, TILE_RAIL)
+		# Лестница вниз с рельс
+		_carve(9, 2, 11, 4, TILE_STAIRS)
+		# Внешнее кольцо (сдвинуто, уступает рельсам)
+		_carve(2, 2, 45, 2)
 		_carve(2, 44, 45, 45)
 		_carve(1, 3, 2, 43)
 		_carve(45, 3, 46, 43)

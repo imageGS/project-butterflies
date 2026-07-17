@@ -1,7 +1,8 @@
 extends Control
 
 const TILE_WALL: int = 1
-const TILE_BLOCKED: int = 6
+	const TILE_BLOCKED: int = 6
+const TILE_RAIL: int = 9
 
 var cam_x: float = 1.5
 var cam_y: float = 1.5
@@ -162,6 +163,11 @@ func _setup_view():
 
 func _draw_floor_ceiling():
 	var half_h: float = _view_h / 2.0
+	var dir_x0: float = cos(player_angle - deg_to_rad(45.0))
+	var dir_y0: float = sin(player_angle - deg_to_rad(45.0))
+	var dir_x1: float = cos(player_angle + deg_to_rad(45.0))
+	var dir_y1: float = sin(player_angle + deg_to_rad(45.0))
+
 	for y in range(_view_h):
 		var t: float = float(y) / float(_view_h)
 		if y < half_h:
@@ -169,14 +175,27 @@ func _draw_floor_ceiling():
 			draw_rect(Rect2(0, y, _view_w, 1), c)
 		else:
 			var row_dist: float = half_h / float(y - half_h + 1)
-			var fog_f: float = clamp((row_dist - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0) if row_dist > fog_distance - fog_fade else 0.0
-			if fog_f >= 0.99:
-				draw_rect(Rect2(0, y, _view_w, 1), fog_color)
-			else:
-				var c: Color = Color(0.06, 0.05, 0.04).lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
-				if fog_f > 0.0:
-					c = c.lerp(fog_color, fog_f)
-				draw_rect(Rect2(0, y, _view_w, 1), c)
+			var px: float = cam_x + row_dist * dir_x0
+			var py: float = cam_y + row_dist * dir_y0
+			var fstep_x: float = row_dist * (dir_x1 - dir_x0) / float(_view_w)
+			var fstep_y: float = row_dist * (dir_y1 - dir_y0) / float(_view_w)
+			for x in range(0, _view_w, _strip_w):
+				var cell_x: int = int(floor(px))
+				var cell_y: int = int(floor(py))
+				if cell_x >= 0 and cell_x < map_data[0].size() and cell_y >= 0 and cell_y < map_data.size():
+					var tile: int = map_data[cell_y][cell_x]
+					if tile == TILE_RAIL:
+						draw_rect(Rect2(x, y, _strip_w + 1, 1), Color(0.3, 0.25, 0.2))
+					else:
+						var fog_f: float = clamp((row_dist - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0) if row_dist > fog_distance - fog_fade else 0.0
+						if fog_f >= 0.99:
+							draw_rect(Rect2(x, y, _strip_w + 1, 1), fog_color)
+						else:
+							var c: Color = Color(0.06, 0.05, 0.04).lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
+							if fog_f > 0.0: c = c.lerp(fog_color, fog_f)
+							draw_rect(Rect2(x, y, _strip_w + 1, 1), c)
+				px += fstep_x * _strip_w
+				py += fstep_y * _strip_w
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var dir: Vector2 = Vector2(cos(angle), sin(angle))

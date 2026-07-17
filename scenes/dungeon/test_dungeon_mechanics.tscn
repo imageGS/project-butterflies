@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://r533lqkw3jph" path="res://scripts/dungeon/dungeon_renderer.gd" id="1_k2c7o"]
 [ext_resource type="Script" uid="uid://dklw7i5r0a06u" path="res://scripts/dungeon/test_dungeon_mechanics.gd" id="2_r7h3n"]
 [ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="3_r657h"]
-[ext_resource type="Resource" path="res://resources/stations/akio.tres" id="15_stn"]
 [ext_resource type="Texture2D" uid="uid://betg18dylynfi" path="res://assets/UI/MAIN_HUD.png" id="6_hud"]
 [ext_resource type="Texture2D" uid="uid://bg25w0ouqo151" path="res://assets/UI/UL_WINDOW.png" id="7_hud"]
 [ext_resource type="Texture2D" uid="uid://blrunhkjpqr2d" path="res://assets/UI/DL_WINDOW.png" id="8_hud"]
@@ -12,6 +11,7 @@
 [ext_resource type="Texture2D" uid="uid://8yxie12b1xfd" path="res://assets/UI/DL_BALL.png" id="11_hud"]
 [ext_resource type="Texture2D" uid="uid://cgjm604m48xsd" path="res://assets/UI/DR_BALL.png" id="12_hud"]
 [ext_resource type="Script" uid="uid://bobjk5jnoroeq" path="res://scripts/ui/minimap_control.gd" id="13_hud"]
+[ext_resource type="Resource" path="res://resources/stations/akio.tres" id="15_stn"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
 viewport_path = NodePath("CRT_Root/GameViewport")
