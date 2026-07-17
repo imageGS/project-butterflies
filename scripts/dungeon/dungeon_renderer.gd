@@ -66,17 +66,6 @@ func _draw():
 		var wall_h: float = _view_h / perp
 		var wall_top: float = half_h - wall_h * 0.5
 
-		# Height step: check floor diff between wall cell and previous
-		var step_h: float = 0.0
-		if not height_data.is_empty():
-			var ph: float = _height_at(result.mx - result.get("sx", 0), result.my - result.get("sy", 0))
-			var wh: float = _height_at(result.mx, result.my)
-			step_h = (ph - wh) * float(_view_h) * 0.2
-
-		if abs(step_h) > 1.0:
-			var st: float = wall_top if step_h > 0 else wall_top + wall_h
-			draw_rect(Rect2(i * _strip_w, st, _strip_w + 1, abs(step_h)), Color(0.12, 0.08, 0.05, 0.9))
-
 		var fog_blend: float = 0.0
 		if perp > fog_distance - fog_fade:
 			fog_blend = clamp((perp - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
@@ -182,11 +171,22 @@ func _setup_view():
 	if _view_h <= 0: _view_h = 449
 
 func _draw_floor_ceiling(hh: float):
+	var on_rails: bool = false
+	if _rail_tex and not height_data.is_empty():
+		var px: int = int(floor(cam_x))
+		var py: int = int(floor(cam_y))
+		if px >= 0 and py >= 0 and py < height_data.size() and px < height_data[0].size():
+			on_rails = height_data[py][px] < -0.5
+
 	for y in range(_view_h):
 		var t: float = float(y) / float(_view_h)
 		if y < hh:
 			var c: Color = Color(0.03, 0.03, 0.04).lerp(Color(0.0, 0.0, 0.0), t * 2.0)
 			draw_rect(Rect2(0, y, _view_w, 1), c)
+		elif on_rails:
+			if y == int(hh):
+				var fh: float = _view_h - hh
+				draw_texture_rect(_rail_tex, Rect2(0, hh, _view_w + 1, fh + 1), false)
 		else:
 			var c: Color = Color(0.06, 0.05, 0.04).lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
 			draw_rect(Rect2(0, y, _view_w, 1), c)
@@ -204,6 +204,7 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var side: int = 0
 	var hit: bool = false
 	var steps: int = int(fog_distance * 3.0) + 3
+	var max_dist: float = fog_distance * fog_distance
 	while steps > 0:
 		steps -= 1
 		if side_x < side_y:
@@ -224,10 +225,10 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var perp: float = side_x - delta_x if side == 0 else side_y - delta_y
 	if perp < 0.0: perp = 0.0
 	if not hit or perp > fog_distance * 1.5:
-		return { "hit": false, "distance": fog_distance * 1.5, "fog": true, "sx": 0, "sy": 0 }
+		return { "hit": false, "distance": fog_distance * 1.5, "fog": true }
 	var wall_x: float = oy + perp * dir.y if side == 0 else ox + perp * dir.x
 	wall_x -= floor(wall_x)
-	return { "hit": true, "distance": perp, "fog": false, "side": side, "mx": map_x, "my": map_y, "wall_x": wall_x, "rdx": dir.x, "rdy": dir.y, "sx": step_x, "sy": step_y }
+	return { "hit": true, "distance": perp, "fog": false, "side": side, "mx": map_x, "my": map_y, "wall_x": wall_x, "rdx": dir.x, "rdy": dir.y }
 
 func _draw_fog():
 	var depth: float = _view_w * 0.35
@@ -241,12 +242,6 @@ func _draw_fog():
 		if a <= 0.0: break
 		draw_rect(Rect2(0, y, _view_w, 1), Color(0, 0, 0, a))
 		draw_rect(Rect2(0, _view_h - y - 1, _view_w, 1), Color(0, 0, 0, a))
-
-func _height_at(x: int, y: int) -> float:
-	if height_data.is_empty(): return 0.0
-	if x < 0 or y < 0 or y >= height_data.size(): return 0.0
-	if x >= height_data[y].size(): return 0.0
-	return height_data[y][x]
 
 func _get_ent_texture(ent: Dictionary) -> Texture2D:
 	var texs: Dictionary = ent.get("textures", {})
