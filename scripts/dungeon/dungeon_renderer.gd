@@ -1,7 +1,7 @@
 extends Control
 
 const TILE_WALL: int = 1
-	const TILE_BLOCKED: int = 6
+const TILE_BLOCKED: int = 6
 const TILE_RAIL: int = 9
 
 var cam_x: float = 1.5
