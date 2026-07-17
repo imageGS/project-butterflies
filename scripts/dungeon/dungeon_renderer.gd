@@ -18,6 +18,7 @@ var _wall_zbuf: Array[float] = []
 
 var entities_on_map: Array = []
 var _wall_tex: Texture2D = load("res://assets/textures/wall.png")
+var _rail_tex: Texture2D = load("res://assets/textures/rails.png")
 var fog_distance: float = 7.0
 var fog_fade: float = 2.5
 var fog_color: Color = Color(0.08, 0.08, 0.08)
@@ -170,11 +171,22 @@ func _setup_view():
 	if _view_h <= 0: _view_h = 449
 
 func _draw_floor_ceiling(hh: float):
+	var on_rails: bool = false
+	if _rail_tex and not height_data.is_empty():
+		var px: int = int(floor(cam_x))
+		var py: int = int(floor(cam_y))
+		if px >= 0 and py >= 0 and py < height_data.size() and px < height_data[0].size():
+			on_rails = height_data[py][px] < -0.5
+
 	for y in range(_view_h):
 		var t: float = float(y) / float(_view_h)
 		if y < hh:
 			var c: Color = Color(0.03, 0.03, 0.04).lerp(Color(0.0, 0.0, 0.0), t * 2.0)
 			draw_rect(Rect2(0, y, _view_w, 1), c)
+		elif on_rails:
+			if y == int(hh):
+				var fh: float = _view_h - hh
+				draw_texture_rect(_rail_tex, Rect2(0, hh, _view_w + 1, fh + 1), false)
 		else:
 			var c: Color = Color(0.06, 0.05, 0.04).lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
 			draw_rect(Rect2(0, y, _view_w, 1), c)
