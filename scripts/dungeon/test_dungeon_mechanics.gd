@@ -861,19 +861,19 @@ func _process_held_input(delta: float):
 	_held_cooldown -= delta
 	if _held_cooldown > 0.0 or _dialogue_active: return
 	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
-		_try_move_forward(); _held_cooldown = 0.06
+		_try_move_forward(); _held_cooldown = 0.15
 	elif Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
-		_try_move_backward(); _held_cooldown = 0.06
+		_try_move_backward(); _held_cooldown = 0.15
 	elif Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
-		var old = _player_dir; _player_dir = (_player_dir + 3) % 4; _start_rotate(old); _held_cooldown = 0.06
+		var old = _player_dir; _player_dir = (_player_dir + 3) % 4; _start_rotate(old); _held_cooldown = 0.10
 	elif Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
-		var old = _player_dir; _player_dir = (_player_dir + 1) % 4; _start_rotate(old); _held_cooldown = 0.06
+		var old = _player_dir; _player_dir = (_player_dir + 1) % 4; _start_rotate(old); _held_cooldown = 0.10
 	elif Input.is_key_pressed(KEY_Q):
-		_try_strafe_left(); _held_cooldown = 0.06
+		_try_strafe_left(); _held_cooldown = 0.15
 	elif Input.is_key_pressed(KEY_E):
-		_try_strafe_right(); _held_cooldown = 0.06
+		_try_strafe_right(); _held_cooldown = 0.15
 	elif Input.is_key_pressed(KEY_R):
-		var old = _player_dir; _player_dir = (_player_dir + 2) % 4; _start_rotate(old); _held_cooldown = 0.06
+		var old = _player_dir; _player_dir = (_player_dir + 2) % 4; _start_rotate(old); _held_cooldown = 0.10
 
 func _check_entity():
 	var rx: int = roundi(_player_x)
