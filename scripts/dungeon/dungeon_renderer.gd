@@ -39,7 +39,7 @@ func _draw():
 		var px: int = int(floor(cam_x))
 		var py: int = int(floor(cam_y))
 		if px >= 0 and py >= 0 and py < height_data.size() and px < height_data[0].size():
-			height_shift = height_data[py][px] * float(_view_h) * 0.3
+			height_shift = height_data[py][px] * float(_view_h) * 0.2
 	half_h += height_shift
 
 	_draw_floor_ceiling(half_h)

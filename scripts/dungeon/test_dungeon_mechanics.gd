@@ -1074,6 +1074,8 @@ func _build_height_data():
 		for x in _map_data[y].size():
 			if _map_data[y][x] == TILE_RAIL:
 				_renderer.height_data[y][x] = -1.0
+			elif _map_data[y][x] == TILE_STAIRS:
+				_renderer.height_data[y][x] = -0.5
 
 func _refresh():
 	if _renderer:
