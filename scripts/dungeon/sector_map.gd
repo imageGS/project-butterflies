@@ -60,11 +60,11 @@ func _height_at(hd: Array, x: int, y: int) -> float:
 func _flood(map_data: Array, visited: Array, x: int, y: int, sec: SSector, w: int, h: int):
 	var queue: Array[Vector2i] = [Vector2i(x, y)]
 	while not queue.is_empty():
-		var p := queue.pop_back()
+		var p: Vector2i = queue.pop_back()
 		if visited[p.y][p.x]: continue
-		visited[p.y][p.x] = sectors.size()  # mark with sector index
+		visited[p.y][p.x] = sectors.size()
 		for d in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
-			var nx := p.x + d.x; var ny := p.y + d.y
+			var nx: int = p.x + d.x; var ny: int = p.y + d.y
 			if nx >= 0 and ny >= 0 and nx < w and ny < h:
 				if _is_walkable(map_data, nx, ny) and not visited[ny][nx]:
 					queue.append(Vector2i(nx, ny))
@@ -85,13 +85,12 @@ func _find_walls(map_data: Array, visited: Array, sec: SSector, si: int, w: int,
 
 	var processed: Dictionary = {}
 	for key in edges.keys():
-		var parts := key.split(",")
-		var ax := int(parts[0]); var ay := int(parts[1])
-		var bx := int(parts[2]); var by := int(parts[3])
+		var parts: PackedStringArray = key.split(",")
+		var ax: int = int(parts[0]); var ay: int = int(parts[1])
+		var bx: int = int(parts[2]); var by: int = int(parts[3])
 
-		# Find portal: which sector is on the other side?
 		var portal: int = -1
-		var px := bx; var py := by
+		var px: int = bx; var py: int = by
 		if px >= 0 and py >= 0 and px < w and py < h and _is_walkable(map_data, px, py):
 			var ns := visited[py][px] if visited[py][px] is int else -1
 			if ns >= 0 and ns != si:
