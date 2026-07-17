@@ -1,65 +1,14 @@
-[gd_resource type="Resource" script_class="EnemyData" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="EnemyData" format=3 uid="uid://ckdy4d3i0fmku"]
 
-[ext_resource type="Script" path="res://scripts/resources/enemy_data.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/resources/limb_data.gd" id="2"]
-[ext_resource type="Script" path="res://scripts/resources/limb_action.gd" id="3"]
-
-[sub_resource type="Resource" id="act_head"]
-script = ExtResource("3")
-action_name = "Визг"
-dmg = 0
-desc = "Оглушает, −2 к agility игрока"
-
-[sub_resource type="Resource" id="act_arm_r"]
-script = ExtResource("3")
-action_name = "Удар лапой"
-dmg = 5
-desc = "Мощный удар когтями"
+[ext_resource type="Script" uid="uid://47f2e3l5b0j0" path="res://scripts/resources/enemy_data.gd" id="1"]
+[ext_resource type="Script" uid="uid://bmjkbsj8l23gb" path="res://scripts/resources/limb_data.gd" id="2"]
+[ext_resource type="Script" uid="uid://c6q28xcvi8ms0" path="res://scripts/resources/limb_action.gd" id="3"]
 
 [sub_resource type="Resource" id="act_arm_l"]
 script = ExtResource("3")
 action_name = "Царапанье"
 dmg = 3
 desc = "Быстрая атака, трудно увернуться"
-
-[sub_resource type="Resource" id="act_leg_r"]
-script = ExtResource("3")
-action_name = "Пинок"
-dmg = 4
-desc = "Удар задней лапой"
-
-[sub_resource type="Resource" id="act_leg_l"]
-script = ExtResource("3")
-action_name = "Прыжок"
-dmg = 1
-desc = "Уклоняется, +2 DC для игрока на ход"
-
-[sub_resource type="Resource" id="act_torso"]
-script = ExtResource("3")
-action_name = "Толчок"
-dmg = 2
-desc = "Толкает корпусом"
-
-[sub_resource type="Resource" id="ld_head"]
-script = ExtResource("2")
-limb_name = "head"
-hp = 8
-debuff = "пропуск хода"
-action = SubResource("act_head")
-
-[sub_resource type="Resource" id="ld_torso"]
-script = ExtResource("2")
-limb_name = "torso"
-hp = 14
-debuff = "удвоение урона по пулу"
-action = SubResource("act_torso")
-
-[sub_resource type="Resource" id="ld_arm_r"]
-script = ExtResource("2")
-limb_name = "arm_right"
-hp = 8
-debuff = "нет сильной атаки"
-action = SubResource("act_arm_r")
 
 [sub_resource type="Resource" id="ld_arm_l"]
 script = ExtResource("2")
@@ -68,12 +17,36 @@ hp = 8
 debuff = "нет быстрой атаки"
 action = SubResource("act_arm_l")
 
-[sub_resource type="Resource" id="ld_leg_r"]
+[sub_resource type="Resource" id="act_arm_r"]
+script = ExtResource("3")
+action_name = "Удар лапой"
+dmg = 5
+desc = "Мощный удар когтями"
+
+[sub_resource type="Resource" id="ld_arm_r"]
 script = ExtResource("2")
-limb_name = "leg_right"
+limb_name = "arm_right"
 hp = 8
-debuff = "штраф к защите"
-action = SubResource("act_leg_r")
+debuff = "нет сильной атаки"
+action = SubResource("act_arm_r")
+
+[sub_resource type="Resource" id="act_head"]
+script = ExtResource("3")
+action_name = "Визг"
+desc = "Оглушает, −2 к agility игрока"
+
+[sub_resource type="Resource" id="ld_head"]
+script = ExtResource("2")
+limb_name = "head"
+hp = 8
+debuff = "пропуск хода"
+action = SubResource("act_head")
+
+[sub_resource type="Resource" id="act_leg_l"]
+script = ExtResource("3")
+action_name = "Прыжок"
+dmg = 1
+desc = "Уклоняется, +2 DC для игрока на ход"
 
 [sub_resource type="Resource" id="ld_leg_l"]
 script = ExtResource("2")
@@ -82,12 +55,35 @@ hp = 8
 debuff = "штраф к защите"
 action = SubResource("act_leg_l")
 
+[sub_resource type="Resource" id="act_leg_r"]
+script = ExtResource("3")
+action_name = "Пинок"
+dmg = 4
+desc = "Удар задней лапой"
+
+[sub_resource type="Resource" id="ld_leg_r"]
+script = ExtResource("2")
+limb_name = "leg_right"
+hp = 8
+debuff = "штраф к защите"
+action = SubResource("act_leg_r")
+
+[sub_resource type="Resource" id="act_torso"]
+script = ExtResource("3")
+action_name = "Толчок"
+dmg = 2
+desc = "Толкает корпусом"
+
+[sub_resource type="Resource" id="ld_torso"]
+script = ExtResource("2")
+limb_name = "torso"
+hp = 14
+debuff = "удвоение урона по пулу"
+action = SubResource("act_torso")
+
 [resource]
 script = ExtResource("1")
 char_name = "Крыса-падальщик"
-total_hp = 20
-stamina = 3
-agility = 5
 head = SubResource("ld_head")
 torso = SubResource("ld_torso")
 arm_right = SubResource("ld_arm_r")

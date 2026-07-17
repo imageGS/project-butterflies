@@ -75,7 +75,9 @@ var _passive_cache: Dictionary = {}
 
 @onready var _renderer: Control = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView
 @onready var _label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/InfoLabel
-@onready var _awareness_label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/AwarenessLabel
+@onready var _awareness_label: Label = $CRT_Root/GameViewport/UI/AwarenessLabel
+
+# HUD elements above UI_BACK (z_index 5+)
 
 @export var shelter_mode: bool = false
 @export var station_data: StationData
