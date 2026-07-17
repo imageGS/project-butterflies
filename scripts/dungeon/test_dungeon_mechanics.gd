@@ -84,8 +84,8 @@ var _hud_ball_angles: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var _hud_base_pos: Vector2
 
 var _ul_window: TextureRect
-	var _dl_window: TextureRect
-	var _stats_panel: StatsPanel
+var _dl_window: TextureRect
+var _stats_panel: StatsPanel
 var _ul_open: bool = false
 var _dl_open: bool = false
 var _ul_on_pos: Vector2
