@@ -41,6 +41,9 @@ func _draw():
 	_y_lo.resize(num_strips); _y_hi.resize(num_strips)
 	for i in range(num_strips):
 		_y_lo[i] = 0.0; _y_hi[i] = float(_view_h)
+
+	# Fast per-row floor/ceiling behind walls
+	_draw_floor_rows(half_h)
 	_wall_zbuf.resize(num_strips)
 
 	for i in range(num_strips):
@@ -87,18 +90,6 @@ func _draw():
 			_draw_wall(i, wall_top, wall_bot, perp, result)
 			_y_lo[i] = max(_y_lo[i], wall_bot)
 			_y_hi[i] = min(_y_hi[i], wall_top)
-
-	for i in range(num_strips):
-		# Ceiling: from top to wall_top
-		for y in range(0, int(_y_hi[i])):
-			var t: float = float(y) / float(_view_h)
-			var c: Color = Color(0.03, 0.03, 0.04).lerp(Color(0.0, 0.0, 0.0), t * 2.0)
-			draw_rect(Rect2(i * _strip_w, y, _strip_w + 1, 1), c)
-		# Floor: from wall_bot to bottom
-		for y in range(int(_y_lo[i]), int(_view_h)):
-			var t: float = float(y) / float(_view_h)
-			var c: Color = Color(0.06, 0.05, 0.04).lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
-			draw_rect(Rect2(i * _strip_w, y, _strip_w + 1, 1), c)
 
 	var dir_x: float = cos(player_angle)
 	var dir_y: float = sin(player_angle)
@@ -176,23 +167,16 @@ func _setup_view():
 	if _view_w <= 0: _view_w = 858
 	if _view_h <= 0: _view_h = 449
 
-func _draw_floor_ceiling(hh: float):
-	var floor_color: Color = Color(0.06, 0.05, 0.04)
-	if not height_data.is_empty():
-		var px: int = int(floor(cam_x))
-		var py: int = int(floor(cam_y))
-		if px >= 0 and py >= 0 and py < height_data.size() and px < height_data[0].size():
-			var h: float = height_data[py][px]
-			if h < -0.5: floor_color = Color(0.12, 0.07, 0.04)
-			elif h < -0.1: floor_color = Color(0.09, 0.06, 0.04)
+func _draw_floor_rows(hh: float):
 
+func _draw_floor_rows(hh: float):
 	for y in range(_view_h):
 		var t: float = float(y) / float(_view_h)
 		if y < hh:
 			var c: Color = Color(0.03, 0.03, 0.04).lerp(Color(0.0, 0.0, 0.0), t * 2.0)
 			draw_rect(Rect2(0, y, _view_w, 1), c)
 		else:
-			var c: Color = floor_color.lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
+			var c: Color = Color(0.06, 0.05, 0.04).lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
 			draw_rect(Rect2(0, y, _view_w, 1), c)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
