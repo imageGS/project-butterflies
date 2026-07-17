@@ -1087,6 +1087,24 @@ func _build_from_station_data():
 		_map_data.append(row)
 	_player_x = float(sd.spawn.x); _player_y = float(sd.spawn.y); _player_dir = sd.spawn_dir
 	if _renderer: _renderer.fog_distance = sd.fog_distance
+	if sd.outer_ring:
+		_carve(2, 1, 45, 2)
+		_carve(2, 44, 45, 45)
+		_carve(1, 3, 2, 43)
+		_carve(45, 3, 46, 43)
+		_carve_diag(6, 6, 18, 18)
+		_carve_diag(40, 8, 28, 20)
+		_carve_diag(10, 40, 24, 28)
+		_carve(35, 22, 37, 24)
+		_set_tile(36, 23, TILE_ITEM); _set_tile(34, 22, TILE_DOOR)
+		_set_tile(2, 46, TILE_ITEM)
+		# spiral
+		var spiral: Array[Vector2i] = [Vector2i(24,20),Vector2i(24,19),Vector2i(23,19),Vector2i(22,19),Vector2i(22,20),Vector2i(22,21),Vector2i(23,21),Vector2i(24,21),Vector2i(24,22),Vector2i(25,22),Vector2i(25,21),Vector2i(25,20),Vector2i(25,19),Vector2i(25,18),Vector2i(24,18),Vector2i(23,18),Vector2i(22,18),Vector2i(22,17),Vector2i(23,17),Vector2i(24,17),Vector2i(25,17),Vector2i(25,16),Vector2i(24,16),Vector2i(23,16),Vector2i(22,16),Vector2i(22,15),Vector2i(23,15),Vector2i(24,15),Vector2i(25,15),Vector2i(25,14),Vector2i(24,14),Vector2i(23,14),Vector2i(23,13),Vector2i(24,13),Vector2i(25,13),Vector2i(25,12),Vector2i(24,12),Vector2i(23,12),Vector2i(23,11),Vector2i(24,11),Vector2i(25,11),Vector2i(25,10),Vector2i(24,10),Vector2i(23,10)]
+		for pt in spiral: _set_tile(pt.x, pt.y, TILE_FLOOR)
+		_set_tile(24, 24, TILE_FLOOR); _set_tile(46, 46, TILE_FLOOR)
+		_set_tile(19, 22, TILE_FLOOR); _carve(19, 20, 20, 21); _set_tile(19, 20, TILE_ITEM)
+		_set_tile(3, 5, TILE_ITEM); _set_tile(45, 9, TILE_ITEM); _set_tile(7, 33, TILE_ITEM); _set_tile(41, 37, TILE_ITEM); _set_tile(15, 43, TILE_ITEM)
+		_set_tile(10, 1, TILE_EXIT); _set_tile(2, 10, TILE_EXIT); _set_tile(46, 10, TILE_EXIT)
 
 func _build_shelter():
 	if station_data:

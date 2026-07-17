@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StationData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/station_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+station_name = "Акио"
+map_file = "res://resources/stations/maps/akio.txt"
+spawn = Vector2i(10, 3)
+spawn_dir = 2
+outer_ring = true
+fog_distance = 7.0
+shelter_mode = false

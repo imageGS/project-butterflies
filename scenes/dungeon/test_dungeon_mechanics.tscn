@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://r533lqkw3jph" path="res://scripts/dungeon/dungeon_renderer.gd" id="1_k2c7o"]
 [ext_resource type="Script" uid="uid://dklw7i5r0a06u" path="res://scripts/dungeon/test_dungeon_mechanics.gd" id="2_r7h3n"]
 [ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="3_r657h"]
+[ext_resource type="Resource" path="res://resources/stations/akio.tres" id="15_stn"]
 [ext_resource type="Texture2D" uid="uid://betg18dylynfi" path="res://assets/UI/MAIN_HUD.png" id="6_hud"]
 [ext_resource type="Texture2D" uid="uid://bg25w0ouqo151" path="res://assets/UI/UL_WINDOW.png" id="7_hud"]
 [ext_resource type="Texture2D" uid="uid://blrunhkjpqr2d" path="res://assets/UI/DL_WINDOW.png" id="8_hud"]
@@ -31,6 +32,7 @@ shader_parameter/wobble_strength = 0.302000014345
 
 [node name="TestDungeon" type="Node" unique_id=1919637851]
 script = ExtResource("2_r7h3n")
+station_data = ExtResource("15_stn")
 
 [node name="CRT_Root" type="Control" parent="." unique_id=640219047]
 layout_mode = 3
