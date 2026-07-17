@@ -82,6 +82,15 @@ var _hud_balls: Array[TextureRect] = []
 var _hud_ball_angles: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var _hud_base_pos: Vector2
 
+var _ul_window: TextureRect
+var _dl_window: TextureRect
+var _ul_open: bool = false
+var _dl_open: bool = false
+var _ul_on_pos: Vector2
+var _dl_on_pos: Vector2
+var _ul_off_pos: Vector2
+var _dl_off_pos: Vector2
+
 @export var shelter_mode: bool = false
 @export var station_data: StationData
 
@@ -452,6 +461,12 @@ func _unhandled_input(event):
 					_advance_dialogue()
 				else:
 					_try_interact()
+			KEY_M:
+				if not _dialogue_active and _ul_window:
+					_ul_open = _toggle_window(_ul_window, _ul_open, _ul_on_pos, _ul_off_pos)
+			KEY_H:
+				if not _dialogue_active and _dl_window:
+					_dl_open = _toggle_window(_dl_window, _dl_open, _dl_on_pos, _dl_off_pos)
 			KEY_1:
 				if _dialogue_active:
 					_select_response(0)
@@ -712,6 +727,24 @@ func _setup_hud():
 	for name in ["UL_Ball", "UR_Ball", "DL_Ball", "DR_Ball"]:
 		var ball: TextureRect = hud.get_node_or_null(name)
 		if ball: _hud_balls.append(ball)
+	_ul_window = hud.get_node_or_null("UL_Window")
+	_dl_window = hud.get_node_or_null("DL_Window")
+	if _ul_window:
+		_ul_on_pos = _ul_window.position
+		_ul_off_pos = _ul_on_pos - Vector2(_ul_window.size.x + 20, 0)
+		_ul_window.position = _ul_off_pos
+	if _dl_window:
+		_dl_on_pos = _dl_window.position
+		_dl_off_pos = _dl_on_pos - Vector2(_dl_window.size.x + 20, 0)
+		_dl_window.position = _dl_off_pos
+
+func _toggle_window(win: TextureRect, open_ref: bool, on_pos: Vector2, off_pos: Vector2) -> bool:
+	var tw := create_tween()
+	if open_ref:
+		tw.tween_property(win, "position", off_pos, 0.35).set_ease(Tween.EASE_IN)
+	else:
+		tw.tween_property(win, "position", on_pos, 0.35).set_ease(Tween.EASE_OUT)
+	return not open_ref
 
 func _shake_hud():
 	var hud: Control = $CRT_Root/GameViewport/UI/HUDOverlay
