@@ -35,13 +35,6 @@ func _draw():
 	var fov: float = deg_to_rad(90.0)
 	var num_strips: int = int(float(_view_w) / _strip_w)
 	var half_h: float = _view_h / 2.0
-	var height_shift: float = 0.0
-	if not height_data.is_empty():
-		var px: int = int(floor(cam_x))
-		var py: int = int(floor(cam_y))
-		if px >= 0 and py >= 0 and py < height_data.size() and px < height_data[0].size():
-			height_shift = height_data[py][px] * float(_view_h) * 0.2
-	half_h += height_shift
 
 	_draw_floor_ceiling(half_h)
 	_wall_zbuf.resize(num_strips)
@@ -65,31 +58,30 @@ func _draw():
 
 		var wall_h: float = _view_h / perp
 		var wall_top: float = half_h - wall_h * 0.5
-		var wall_bot: float = half_h + wall_h * 0.5
 
 		var fog_blend: float = 0.0
 		if perp > fog_distance - fog_fade:
 			fog_blend = clamp((perp - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
 
-		# Height sections
-		if not height_data.is_empty():
-			var wh: float = _height_at(result.mx, result.my)
-			var ph: float = _height_at(result.mx - result.get("sx", 0), result.my - result.get("sy", 0))
-			var diff: float = (ph - wh) * float(_view_h) * 0.25
-			if abs(diff) > 3.0:
-				var step_h: float = abs(diff)
-				var step_c: Color = Color(0.1, 0.07, 0.04, 1.0)
-				if diff > 0: # step UP (wall below step)
-					var mid_top: float = wall_bot - step_h
-					_draw_wall_segment(i * _strip_w, wall_top, mid_top, perp, result, _wall_tex, fog_blend)
-					_draw_wall_segment(i * _strip_w, mid_top, wall_bot, perp, result, null, fog_blend, step_c)
-				else: # step DOWN (wall above step, step at bottom)
-					var mid_bot: float = wall_top + step_h
-					_draw_wall_segment(i * _strip_w, wall_top, mid_bot, perp, result, _wall_tex, fog_blend)
-					_draw_wall_segment(i * _strip_w, mid_bot, wall_bot, perp, result, null, fog_blend, step_c)
-				continue
-
-		_draw_wall_segment(i * _strip_w, wall_top, wall_bot, perp, result, _wall_tex, fog_blend)
+		if _wall_tex:
+			var wall_x: float = result.get("wall_x", 0.0)
+			var tex_w: float = _wall_tex.get_width()
+			var tex_h: float = _wall_tex.get_height()
+			var tex_xx: int = int(wall_x * tex_w)
+			if (result.side == 0 and result.get("rdx", 0.0) > 0) or (result.side == 1 and result.get("rdy", 0.0) < 0):
+				tex_xx = int(tex_w) - tex_xx - 1
+			var shade: float = clamp(1.0 - perp * 0.04, 0.3, 1.0)
+			if result.side == 1: shade *= 0.7
+			shade = lerp(shade, 0.0, fog_blend)
+			var region: Rect2 = Rect2(tex_xx, 0, 1, tex_h)
+			draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), region, Color(shade, shade, shade))
+		else:
+			var c: Color = Color(0.4, 0.4, 0.5)
+			if result.side == 0: c = Color(0.3, 0.3, 0.4)
+			var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
+			shade = lerp(shade, 0.0, fog_blend)
+			c *= shade
+			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
 
 	var dir_x: float = cos(player_angle)
 	var dir_y: float = sin(player_angle)
@@ -99,10 +91,8 @@ func _draw():
 
 	var visible_entities: Array[Dictionary] = []
 	for ent: Dictionary in entities_on_map:
-		var ex: float = ent.get("anim_x", float(ent.grid_x))
-		var ey: float = ent.get("anim_y", float(ent.grid_y))
-		var sprite_x: float = ex + 0.5 - cam_x
-		var sprite_y: float = ey + 0.5 - cam_y
+		var sprite_x: float = ent.grid_x + 0.5 - cam_x
+		var sprite_y: float = ent.grid_y + 0.5 - cam_y
 		var dist: float = sqrt(sprite_x * sprite_x + sprite_y * sprite_y)
 		if dist < 0.01: continue
 
