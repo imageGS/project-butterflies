@@ -75,7 +75,7 @@ func _find_walls(map_data: Array, visited: Array, sec: SSector, si: int, w: int,
 		for x in range(w):
 			if visited[y][x] != si: continue
 			for d in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
-				var nx := x + d.x; var ny := y + d.y
+				var nx: int = x + d.x; var ny: int = y + d.y
 				if nx < 0 or ny < 0 or nx >= w or ny >= h: continue
 				if not _is_walkable(map_data, nx, ny) or (visited[ny][nx] != si and _height_at(hd, nx, ny) != sec.floor_h):
 					var key := "%d,%d-%d,%d" % [x, y, nx, ny]
@@ -92,7 +92,7 @@ func _find_walls(map_data: Array, visited: Array, sec: SSector, si: int, w: int,
 		var portal: int = -1
 		var px: int = bx; var py: int = by
 		if px >= 0 and py >= 0 and px < w and py < h and _is_walkable(map_data, px, py):
-			var ns := visited[py][px] if visited[py][px] is int else -1
+			var ns: int = visited[py][px] if visited[py][px] is int else -1
 			if ns >= 0 and ns != si:
 				portal = ns
 
