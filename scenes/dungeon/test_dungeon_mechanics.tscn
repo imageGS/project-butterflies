@@ -3,14 +3,13 @@
 [ext_resource type="Script" uid="uid://r533lqkw3jph" path="res://scripts/dungeon/dungeon_renderer.gd" id="1_k2c7o"]
 [ext_resource type="Script" uid="uid://dklw7i5r0a06u" path="res://scripts/dungeon/test_dungeon_mechanics.gd" id="2_r7h3n"]
 [ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="3_r657h"]
-[ext_resource type="Texture2D" uid="uid://3aub1ayemjdp" path="res://assets/textures/UI_BACK.png" id="5_r657h"]
-[ext_resource type="Texture2D" path="res://assets/UI/MAIN_HUD.png" id="6_hud"]
-[ext_resource type="Texture2D" path="res://assets/UI/UL_WINDOW.png" id="7_hud"]
-[ext_resource type="Texture2D" path="res://assets/UI/DL_WINDOW.png" id="8_hud"]
-[ext_resource type="Texture2D" path="res://assets/UI/UL_BALL.png" id="9_hud"]
-[ext_resource type="Texture2D" path="res://assets/UI/UR_BALL.png" id="10_hud"]
-[ext_resource type="Texture2D" path="res://assets/UI/DL_BALL.png" id="11_hud"]
-[ext_resource type="Texture2D" path="res://assets/UI/DR_BALL.png" id="12_hud"]
+[ext_resource type="Texture2D" uid="uid://betg18dylynfi" path="res://assets/UI/MAIN_HUD.png" id="6_hud"]
+[ext_resource type="Texture2D" uid="uid://bg25w0ouqo151" path="res://assets/UI/UL_WINDOW.png" id="7_hud"]
+[ext_resource type="Texture2D" uid="uid://blrunhkjpqr2d" path="res://assets/UI/DL_WINDOW.png" id="8_hud"]
+[ext_resource type="Texture2D" uid="uid://rm4c8x6mp622" path="res://assets/UI/UL_BALL.png" id="9_hud"]
+[ext_resource type="Texture2D" uid="uid://vtg71r31y8xt" path="res://assets/UI/UR_BALL.png" id="10_hud"]
+[ext_resource type="Texture2D" uid="uid://8yxie12b1xfd" path="res://assets/UI/DL_BALL.png" id="11_hud"]
+[ext_resource type="Texture2D" uid="uid://cgjm604m48xsd" path="res://assets/UI/DR_BALL.png" id="12_hud"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
 viewport_path = NodePath("CRT_Root/GameViewport")
@@ -20,7 +19,7 @@ resource_local_to_scene = true
 shader = ExtResource("3_r657h")
 shader_parameter/tex = SubResource("ViewportTexture_dg")
 shader_parameter/mask_type = 4
-shader_parameter/curve = 0.0970000046075
+shader_parameter/curve = 0.10000000475
 shader_parameter/sharpness = 0.7050000097375
 shader_parameter/color_offset = 0.01000002422500001
 shader_parameter/mask_brightness = 0.60800002888
@@ -68,35 +67,108 @@ offset_right = 1076.0
 offset_bottom = 608.0
 mouse_filter = 2
 
+[node name="HUDOverlay" type="Control" parent="CRT_Root/GameViewport/UI" unique_id=1888815722]
+z_index = 5
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -576.0
+offset_top = -577.0
+offset_right = -576.0
+offset_bottom = -577.0
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(1.02, 1.02)
+pivot_offset = Vector2(575, 320)
+mouse_filter = 2
+
+[node name="MainHUD" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=1663626559]
+texture_filter = 1
+layout_mode = 0
+offset_right = 1151.0
+offset_bottom = 648.0
+mouse_filter = 2
+texture = ExtResource("6_hud")
+
+[node name="UL_Window" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=273676026]
+texture_filter = 1
+layout_mode = 0
+offset_left = 85.0
+offset_top = 86.0
+offset_right = 311.0
+offset_bottom = 329.57776
+mouse_filter = 2
+texture = ExtResource("7_hud")
+
+[node name="DL_Window" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=596758343]
+texture_filter = 1
+layout_mode = 0
+offset_left = 91.0
+offset_top = 320.0
+offset_right = 276.0
+offset_bottom = 511.09888
+mouse_filter = 2
+texture = ExtResource("8_hud")
+
+[node name="UL_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=453953751]
+texture_filter = 1
+layout_mode = 0
+offset_left = 3.0
+offset_top = 7.0
+offset_right = 118.0
+offset_bottom = 122.0
+pivot_offset = Vector2(58, 58)
+mouse_filter = 2
+texture = ExtResource("9_hud")
+
+[node name="UR_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=1930964928]
+texture_filter = 1
+layout_mode = 0
+offset_left = 1040.0
+offset_top = 9.0
+offset_right = 1148.0
+offset_bottom = 117.0
+pivot_offset = Vector2(54, 54)
+mouse_filter = 2
+texture = ExtResource("10_hud")
+
+[node name="DL_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=303494574]
+texture_filter = 1
+layout_mode = 0
+offset_left = 1040.0
+offset_top = 524.0
+offset_right = 1143.0
+offset_bottom = 627.0
+pivot_offset = Vector2(52, 52)
+mouse_filter = 2
+texture = ExtResource("11_hud")
+
+[node name="DR_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=66377144]
+texture_filter = 1
+layout_mode = 0
+offset_left = 7.0
+offset_top = 508.0
+offset_right = 125.0
+offset_bottom = 626.0
+pivot_offset = Vector2(59, 59)
+mouse_filter = 2
+texture = ExtResource("12_hud")
+
 [node name="AwarenessLabel" type="Label" parent="CRT_Root/GameViewport/UI" unique_id=1640949735]
 z_index = 5
 layout_mode = 0
 offset_left = 266.0
 offset_top = -40.0
-offset_right = 723.0
-offset_bottom = 50.0
+offset_right = 714.0
+offset_bottom = 32.0
 theme_override_colors/font_color = Color(0.9, 0.85, 0.7, 1)
 theme_override_font_sizes/font_size = 16
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 1
-
-[node name="UI_BACK" type="TextureRect" parent="CRT_Root/GameViewport/UI" unique_id=1145214484]
-z_index = 4
-texture_filter = 1
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -75.99999
-offset_top = -546.0
-offset_right = -76.0
-offset_bottom = -248.0
-grow_horizontal = 2
-grow_vertical = 2
-scale = Vector2(1.151004, 1.8065076)
-mouse_filter = 2
-texture = ExtResource("5_r657h")
 
 [node name="CentralViewport" type="Control" parent="CRT_Root/GameViewport/UI" unique_id=919060473]
 anchors_preset = 0
@@ -120,56 +192,3 @@ offset_right = 200.0
 offset_bottom = 40.0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 18
-
-[node name="TEST_OBJECT" type="Control" parent="CRT_Root/GameViewport/UI" unique_id=340066635]
-anchors_preset = 0
-offset_left = 829.0
-offset_top = -41.0
-offset_right = 869.0
-offset_bottom = -1.0
-scale = Vector2(5.238067, 2.3961504)
-
-[node name="HUDOverlay" type="Control" parent="CRT_Root/GameViewport/UI"]
-z_index = 5
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
-[node name="MainHUD" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
-layout_mode = 0
-mouse_filter = 2
-texture = ExtResource("6_hud")
-
-[node name="UL_Window" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
-layout_mode = 0
-mouse_filter = 2
-texture = ExtResource("7_hud")
-
-[node name="DL_Window" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
-layout_mode = 0
-mouse_filter = 2
-texture = ExtResource("8_hud")
-
-[node name="UL_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
-layout_mode = 0
-mouse_filter = 2
-texture = ExtResource("9_hud")
-
-[node name="UR_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
-layout_mode = 0
-mouse_filter = 2
-texture = ExtResource("10_hud")
-
-[node name="DL_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
-layout_mode = 0
-mouse_filter = 2
-texture = ExtResource("11_hud")
-
-[node name="DR_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay"]
-layout_mode = 0
-mouse_filter = 2
-texture = ExtResource("12_hud")
