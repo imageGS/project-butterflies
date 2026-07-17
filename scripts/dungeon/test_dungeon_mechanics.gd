@@ -76,6 +76,7 @@ var _passive_cache: Dictionary = {}
 @onready var _renderer: Control = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView
 @onready var _label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/InfoLabel
 @onready var _awareness_label: Label = $CRT_Root/GameViewport/UI/AwarenessLabel
+@onready var _minimap_ctrl: MinimapControl = $CRT_Root/GameViewport/UI/HUDOverlay/UL_Window/Minimap
 
 # HUD elements above UI_BACK (z_index 5+)
 var _hud_balls: Array[TextureRect] = []
@@ -90,7 +91,6 @@ var _ul_on_pos: Vector2
 var _dl_on_pos: Vector2
 var _ul_off_pos: Vector2
 var _dl_off_pos: Vector2
-var _minimap_ctrl: MinimapControl
 
 @export var shelter_mode: bool = false
 @export var station_data: StationData
@@ -734,11 +734,6 @@ func _setup_hud():
 		_ul_on_pos = _ul_window.position
 		_ul_off_pos = _ul_on_pos - Vector2(_ul_window.size.x + 20, 0)
 		_ul_window.position = _ul_off_pos
-		_minimap_ctrl = MinimapControl.new()
-		_minimap_ctrl.name = "Minimap"
-		_minimap_ctrl.set_size(_ul_window.size - Vector2(20, 20))
-		_minimap_ctrl.position = Vector2(10, 10)
-		_ul_window.add_child(_minimap_ctrl)
 	if _dl_window:
 		_dl_on_pos = _dl_window.position
 		_dl_off_pos = _dl_on_pos - Vector2(_dl_window.size.x + 20, 0)

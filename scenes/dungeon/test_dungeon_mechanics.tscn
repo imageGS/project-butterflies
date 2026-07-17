@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" uid="uid://vtg71r31y8xt" path="res://assets/UI/UR_BALL.png" id="10_hud"]
 [ext_resource type="Texture2D" uid="uid://8yxie12b1xfd" path="res://assets/UI/DL_BALL.png" id="11_hud"]
 [ext_resource type="Texture2D" uid="uid://cgjm604m48xsd" path="res://assets/UI/DR_BALL.png" id="12_hud"]
+[ext_resource type="Script" path="res://scripts/ui/minimap_control.gd" id="13_hud"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
 viewport_path = NodePath("CRT_Root/GameViewport")
@@ -103,6 +104,14 @@ offset_right = 311.0
 offset_bottom = 329.57776
 mouse_filter = 2
 texture = ExtResource("7_hud")
+
+[node name="Minimap" type="Control" parent="CRT_Root/GameViewport/UI/HUDOverlay/UL_Window"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 215.0
+offset_bottom = 230.0
+script = ExtResource("13_hud")
 
 [node name="DL_Window" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=596758343]
 texture_filter = 1
