@@ -856,8 +856,6 @@ func _process(delta):
 		_check_entity()
 		_process_held_input()
 
-func _check_entity():
-
 func _process_held_input():
 	if _dialogue_active: return
 	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
@@ -1038,7 +1036,6 @@ func _show_tip(msg: String):
 func _try_awareness():
 	if _dialogue_active:
 		return
-	if event is InputEventKey and event.pressed and not event.echo:
 	if not _awareness_label:
 		return
 	var result := SkillCheck.check(PlayerStats.get_skill("intuition"), 12)
