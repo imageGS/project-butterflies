@@ -1101,7 +1101,6 @@ func _build_from_station_data():
 		_map_data.append(row)
 	_player_x = float(sd.spawn.x); _player_y = float(sd.spawn.y); _player_dir = sd.spawn_dir
 	if _renderer: _renderer.fog_distance = sd.fog_distance
-	_build_height_data()
 	if sd.outer_ring:
 		# Рельсы (нижний уровень, 2 тайла сверху)
 		for x in range(0, 48): _set_tile(x, 0, TILE_RAIL); _set_tile(x, 1, TILE_RAIL)
@@ -1125,6 +1124,7 @@ func _build_from_station_data():
 		_set_tile(19, 22, TILE_FLOOR); _carve(19, 20, 20, 21); _set_tile(19, 20, TILE_ITEM)
 		_set_tile(3, 5, TILE_ITEM); _set_tile(45, 9, TILE_ITEM); _set_tile(7, 33, TILE_ITEM); _set_tile(41, 37, TILE_ITEM); _set_tile(15, 43, TILE_ITEM)
 		_set_tile(10, 1, TILE_EXIT); _set_tile(2, 10, TILE_EXIT); _set_tile(46, 10, TILE_EXIT)
+	_build_height_data()
 
 func _build_shelter():
 	if station_data:
