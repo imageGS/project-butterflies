@@ -66,9 +66,25 @@ func _draw():
 		var wall_h: float = _view_h / perp
 		var wall_top: float = half_h - wall_h * 0.5
 
+		# Height step: check floor diff between wall cell and previous
+		var step_h: float = 0.0
+		if not height_data.is_empty():
+			var ph: float = _height_at(result.mx - step_x, result.my - step_y) if result.hit else 0.0
+			var wh: float = _height_at(result.mx, result.my) if result.hit else 0.0
+			step_h = (ph - wh) * float(_view_h) * 0.2
+
+		if abs(step_h) > 1.0:
+			var step_top: float = wall_top + (wall_h - step_h) if step_h > 0 else wall_top
+			var step_ht: float = abs(step_h)
+
 		var fog_blend: float = 0.0
 		if perp > fog_distance - fog_fade:
 			fog_blend = clamp((perp - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
+
+		if abs(step_h) > 1.0:
+			var step_top: float = wall_top if step_h > 0 else wall_top + wall_h
+			var step_color: Color = Color(0.12, 0.08, 0.05, 0.9)
+			draw_rect(Rect2(i * _strip_w, step_top, _strip_w + 1, abs(step_h)), step_color)
 
 		if _wall_tex:
 			var wall_x: float = result.get("wall_x", 0.0)
@@ -242,6 +258,12 @@ func _draw_fog():
 		if a <= 0.0: break
 		draw_rect(Rect2(0, y, _view_w, 1), Color(0, 0, 0, a))
 		draw_rect(Rect2(0, _view_h - y - 1, _view_w, 1), Color(0, 0, 0, a))
+
+func _height_at(x: int, y: int) -> float:
+	if height_data.is_empty(): return 0.0
+	if x < 0 or y < 0 or y >= height_data.size(): return 0.0
+	if x >= height_data[y].size(): return 0.0
+	return height_data[y][x]
 
 func _get_ent_texture(ent: Dictionary) -> Texture2D:
 	var texs: Dictionary = ent.get("textures", {})
