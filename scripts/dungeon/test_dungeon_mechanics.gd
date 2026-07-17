@@ -80,7 +80,6 @@ var _passive_cache: Dictionary = {}
 # HUD elements above UI_BACK (z_index 5+)
 var _hud_balls: Array[TextureRect] = []
 var _hud_ball_angles: Array[float] = [0.0, 0.0, 0.0, 0.0]
-var _prev_player_angle: float = 0.0
 
 @export var shelter_mode: bool = false
 @export var station_data: StationData
@@ -713,11 +712,8 @@ func _setup_hud():
 		if ball: _hud_balls.append(ball)
 
 func _tick_hud_balls(delta: float):
-	var angle_delta: float = abs(_current_angle - _prev_player_angle)
-	_prev_player_angle = _current_angle
-	if angle_delta < 0.001: return
 	for i in _hud_balls.size():
-		_hud_ball_angles[i] += angle_delta * 0.5 + delta * 0.3
+		_hud_ball_angles[i] += delta * 1.2
 		_hud_balls[i].rotation = _hud_ball_angles[i]
 
 func _ask_leave_station():
