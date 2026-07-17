@@ -852,7 +852,28 @@ func _process(delta):
 	_refresh()
 	if t >= 1.0:
 		_is_animating = false
+		set_process(false)
 		_check_entity()
+		_process_held_input()
+
+func _check_entity():
+
+func _process_held_input():
+	if _dialogue_active: return
+	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+		_try_move_forward()
+	elif Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		_try_move_backward()
+	elif Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+		var old = _player_dir; _player_dir = (_player_dir + 3) % 4; _start_rotate(old)
+	elif Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		var old = _player_dir; _player_dir = (_player_dir + 1) % 4; _start_rotate(old)
+	elif Input.is_key_pressed(KEY_Q):
+		_try_strafe_left()
+	elif Input.is_key_pressed(KEY_E):
+		_try_strafe_right()
+	elif Input.is_key_pressed(KEY_R):
+		var old = _player_dir; _player_dir = (_player_dir + 2) % 4; _start_rotate(old)
 
 func _check_entity():
 	var rx: int = roundi(_player_x)
@@ -1017,6 +1038,7 @@ func _show_tip(msg: String):
 func _try_awareness():
 	if _dialogue_active:
 		return
+	if event is InputEventKey and event.pressed and not event.echo:
 	if not _awareness_label:
 		return
 	var result := SkillCheck.check(PlayerStats.get_skill("intuition"), 12)
