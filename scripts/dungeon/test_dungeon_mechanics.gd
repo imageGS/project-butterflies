@@ -1065,20 +1065,17 @@ func _try_awareness():
 
 func _build_height_data():
 	if _map_data.is_empty() or not _renderer: return
-	# Build old height_data for SectorMap construction
-	_renderer.height_data = []
+	var hd: Array = []
 	for y in _map_data.size():
 		var row: Array = []; row.resize(_map_data[y].size()); row.fill(0.0)
-		_renderer.height_data.append(row)
+		hd.append(row)
 	for y in _map_data.size():
 		for x in _map_data[y].size():
-			if _map_data[y][x] == TILE_RAIL:
-				_renderer.height_data[y][x] = -1.0
-			elif _map_data[y][x] == TILE_STAIRS:
-				_renderer.height_data[y][x] = -0.5
-	# Build sector map
+			var tile: int = _map_data[y][x]
+			if tile == TILE_RAIL: hd[y][x] = -1.0
+			elif tile == TILE_STAIRS: hd[y][x] = -0.5
 	var sm := SectorMap.new()
-	sm.build_from_grid(_map_data, _renderer.height_data)
+	sm.build_from_grid(_map_data, hd)
 	_renderer.sector_map = sm
 
 func _refresh():
