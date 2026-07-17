@@ -163,13 +163,20 @@ func _setup_view():
 
 func _draw_floor_ceiling():
 	var half_h: float = _view_h / 2.0
+	var on_rails: bool = false
+	var px: int = int(floor(cam_x))
+	var py: int = int(floor(cam_y))
+	if px >= 0 and py >= 0 and py < map_data.size() and px < map_data[0].size():
+		on_rails = map_data[py][px] == TILE_RAIL
+	var floor_top: Color = Color(0.25, 0.2, 0.15) if on_rails else Color(0.06, 0.05, 0.04)
+
 	for y in range(_view_h):
 		var t: float = float(y) / float(_view_h)
 		if y < half_h:
 			var c: Color = Color(0.03, 0.03, 0.04).lerp(Color(0.0, 0.0, 0.0), t * 2.0)
 			draw_rect(Rect2(0, y, _view_w, 1), c)
 		else:
-			var c: Color = Color(0.06, 0.05, 0.04).lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
+			var c: Color = floor_top.lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
 			draw_rect(Rect2(0, y, _view_w, 1), c)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
