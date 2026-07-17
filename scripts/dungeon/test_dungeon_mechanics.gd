@@ -841,6 +841,7 @@ func _process(delta):
 	_tick_hud_balls(delta)
 
 	if not _is_animating:
+		_process_held_input(delta)
 		return
 	_anim_timer += delta
 	var dur: float = turn_duration if _anim_from_angle != _anim_to_angle and _anim_from_x == _anim_to_x else move_duration
@@ -852,26 +853,27 @@ func _process(delta):
 	_refresh()
 	if t >= 1.0:
 		_is_animating = false
-		set_process(false)
 		_check_entity()
-		_process_held_input()
 
-func _process_held_input():
-	if _dialogue_active: return
+var _held_cooldown: float = 0.0
+
+func _process_held_input(delta: float):
+	_held_cooldown -= delta
+	if _held_cooldown > 0.0 or _dialogue_active: return
 	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
-		_try_move_forward()
+		_try_move_forward(); _held_cooldown = 0.06
 	elif Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
-		_try_move_backward()
+		_try_move_backward(); _held_cooldown = 0.06
 	elif Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
-		var old = _player_dir; _player_dir = (_player_dir + 3) % 4; _start_rotate(old)
+		var old = _player_dir; _player_dir = (_player_dir + 3) % 4; _start_rotate(old); _held_cooldown = 0.06
 	elif Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
-		var old = _player_dir; _player_dir = (_player_dir + 1) % 4; _start_rotate(old)
+		var old = _player_dir; _player_dir = (_player_dir + 1) % 4; _start_rotate(old); _held_cooldown = 0.06
 	elif Input.is_key_pressed(KEY_Q):
-		_try_strafe_left()
+		_try_strafe_left(); _held_cooldown = 0.06
 	elif Input.is_key_pressed(KEY_E):
-		_try_strafe_right()
+		_try_strafe_right(); _held_cooldown = 0.06
 	elif Input.is_key_pressed(KEY_R):
-		var old = _player_dir; _player_dir = (_player_dir + 2) % 4; _start_rotate(old)
+		var old = _player_dir; _player_dir = (_player_dir + 2) % 4; _start_rotate(old); _held_cooldown = 0.06
 
 func _check_entity():
 	var rx: int = roundi(_player_x)
