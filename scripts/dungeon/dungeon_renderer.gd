@@ -275,37 +275,6 @@ func _get_ent_texture(ent: Dictionary) -> Texture2D:
 		2: return texs.get("back", null)
 		_: return texs.get("left", null)
 
-func _draw_wall_segment(sx: int, top: float, bot: float, perp: float, result: Dictionary, tex: Texture2D, fog_blend: float, override_color: Color = Color(0, 0, 0, 0)):
-	var h: float = bot - top
-	if h <= 0: return
-	if override_color.a > 0:
-		draw_rect(Rect2(sx, top, _strip_w + 1, h), override_color)
-	elif tex:
-		var wall_x: float = result.get("wall_x", 0.0)
-		var tex_w: float = tex.get_width()
-		var tex_h: float = tex.get_height()
-		var tex_xx: int = int(wall_x * tex_w)
-		if (result.side == 0 and result.get("rdx", 0.0) > 0) or (result.side == 1 and result.get("rdy", 0.0) < 0):
-			tex_xx = int(tex_w) - tex_xx - 1
-		var shade: float = clamp(1.0 - perp * 0.04, 0.3, 1.0)
-		if result.side == 1: shade *= 0.7
-		shade = lerp(shade, 0.0, fog_blend)
-		draw_texture_rect_region(tex, Rect2(sx, top, _strip_w + 1, h), Rect2(tex_xx, 0, 1, tex_h), Color(shade, shade, shade))
-	else:
-		var c: Color = Color(0.4, 0.4, 0.5)
-		if result.side == 0: c = Color(0.3, 0.3, 0.4)
-		var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
-		shade = lerp(shade, 0.0, fog_blend)
-		c *= shade
-		draw_rect(Rect2(sx, top, _strip_w + 1, h), c)
-
-func _height_at(x: int, y: int) -> float:
-	if height_data.is_empty(): return 0.0
-	if x < 0 or y < 0 or y >= height_data.size(): return 0.0
-	var row: Array = height_data[y]
-	if x >= row.size(): return 0.0
-	return row[x]
-
 func _height_at(x: int, y: int) -> float:
 	if height_data.is_empty(): return 0.0
 	if x < 0 or y < 0 or y >= height_data.size(): return 0.0
