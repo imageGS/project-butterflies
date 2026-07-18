@@ -130,12 +130,12 @@ func _render_portals(num_strips: int, half_h: float):
 			var fh: float = sec.floor_h
 			var nfh: float = sector_map.sectors[wall.portal].floor_h if wall.portal >= 0 else fh
 
-			_draw_wall_column_range(lo, hi, tz1, tz2, fh, nfh, wall.portal >= 0, half_h, y_lo, y_hi, num_strips)
+			_draw_wall_column_range(lo, hi, tz1, tz2, fh, nfh, wall.portal >= 0, half_h, y_lo, y_hi)
 
 			if wall.portal >= 0:
 				queue.append({"sector": wall.portal, "x0": lo, "x1": hi})
 
-func _draw_wall_column_range(lo: int, hi: int, tz1: float, tz2: float, fh: float, nfh: float, is_portal: bool, half_h: float, y_lo: Array[float], y_hi: Array[float], num_strips: int):
+func _draw_wall_column_range(lo: int, hi: int, tz1: float, tz2: float, fh: float, nfh: float, is_portal: bool, half_h: float, y_lo: Array[float], y_hi: Array[float]):
 	for i in range(lo, hi + 1):
 		var t: float = float(i - lo) / float(hi - lo) if hi != lo else 0.5
 		var perp: float = lerpf(tz1, tz2, t)
