@@ -139,8 +139,9 @@ func _draw():
 	for ve in visible_entities:
 		var stripe_start: int = ve.draw_x1 / _strip_w
 		var stripe_end: int = (ve.draw_x2 + _strip_w - 1) / _strip_w
-		var fog_a: float = 1.0 - clamp((ve.dist - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
-		if fog_a <= 0.0: continue
+		var fog_blend: float = clamp((ve.dist - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
+		var fmod: Color = Color.WHITE.lerp(fog_color, fog_blend)
+		fmod.a = 1.0
 		for si in range(stripe_start, stripe_end):
 			if si >= num_strips: break
 			if ve.depth >= _wall_zbuf[si]:
@@ -152,10 +153,9 @@ func _draw():
 				var reg_x: float = u * ve.tex_w
 				var reg_w: float = max(1.0, ve.tex_w / ve.spr_w * _strip_w)
 				var reg: Rect2 = Rect2(reg_x, 0, reg_w, ve.tex_h)
-				draw_texture_rect_region(ve.tex, Rect2(sx, ve.spr_y, _strip_w + 1, ve.spr_h), reg, Color(1, 1, 1, fog_a))
+				draw_texture_rect_region(ve.tex, Rect2(sx, ve.spr_y, _strip_w + 1, ve.spr_h), reg, fmod)
 			else:
-				var c: Color = ve.color; c.a = fog_a
-				draw_rect(Rect2(sx, ve.spr_y, _strip_w + 1, ve.spr_h), c)
+				draw_rect(Rect2(sx, ve.spr_y, _strip_w + 1, ve.spr_h), ve.color.lerp(fog_color, fog_blend))
 
 func _setup_view():
 	_view_w = int(size.x)
@@ -224,12 +224,12 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 func _draw_fog():
 	var depth: float = _view_w * 0.35
 	for x in range(int(depth)):
-		var a: float = clamp(1.0 - float(x) / depth, 0.0, 1.0) * 0.7
+		var a: float = clamp(1.0 - float(x) / depth, 0.0, 1.0) * 0.5
 		if a <= 0.0: break
 		draw_rect(Rect2(x, 0, 1, _view_h), Color(0, 0, 0, a))
 		draw_rect(Rect2(_view_w - x - 1, 0, 1, _view_h), Color(0, 0, 0, a))
 	for y in range(int(depth * 0.5)):
-		var a: float = clamp(1.0 - float(y) / (depth * 0.5), 0.0, 1.0) * 0.7
+		var a: float = clamp(1.0 - float(y) / (depth * 0.5), 0.0, 1.0) * 0.5
 		if a <= 0.0: break
 		draw_rect(Rect2(0, y, _view_w, 1), Color(0, 0, 0, a))
 		draw_rect(Rect2(0, _view_h - y - 1, _view_w, 1), Color(0, 0, 0, a))
