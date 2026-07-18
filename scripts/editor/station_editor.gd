@@ -266,7 +266,6 @@ func _setup_ui():
 
 	var subtype_label := Label.new(); subtype_label.text = "Subtype:"; right_panel.add_child(subtype_label)
 	_entity_subtype = OptionButton.new()
-	_entity_subtype.editable = true
 	right_panel.add_child(_entity_subtype)
 	_refresh_entity_subtype_dropdown()
 
