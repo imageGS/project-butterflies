@@ -115,67 +115,20 @@ func _setup_view():
 
 func _draw_floor_ceiling(hh: float, floor_h_override: float = 0.0):
 	var ceil_color: Color = Color(0.03, 0.03, 0.04)
-	for y in range(int(hh)):
+	var floor_color: Color = Color(0.06, 0.06, 0.07)
+	if floor_h_override < -0.5:
+		floor_color = Color(0.15, 0.07, 0.03)
+	elif floor_h_override < -0.1:
+		floor_color = Color(0.10, 0.07, 0.05)
+
+	for y in range(_view_h):
 		var t: float = float(y) / float(_view_h)
-		var c: Color = ceil_color.lerp(Color(0.0, 0.0, 0.0), t * 2.0)
-		draw_rect(Rect2(0, y, _view_w, 1), c)
-
-	if not _floor_tex: return
-
-	var focal: float = float(_view_w) * 0.5
-	var eye_h: float = 0.5
-	var tile_sz: float = 1.0
-	var tex_scale: float = 2.0
-	var max_dist: float = fog_distance + 1.0
-	var fov_half: float = deg_to_rad(45.0)
-
-	var dir_x: float = cos(player_angle)
-	var dir_y: float = sin(player_angle)
-
-	var prev_y: float = hh
-	var j: int = 1
-	while prev_y < _view_h and j * tile_sz < max_dist:
-		var d: float = j * tile_sz
-		var y_row: float = hh + eye_h * focal / d
-		if y_row > _view_h: y_row = _view_h
-		if y_row <= prev_y: j += 1; continue
-
-		var band_h: float = y_row - prev_y
-		var world_w: float = 2.0 * d * tan(fov_half)
-		var cols: int = max(1, int(ceil(world_w / tile_sz)))
-		var col_w: float = float(_view_w) / float(cols)
-
-		for ci in range(cols):
-			var sx: float = ci * col_w
-			var frac: float = (float(ci) + 0.5) / float(cols)
-			var ray_angle: float = player_angle - fov_half + frac * fov_half * 2.0
-			var wx: float = cam_x + cos(ray_angle) * d
-			var wy: float = cam_y + sin(ray_angle) * d
-
-			var tw: float = _floor_tex.get_width()
-			var th: float = _floor_tex.get_height()
-			var u0: float = fposmod(wx - tile_sz * 0.5, tex_scale) / tex_scale * tw
-			var v0: float = fposmod(wy - tile_sz * 0.5, tex_scale) / tex_scale * th
-			var u1: float = u0 + tile_sz / tex_scale * tw
-			var v1: float = v0 + tile_sz / tex_scale * th
-			var region: Rect2 = Rect2(u0, v0, u1 - u0, v1 - v0)
-
-			var fh: float = sector_map.get_floor_height(int(floor(wx)), int(floor(wy))) if sector_map else 0.0
-			var tex: Texture2D = _floor_tex
-			if fh < -0.5 and _rail_tex:
-				tex = _rail_tex
-				tw = tex.get_width(); th = tex.get_height()
-				u0 = fposmod(wx - tile_sz * 0.5, tex_scale) / tex_scale * tw
-				v0 = fposmod(wy - tile_sz * 0.5, tex_scale) / tex_scale * th
-				u1 = u0 + tile_sz / tex_scale * tw
-				v1 = v0 + tile_sz / tex_scale * th
-				region = Rect2(u0, v0, u1 - u0, v1 - v0)
-
-			var shade: float = clamp(1.0 - d / max_dist, 0.0, 1.0)
-			draw_texture_rect_region(tex, Rect2(sx, prev_y, col_w + 1, band_h), region, Color(shade, shade, shade))
-
-		prev_y = y_row
-		j += 1
+		if y < hh:
+			var c: Color = ceil_color.lerp(Color(0.0, 0.0, 0.0), t * 2.0)
+			draw_rect(Rect2(0, y, _view_w, 1), c)
+		else:
+			var c: Color = floor_color.lerp(Color(0.0, 0.0, 0.0), (t - 0.4) * 3.0)
+			draw_rect(Rect2(0, y, _view_w, 1), c)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var dir: Vector2 = Vector2(cos(angle), sin(angle))
