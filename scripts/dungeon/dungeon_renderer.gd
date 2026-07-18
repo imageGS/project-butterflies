@@ -63,6 +63,7 @@ func _setup_floor_shader():
 	_floor_shader_rect = ColorRect.new()
 	_floor_shader_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_floor_shader_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_floor_shader_rect.color = Color.TRANSPARENT
 	add_child(_floor_shader_rect)
 	move_child(_floor_shader_rect, 0)
 	var shader := load("res://shaders/floor_shader.gdshader") as Shader
