@@ -119,20 +119,16 @@ func _setup_view():
 
 func _draw_floor_ceiling(hh: float, floor_h_override: float = 0.0):
 	var ceil_color: Color = Color(0.03, 0.03, 0.04)
-	var floor_color: Color = Color(0.06, 0.07, 0.08)
-	if floor_h_override < -0.5:
-		floor_color = Color(0.2, 0.08, 0.02)
-	elif floor_h_override < -0.1:
-		floor_color = Color(0.12, 0.07, 0.04)
-
-	for y in range(_view_h):
+	for y in range(int(hh)):
 		var t: float = float(y) / float(_view_h)
-		if y < hh:
-			var c: Color = ceil_color.lerp(Color(0.0, 0.0, 0.0), t * 2.0)
-			draw_rect(Rect2(0, y, _view_w, 1), c)
-		else:
-			var c: Color = floor_color.lerp(Color(0.0, 0.0, 0.0), (t - 0.4) * 3.0)
-			draw_rect(Rect2(0, y, _view_w, 1), c)
+		var c: Color = ceil_color.lerp(Color(0.0, 0.0, 0.0), t * 2.0)
+		draw_rect(Rect2(0, y, _view_w, 1), c)
+
+	var tex: Texture2D = _floor_tex
+	if floor_h_override < -0.5 and _rail_tex:
+		tex = _rail_tex
+	if tex:
+		draw_texture_rect(tex, Rect2(0, hh, _view_w, _view_h - hh), true)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var dir: Vector2 = Vector2(cos(angle), sin(angle))
