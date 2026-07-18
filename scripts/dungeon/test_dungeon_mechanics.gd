@@ -42,7 +42,6 @@ var _anim_to_angle := 0.0
 
 var _footstep_sounds: Array = []
 var _footstep_player: AudioStreamPlayer
-var _audio_listener: AudioListener2D
 
 var _awareness_timer: float = 0.0
 var _awareness_interval: float = 8.0
@@ -760,8 +759,8 @@ func _setup_hud():
 	var hud: Control = $CRT_Root/GameViewport/UI/HUDOverlay
 	if not hud: return
 	_hud_base_pos = hud.position
-	for name in ["UL_Ball", "UR_Ball", "DL_Ball", "DR_Ball"]:
-		var ball: TextureRect = hud.get_node_or_null(name)
+	for ball_name in ["UL_Ball", "UR_Ball", "DL_Ball", "DR_Ball"]:
+		var ball: TextureRect = hud.get_node_or_null(ball_name)
 		if ball: _hud_balls.append(ball)
 	_ul_window = hud.get_node_or_null("UL_Window")
 	_dl_window = hud.get_node_or_null("DL_Window")
@@ -1161,4 +1160,3 @@ func _build_from_station_data():
 		_set_tile(3, 5, TILE_ITEM); _set_tile(45, 9, TILE_ITEM); _set_tile(7, 33, TILE_ITEM); _set_tile(41, 37, TILE_ITEM); _set_tile(15, 43, TILE_ITEM)
 		_set_tile(10, 1, TILE_EXIT); _set_tile(2, 10, TILE_EXIT); _set_tile(46, 10, TILE_EXIT)
 	_build_height_data()
-

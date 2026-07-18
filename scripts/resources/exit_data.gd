@@ -2,12 +2,14 @@ class_name ExitData
 extends Resource
 
 @export var position: Vector2i = Vector2i(-1, -1)
-@export var target_station: StationData
+@export var target_station_path: String = ""
 @export var target_spawn: Vector2i = Vector2i(-1, -1)
 @export var target_dir: int = -1
 
 func resolve_target_station() -> StationData:
-	return target_station
+	if target_station_path.is_empty():
+		return null
+	return load(target_station_path) as StationData
 
 func resolve_spawn(default_spawn: Vector2i) -> Vector2i:
 	if target_spawn.x < 0 or target_spawn.y < 0:

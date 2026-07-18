@@ -5,9 +5,7 @@ var renderer: Control
 func _draw():
 	if not renderer:
 		return
-	var r = renderer as CanvasItem
 	var half_h: float = size.y * 0.5
-	var num_strips: int = int(size.x / 4.0)
 
 	# ceiling
 	var view_h: int = int(size.y); var view_w: int = int(size.x)

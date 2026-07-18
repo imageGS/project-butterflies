@@ -123,8 +123,9 @@ func draw_walls(ci: CanvasItem):
 		var perp: float = result.distance
 		if perp < 0.01: perp = 0.01
 		_wall_zbuf[i] = perp
+		var fbl: float = 0.0
 		if result.get("fog", false):
-			var fbl: float = clamp((perp - fog_distance) / fog_fade, 0.0, 1.0)
+			fbl = clamp((perp - fog_distance) / fog_fade, 0.0, 1.0)
 			if fbl <= 0.0: continue
 			var fh: float = _view_h / perp; var ft: float = half_h - fh * 0.5
 			var fc: Color = fog_color; fc.a = fbl * 0.85
@@ -132,7 +133,6 @@ func draw_walls(ci: CanvasItem):
 			continue
 		var wall_h: float = _view_h / perp
 		var wall_top: float = half_h - wall_h * 0.5
-		var fbl: float = 0.0
 		if perp > fog_distance - fog_fade:
 			fbl = clamp((perp - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
 		if _wall_tex:
@@ -202,9 +202,9 @@ func draw_entities(ci: CanvasItem):
 	visible_entities.sort_custom(sorter)
 
 	for ve in visible_entities:
-		var ss: int = ve.dx1 / _strip_w; var se: int = (ve.dx2 + _strip_w - 1) / _strip_w
+		var ss: int = int(ve.dx1 / _strip_w); var se: int = int((ve.dx2 + _strip_w - 1) / _strip_w)
 		var fog_blend: float = clamp((ve.dist - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
-		var fmod: Color = Color.WHITE.lerp(fog_color, fog_blend); fmod.a = 1.0
+		var fog_mod: Color = Color.WHITE.lerp(fog_color, fog_blend); fog_mod.a = 1.0
 		for si in range(ss, se):
 			if si >= num_strips: break
 			if ve.depth >= _wall_zbuf[si]: continue
@@ -212,7 +212,7 @@ func draw_entities(ci: CanvasItem):
 			if ve.tex and ve.spw > 1.0:
 				var sc: float = px2 + _strip_w * 0.5; var u: float = (sc - (ve.scx - ve.spw * 0.5)) / ve.spw
 				var rx2: float = u * ve.texw; var rw: float = max(1.0, ve.texw / ve.spw * _strip_w)
-				ci.draw_texture_rect_region(ve.tex, Rect2(px2, ve.spy, _strip_w+1, ve.sph), Rect2(rx2, 0, rw, ve.texh), fmod)
+				ci.draw_texture_rect_region(ve.tex, Rect2(px2, ve.spy, _strip_w+1, ve.sph), Rect2(rx2, 0, rw, ve.texh), fog_mod)
 			else:
 				ci.draw_rect(Rect2(px2, ve.spy, _strip_w+1, ve.sph), ve.col.lerp(fog_color, fog_blend))
 
