@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="StationData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/exit_data.gd" id="1_7akmg"]
+[ext_resource type="Script" path="res://scripts/resources/station_data.gd" id="2_q50cg"]
+
+[sub_resource type="Resource" id="Resource_7akmg"]
+script = ExtResource("1_7akmg")
+position = Vector2i(0, 2)
+
+[sub_resource type="Resource" id="Resource_q50cg"]
+script = ExtResource("1_7akmg")
+position = Vector2i(0, 1)
+
+[sub_resource type="Resource" id="Resource_w0t4c"]
+script = ExtResource("1_7akmg")
+position = Vector2i(9, 1)
+
+[sub_resource type="Resource" id="Resource_wu7y4"]
+script = ExtResource("1_7akmg")
+position = Vector2i(9, 2)
+
+[resource]
+script = ExtResource("2_q50cg")
+station_name = "test"
+map_file = "res://resources/stations/maps/new_station.txt"
+spawn = Vector2i(5, 5)
+outer_ring = false
+exits = Array[ExtResource("1_7akmg")]([SubResource("Resource_7akmg"), SubResource("Resource_q50cg"), SubResource("Resource_w0t4c"), SubResource("Resource_wu7y4")])

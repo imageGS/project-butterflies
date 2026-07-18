@@ -36,6 +36,7 @@ var _map_grid: Array[Array] = []
 var _grid_width: int = 32
 var _grid_height: int = 24
 var _current_tool: String = "."
+@warning_ignore("unused_private_class_variable")
 var _draw_exit_marker: bool = true
 var _camera_offset: Vector2 = Vector2.ZERO
 var _is_dragging: bool = false
@@ -360,8 +361,10 @@ func _on_grid_input(event: InputEvent):
 					_paint_at_mouse(event.position)
 			else:
 				_is_dragging = false
-	elif event is InputEventMouseMotion and _is_dragging:
-		_paint_at_mouse(event.position)
+	elif event is InputEventMouseMotion:
+		_update_last_tile(event.position)
+		if _is_dragging:
+			_paint_at_mouse(event.position)
 
 func _set_spawn_at_mouse(pos: Vector2):
 	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * CELL_SIZE, _grid_height * CELL_SIZE) * 0.5 + _camera_offset
@@ -374,28 +377,43 @@ func _set_spawn_at_mouse(pos: Vector2):
 	_spawn_y.value = gy
 	_grid_control.queue_redraw()
 
-func _paint_at_mouse(pos: Vector2):
+func _update_last_tile(pos: Vector2):
 	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * CELL_SIZE, _grid_height * CELL_SIZE) * 0.5 + _camera_offset
 	var gx: int = int((pos.x - offset.x) / CELL_SIZE)
 	var gy: int = int((pos.y - offset.y) / CELL_SIZE)
 	if gx < 0 or gy < 0 or gy >= _grid_height or gx >= _grid_width:
 		return
 	_last_tile_pos = Vector2i(gx, gy)
+
+func _paint_at_mouse(pos: Vector2):
+	_update_last_tile(pos)
+	var gx: int = _last_tile_pos.x
+	var gy: int = _last_tile_pos.y
+	if gx < 0 or gy < 0 or gy >= _grid_height or gx >= _grid_width:
+		return
 	if _map_grid[gy][gx] != _current_tool:
 		_map_grid[gy][gx] = _current_tool
 		_grid_control.queue_redraw()
 
 func _add_exit_at_selection():
 	var pos: Vector2i = _last_tile_pos if _last_tile_pos.x >= 0 else _station_data.spawn
+	# Ensure tile at exit position is marked as Exit
+	if pos.y >= 0 and pos.y < _grid_height and pos.x >= 0 and pos.x < _grid_width:
+		_map_grid[pos.y][pos.x] = "E"
+	# Remove any existing exit at same position
+	for i in range(_station_data.exits.size() - 1, -1, -1):
+		if _station_data.exits[i].position == pos:
+			_station_data.exits.remove_at(i)
 	var e := ExitData.new()
 	e.position = pos
 	e.target_station_path = ""
 	_station_data.exits.append(e)
 	_selected_exit_index = _station_data.exits.size() - 1
+	_refresh_exit_list()
 	_exit_list.select(_selected_exit_index)
 	_on_exit_selected(_selected_exit_index)
-	_refresh_exit_list()
 	_grid_control.queue_redraw()
+	_status_label.text = "Exit added at (%d, %d)" % [pos.x, pos.y]
 
 func _on_exit_selected(index: int):
 	_selected_exit_index = index
