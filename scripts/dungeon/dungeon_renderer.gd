@@ -30,176 +30,13 @@ func _draw():
 	if _view_w == 0 or _view_h == 0:
 		_setup_view()
 
+	var fov: float = deg_to_rad(90.0)
 	var num_strips: int = int(float(_view_w) / _strip_w)
 	var half_h: float = _view_h / 2.0
-	_wall_zbuf.resize(num_strips)
-	_wall_zbuf.fill(INF)
 
-	if sector_map and sector_map.sectors.size() > 0:
-		_render_portals(num_strips, half_h)
-	else:
-		_render_dda(num_strips, half_h)
-
-	_render_entities(num_strips, half_h)
-	_draw_fog()
-
-func _setup_view():
-	_view_w = int(size.x)
-	_view_h = int(size.y)
-	if _view_w <= 0: _view_w = 858
-	if _view_h <= 0: _view_h = 449
-
-# ── Portal renderer ────────────────────────────────────────────
-
-func _render_portals(num_strips: int, half_h: float):
-	var px: int = int(floor(cam_x))
-	var py: int = int(floor(cam_y))
-	var cs: int = sector_map.cell_sector_at(px, py)
-	if cs < 0:
-		_draw_floor_ceiling(half_h, 0.0)
-		return
-
-	var y_lo: Array[float] = []; y_lo.resize(num_strips); y_lo.fill(0.0)
-	var y_hi: Array[float] = []; y_hi.resize(num_strips); y_hi.fill(float(_view_h))
-
-	var drawn: Array[bool] = []; drawn.resize(sector_map.sectors.size())
-
-	var dir_x: float = cos(player_angle)
-	var dir_y: float = sin(player_angle)
-
-	var fov_half: float = deg_to_rad(45.0)
-	var focal: float = float(_view_w) * 0.5 / tan(fov_half)
-
-	var queue: Array[Dictionary] = [{"sector": cs, "x0": 0, "x1": num_strips - 1}]
-	var cam_sec = sector_map.sectors[cs]
-
-	_draw_floor_ceiling(half_h, cam_sec.floor_h)
-
-	while not queue.is_empty():
-		var entry: Dictionary = queue.pop_back()
-		var si: int = entry.sector
-		if si < 0 or si >= sector_map.sectors.size(): continue
-		if drawn[si]: continue
-		drawn[si] = true
-
-		var sec = sector_map.sectors[si]
-		var x0: int = entry.x0
-		var x1: int = entry.x1
-
-		for wi in sec.walls:
-			var wall = sector_map.walls[wi]
-			var wx1: float = _wall_wx1(wall)
-			var wy1: float = _wall_wy1(wall)
-			var wx2: float = _wall_wx2(wall)
-			var wy2: float = _wall_wy2(wall)
-
-			var rx1: float = wx1 - cam_x
-			var ry1: float = wy1 - cam_y
-			var rx2: float = wx2 - cam_x
-			var ry2: float = wy2 - cam_y
-
-			var tx1: float = ry1 * dir_x - rx1 * dir_y
-			var tz1: float = rx1 * dir_x + ry1 * dir_y
-			var tx2: float = ry2 * dir_x - rx2 * dir_y
-			var tz2: float = rx2 * dir_x + ry2 * dir_y
-
-			if tz1 <= 0.1 and tz2 <= 0.1: continue
-
-			if tz1 <= 0.1:
-				var t: float = (0.1 - tz1) / (tz2 - tz1)
-				tx1 = tx1 + (tx2 - tx1) * t
-				tz1 = 0.1
-			if tz2 <= 0.1:
-				var t: float = (0.1 - tz2) / (tz1 - tz2)
-				tx2 = tx2 + (tx1 - tx2) * t
-				tz2 = 0.1
-
-			var sx1: float = (tx1 / tz1) * focal + float(_view_w) * 0.5
-			var sx2: float = (tx2 / tz2) * focal + float(_view_w) * 0.5
-
-			var s1: int = clampi(int(sx1 / _strip_w), 0, num_strips - 1)
-			var s2: int = clampi(int(sx2 / _strip_w), 0, num_strips - 1)
-
-			if s1 == s2: continue
-
-			var lo: int = min(s1, s2)
-			var hi: int = max(s1, s2)
-
-			if lo > x1 or hi < x0: continue
-			lo = max(lo, x0)
-			hi = min(hi, x1)
-
-			var fh: float = sec.floor_h
-			var nfh: float = sector_map.sectors[wall.portal].floor_h if wall.portal >= 0 else fh
-
-			_draw_wall_column_range(lo, hi, tz1, tz2, fh, nfh, wall.portal >= 0, half_h, y_lo, y_hi)
-
-			if wall.portal >= 0:
-				queue.append({"sector": wall.portal, "x0": lo, "x1": hi})
-
-func _draw_wall_column_range(lo: int, hi: int, tz1: float, tz2: float, fh: float, nfh: float, is_portal: bool, half_h: float, y_lo: Array[float], y_hi: Array[float]):
-	for i in range(lo, hi + 1):
-		var t: float = float(i - lo) / float(hi - lo) if hi != lo else 0.5
-		var perp: float = lerpf(tz1, tz2, t)
-		if perp < 0.1: perp = 0.1
-		_wall_zbuf[i] = minf(_wall_zbuf[i], perp)
-
-		var wall_h: float = float(_view_h) / perp
-		var wall_top: float = half_h - wall_h * 0.5
-		var wall_bot: float = half_h + wall_h * 0.5
-		wall_bot -= fh * wall_h
-
-		var shade: float = clamp(1.0 - perp * 0.04, 0.3, 1.0)
-
-		if is_portal and abs(nfh - fh) > 0.01:
-			var step: float = (fh - nfh) * wall_h
-			if step > 2.0:
-				var mid: float = wall_bot - step
-				draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, mid - wall_top), Color(0.4, 0.4, 0.5) * shade)
-				draw_rect(Rect2(i * _strip_w, mid, _strip_w + 1, wall_bot - mid), Color(0.1, 0.07, 0.04) * shade)
-				y_lo[i] = maxf(y_lo[i], wall_bot)
-				y_hi[i] = minf(y_hi[i], wall_top)
-			elif step < -2.0:
-				var mid: float = wall_top - step
-				draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, mid - wall_top), Color(0.08, 0.05, 0.03) * shade)
-				draw_rect(Rect2(i * _strip_w, mid, _strip_w + 1, wall_bot - mid), Color(0.4, 0.4, 0.5) * shade)
-				y_lo[i] = maxf(y_lo[i], wall_bot)
-				y_hi[i] = minf(y_hi[i], wall_top)
-			else:
-				draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_bot - wall_top), Color(0.4, 0.4, 0.5) * shade)
-				y_lo[i] = maxf(y_lo[i], wall_bot)
-				y_hi[i] = minf(y_hi[i], wall_top)
-		else:
-			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_bot - wall_top), Color(0.4, 0.4, 0.5) * shade)
-			y_lo[i] = maxf(y_lo[i], wall_bot)
-			y_hi[i] = minf(y_hi[i], wall_top)
-
-func _wall_wx1(wall: SectorMap.SWall) -> float:
-	if wall.x2 != wall.x1:
-		return float(max(wall.x1, wall.x2))
-	return float(wall.x1)
-
-func _wall_wy1(wall: SectorMap.SWall) -> float:
-	if wall.x2 != wall.x1:
-		return float(wall.y1)
-	return float(max(wall.y1, wall.y2))
-
-func _wall_wx2(wall: SectorMap.SWall) -> float:
-	if wall.x2 != wall.x1:
-		return float(max(wall.x1, wall.x2))
-	return float(wall.x1) + 1.0
-
-func _wall_wy2(wall: SectorMap.SWall) -> float:
-	if wall.x2 != wall.x1:
-		return float(wall.y1) + 1.0
-	return float(max(wall.y1, wall.y2))
-
-# ── DDA fallback renderer ──────────────────────────────────────
-
-func _render_dda(num_strips: int, half_h: float):
-	var fov: float = deg_to_rad(90.0)
 	var floor_h: float = sector_map.get_floor_height(int(floor(cam_x)), int(floor(cam_y))) if sector_map else 0.0
 	_draw_floor_ceiling(half_h, floor_h)
+	_wall_zbuf.resize(num_strips)
 
 	for i in range(num_strips):
 		var ray_angle: float = player_angle - fov * 0.5 + (i / float(num_strips)) * fov
@@ -220,6 +57,15 @@ func _render_dda(num_strips: int, half_h: float):
 
 		var wall_h: float = _view_h / perp
 		var wall_top: float = half_h - wall_h * 0.5
+		var wall_bot: float = half_h + wall_h * 0.5
+
+		# --- Height adjustment ---
+		var hx: int = result.get("mx", int(cam_x))
+		var hy: int = result.get("my", int(cam_y))
+		var wh: float = sector_map.get_floor_height(hx, hy) if sector_map else 0.0
+		if wh < 0.0:
+			wall_bot -= wh * wall_h
+		# --- End height adjustment ---
 
 		var fbl: float = 0.0
 		if perp > fog_distance - fog_fade:
@@ -235,14 +81,23 @@ func _render_dda(num_strips: int, half_h: float):
 			var shade: float = clamp(1.0 - perp * 0.04, 0.3, 1.0)
 			if result.side == 1: shade *= 0.7
 			shade = lerpf(shade, 0.0, fbl)
-			draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), Rect2(tex_xx, 0, 1, tex_h), Color(shade, shade, shade))
+			draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_bot - wall_top), Rect2(tex_xx, 0, 1, tex_h), Color(shade, shade, shade))
 		else:
 			var c: Color = Color(0.4, 0.4, 0.5)
 			if result.side == 0: c = Color(0.3, 0.3, 0.4)
 			var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
 			shade = lerpf(shade, 0.0, fbl)
 			c *= shade
-			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
+			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_bot - wall_top), c)
+
+	_render_entities(num_strips, half_h)
+	_draw_fog()
+
+func _setup_view():
+	_view_w = int(size.x)
+	_view_h = int(size.y)
+	if _view_w <= 0: _view_w = 858
+	if _view_h <= 0: _view_h = 449
 
 func _draw_floor_ceiling(hh: float, floor_h_override: float = 0.0):
 	var floor_color: Color = Color(0.06, 0.05, 0.04)
@@ -293,9 +148,7 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 		return { "hit": false, "distance": fog_distance * 1.5, "fog": true }
 	var wall_x: float = oy + perp * dir.y if side == 0 else ox + perp * dir.x
 	wall_x -= floor(wall_x)
-	return { "hit": true, "distance": perp, "fog": false, "side": side, "wall_x": wall_x, "rdx": dir.x, "rdy": dir.y }
-
-# ── Entities ───────────────────────────────────────────────────
+	return { "hit": true, "distance": perp, "fog": false, "side": side, "wall_x": wall_x, "rdx": dir.x, "rdy": dir.y, "mx": map_x, "my": map_y }
 
 func _render_entities(num_strips: int, half_h: float):
 	var dir_x: float = cos(player_angle)
@@ -407,8 +260,6 @@ func _get_ent_texture(ent: Dictionary) -> Texture2D:
 		1: return texs.get("right", null)
 		2: return texs.get("back", null)
 		_: return texs.get("left", null)
-
-# ── Public API ─────────────────────────────────────────────────
 
 func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array):
 	cam_x = cx
