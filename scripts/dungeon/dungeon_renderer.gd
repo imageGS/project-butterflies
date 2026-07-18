@@ -70,6 +70,9 @@ func _render_portals(num_strips: int, half_h: float):
 	var queue: Array[Dictionary] = [{"sector": cs, "x0": 0, "x1": num_strips - 1}]
 	var cam_sec = sector_map.sectors[cs]
 
+	# Fast full-frame floor/ceiling using camera sector's floor height
+	_draw_floor_ceiling(half_h, cam_sec.floor_h)
+
 	while not queue.is_empty():
 		var entry: Dictionary = queue.pop_back()
 		var si: int = entry.sector
@@ -126,14 +129,11 @@ func _render_portals(num_strips: int, half_h: float):
 
 			var fh: float = sec.floor_h
 			var nfh: float = sector_map.sectors[wall.portal].floor_h if wall.portal >= 0 else fh
-			var nch: float = sector_map.sectors[wall.portal].ceil_h if wall.portal >= 0 else sec.ceil_h
 
 			_draw_wall_column_range(lo, hi, tz1, tz2, fh, nfh, wall.portal >= 0, half_h, y_lo, y_hi, num_strips)
 
 			if wall.portal >= 0:
 				queue.append({"sector": wall.portal, "x0": lo, "x1": hi})
-
-	_draw_floor_ceiling_portal(num_strips, half_h, y_lo, y_hi, cam_sec.floor_h)
 
 func _draw_wall_column_range(lo: int, hi: int, tz1: float, tz2: float, fh: float, nfh: float, is_portal: bool, half_h: float, y_lo: Array[float], y_hi: Array[float], num_strips: int):
 	for i in range(lo, hi + 1):
@@ -191,24 +191,6 @@ func _wall_wy2(wall: SectorMap.SWall) -> float:
 	if wall.x2 != wall.x1:
 		return float(wall.y1) + 1.0
 	return float(wall.y1 + wall.y2) * 0.5
-
-func _draw_floor_ceiling_portal(num_strips: int, half_h: float, y_lo: Array[float], y_hi: Array[float], floor_h: float):
-	var fc: Color = Color(0.06, 0.05, 0.04)
-	if floor_h < -0.5:
-		fc = Color(0.12, 0.07, 0.04)
-	elif floor_h < -0.1:
-		fc = Color(0.09, 0.06, 0.04)
-
-	for i in range(num_strips):
-		var sx: int = i * _strip_w
-		for y in range(0, int(y_hi[i])):
-			var t: float = float(y) / float(_view_h)
-			var c: Color = Color(0.03, 0.03, 0.04).lerp(Color(0, 0, 0), t * 2)
-			draw_rect(Rect2(sx, y, _strip_w + 1, 1), c)
-		for y in range(int(y_lo[i]), _view_h):
-			var t: float = float(y) / float(_view_h)
-			var c: Color = fc.lerp(Color(0, 0, 0), (t - 0.5) * 2)
-			draw_rect(Rect2(sx, y, _strip_w + 1, 1), c)
 
 # ── DDA fallback renderer ──────────────────────────────────────
 
