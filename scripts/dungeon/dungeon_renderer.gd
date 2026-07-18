@@ -120,6 +120,7 @@ func _draw():
 
 		visible_entities.append({
 			"depth": transform_y,
+			"dist": dist,
 			"draw_x1": draw_x1,
 			"draw_x2": draw_x2,
 			"spr_y": spr_y,
@@ -138,6 +139,8 @@ func _draw():
 	for ve in visible_entities:
 		var stripe_start: int = ve.draw_x1 / _strip_w
 		var stripe_end: int = (ve.draw_x2 + _strip_w - 1) / _strip_w
+		var fog_a: float = 1.0 - clamp((ve.dist - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
+		if fog_a <= 0.0: continue
 		for si in range(stripe_start, stripe_end):
 			if si >= num_strips: break
 			if ve.depth >= _wall_zbuf[si]:
@@ -149,9 +152,10 @@ func _draw():
 				var reg_x: float = u * ve.tex_w
 				var reg_w: float = max(1.0, ve.tex_w / ve.spr_w * _strip_w)
 				var reg: Rect2 = Rect2(reg_x, 0, reg_w, ve.tex_h)
-				draw_texture_rect_region(ve.tex, Rect2(sx, ve.spr_y, _strip_w + 1, ve.spr_h), reg, Color.WHITE)
+				draw_texture_rect_region(ve.tex, Rect2(sx, ve.spr_y, _strip_w + 1, ve.spr_h), reg, Color(1, 1, 1, fog_a))
 			else:
-				draw_rect(Rect2(sx, ve.spr_y, _strip_w + 1, ve.spr_h), ve.color)
+				var c: Color = ve.color; c.a = fog_a
+				draw_rect(Rect2(sx, ve.spr_y, _strip_w + 1, ve.spr_h), c)
 
 func _setup_view():
 	_view_w = int(size.x)
