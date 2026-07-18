@@ -41,16 +41,17 @@ func _setup_view():
 	if _view_h <= 0: _view_h = 449
 
 func _setup_floor():
-	_floor_ctrl = Control.new()
+	_floor_ctrl = ColorRect.new()
 	_floor_ctrl.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_floor_ctrl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_floor_ctrl)
-	var shader: Shader = load("res://shaders/rect_shader.gdshader")
-	if not shader: return
+	var shader: Shader = load("res://shaders/floor_shader.gdshader")
+	if not shader:
+		push_warning("floor_shader.gdshader not found")
+		return
 	_floor_mat = ShaderMaterial.new()
 	_floor_mat.shader = shader
 	_floor_ctrl.material = _floor_mat
-	_floor_mat.set_shader_parameter("wall_tex", _wall_tex)
 	_floor_mat.set_shader_parameter("floor_tex", _floor_tex)
 	_floor_mat.set_shader_parameter("rail_tex", _rail_tex)
 
@@ -58,6 +59,8 @@ func _setup_walls():
 	_wall_ctrl = Control.new()
 	_wall_ctrl.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_wall_ctrl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_wall_ctrl.set_script(load("res://scripts/dungeon/wall_drawer.gd"))
+	_wall_ctrl.renderer = self
 	add_child(_wall_ctrl)
 
 func _fill_map_tex():
@@ -107,18 +110,45 @@ func _fill_zbuf():
 func _draw():
 	pass
 
-func _draw_walls():
-	if not _wall_ctrl: return
-	if _wall_ctrl.draw.is_connected(_on_wall_draw):
-		_wall_ctrl.draw.disconnect(_on_wall_draw)
-	_wall_ctrl.draw.connect(_on_wall_draw, CONNECT_ONE_SHOT)
-	_wall_ctrl.queue_redraw()
-
-func _on_wall_draw():
+func draw_walls(ci: CanvasItem):
+	if not ci: return
 	var half_h: float = _view_h / 2.0
 	var num_strips: int = int(float(_view_w) / _strip_w)
-	_render_entities(num_strips, half_h)
-	_draw_fog()
+	var fov: float = deg_to_rad(90.0)
+	for i in range(num_strips):
+		var ray_angle: float = player_angle - fov * 0.5 + (i / float(num_strips)) * fov
+		var result: Dictionary = _cast_ray(cam_x, cam_y, ray_angle)
+		var perp: float = result.distance
+		if perp < 0.01: perp = 0.01
+		_wall_zbuf[i] = perp
+		if result.get("fog", false):
+			var fbl: float = clamp((perp - fog_distance) / fog_fade, 0.0, 1.0)
+			if fbl <= 0.0: continue
+			var fh: float = _view_h / perp; var ft: float = half_h - fh * 0.5
+			var fc: Color = fog_color; fc.a = fbl * 0.85
+			ci.draw_rect(Rect2(i * _strip_w, ft, _strip_w + 1, fh), fc)
+			continue
+		var wall_h: float = _view_h / perp
+		var wall_top: float = half_h - wall_h * 0.5
+		var fbl: float = 0.0
+		if perp > fog_distance - fog_fade:
+			fbl = clamp((perp - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
+		if _wall_tex:
+			var wall_x: float = result.get("wall_x", 0.0)
+			var tex_w: float = _wall_tex.get_width(); var tex_h: float = _wall_tex.get_height()
+			var tex_xx: int = int(wall_x * tex_w)
+			if (result.side == 0 and result.get("rdx", 0.0) > 0) or (result.side == 1 and result.get("rdy", 0.0) < 0):
+				tex_xx = int(tex_w) - tex_xx - 1
+			var shade: float = clamp(1.0 - perp * 0.04, 0.3, 1.0)
+			if result.side == 1: shade *= 0.7
+			shade = lerp(shade, 0.0, fbl)
+			ci.draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), Rect2(tex_xx, 0, 1, tex_h), Color(shade, shade, shade))
+		else:
+			var c: Color = Color(0.4, 0.4, 0.5)
+			if result.side == 0: c = Color(0.3, 0.3, 0.4)
+			var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
+			shade = lerp(shade, 0.0, fbl); c *= shade
+			ci.draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var dir: Vector2 = Vector2(cos(angle), sin(angle))
@@ -141,7 +171,10 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	wall_x -= floor(wall_x)
 	return {"hit":true,"distance":perp,"fog":false,"side":side,"wall_x":wall_x,"rdx":dir.x,"rdy":dir.y}
 
-func _render_entities(num_strips: int, half_h: float):
+func draw_entities(ci: CanvasItem):
+	if not ci: return
+	var half_h: float = _view_h / 2.0
+	var num_strips: int = int(float(_view_w) / _strip_w)
 	var dir_x: float = cos(player_angle); var dir_y: float = sin(player_angle)
 	var plane_x: float = -dir_y; var plane_y: float = dir_x
 	var inv_det: float = 1.0 / (plane_x * dir_y - dir_x * plane_y)
@@ -177,22 +210,23 @@ func _render_entities(num_strips: int, half_h: float):
 			if ve.tex and ve.spw > 1.0:
 				var sc: float = px2 + _strip_w * 0.5; var u: float = (sc - (ve.scx - ve.spw * 0.5)) / ve.spw
 				var rx2: float = u * ve.texw; var rw: float = max(1.0, ve.texw / ve.spw * _strip_w)
-				draw_texture_rect_region(ve.tex, Rect2(px2, ve.spy, _strip_w+1, ve.sph), Rect2(rx2, 0, rw, ve.texh), fmod)
+				ci.draw_texture_rect_region(ve.tex, Rect2(px2, ve.spy, _strip_w+1, ve.sph), Rect2(rx2, 0, rw, ve.texh), fmod)
 			else:
-				draw_rect(Rect2(px2, ve.spy, _strip_w+1, ve.sph), ve.col.lerp(fog_color, fog_blend))
+				ci.draw_rect(Rect2(px2, ve.spy, _strip_w+1, ve.sph), ve.col.lerp(fog_color, fog_blend))
 
-func _draw_fog():
+func draw_fog_overlay(ci: CanvasItem):
+	if not ci: return
 	var depth: float = _view_w * 0.35
 	for x in range(int(depth)):
 		var a: float = clamp(1.0 - float(x) / depth, 0.0, 1.0) * 0.5
 		if a <= 0.0: break
-		draw_rect(Rect2(x, 0, 1, _view_h), Color(0, 0, 0, a))
-		draw_rect(Rect2(_view_w - x - 1, 0, 1, _view_h), Color(0, 0, 0, a))
+		ci.draw_rect(Rect2(x, 0, 1, _view_h), Color(0, 0, 0, a))
+		ci.draw_rect(Rect2(_view_w - x - 1, 0, 1, _view_h), Color(0, 0, 0, a))
 	for y in range(int(depth * 0.5)):
 		var a: float = clamp(1.0 - float(y) / (depth * 0.5), 0.0, 1.0) * 0.5
 		if a <= 0.0: break
-		draw_rect(Rect2(0, y, _view_w, 1), Color(0, 0, 0, a))
-		draw_rect(Rect2(0, _view_h - y - 1, _view_w, 1), Color(0, 0, 0, a))
+		ci.draw_rect(Rect2(0, y, _view_w, 1), Color(0, 0, 0, a))
+		ci.draw_rect(Rect2(0, _view_h - y - 1, _view_w, 1), Color(0, 0, 0, a))
 
 func _get_ent_texture(ent: Dictionary) -> Texture2D:
 	var texs: Dictionary = ent.get("textures", {})
@@ -215,7 +249,8 @@ func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array
 	if _map_w != map_data[0].size() or _map_h != map_data.size() or not _map_tex:
 		_fill_map_tex()
 	_fill_zbuf()
-	_draw_walls()
+	if _wall_ctrl:
+		_wall_ctrl.queue_redraw()
 
 func update_height(data: Array):
 	height_data = data
