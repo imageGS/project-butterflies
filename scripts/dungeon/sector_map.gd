@@ -14,11 +14,16 @@ var sectors: Array[SSector] = []
 var walls: Array[SWall] = []
 var cell_sector: Array = []  # [y][x] -> sector index
 
+func cell_sector_at(x: int, y: int) -> int:
+	if y < 0 or y >= cell_sector.size(): return -1
+	if x < 0 or x >= cell_sector[y].size(): return -1
+	var v = cell_sector[y][x]
+	if v is int: return v
+	return -1
+
 func get_floor_height(x: int, y: int) -> float:
-	if y < 0 or y >= cell_sector.size(): return 0.0
-	if x < 0 or x >= cell_sector[y].size(): return 0.0
-	var si: int = cell_sector[y][x]
-	if si < 0 or si >= sectors.size(): return 0.0
+	var si: int = cell_sector_at(x, y)
+	if si < 0: return 0.0
 	return sectors[si].floor_h
 
 func build_from_grid(map_data: Array, height_data: Array):
@@ -35,7 +40,7 @@ func build_from_grid(map_data: Array, height_data: Array):
 				sec.floor_h = _height_at(height_data, x, y)
 				sec.ceil_h = 0.0
 				sec.color = Color(randf() * 0.3, randf() * 0.3, randf() * 0.3, 0.3)
-				_flood(map_data, visited, x, y, sec, w, h)
+				_flood(map_data, visited, x, y, sec, w, h, height_data)
 				sectors.append(sec)
 
 	cell_sector = visited  # save for lookup
@@ -57,8 +62,9 @@ func _height_at(hd: Array, x: int, y: int) -> float:
 	if x < 0 or x >= hd[y].size(): return 0.0
 	return hd[y][x]
 
-func _flood(map_data: Array, visited: Array, x: int, y: int, sec: SSector, w: int, h: int):
+func _flood(map_data: Array, visited: Array, x: int, y: int, sec: SSector, w: int, h: int, hd: Array):
 	var queue: Array[Vector2i] = [Vector2i(x, y)]
+	var target_h: float = _height_at(hd, x, y)
 	while not queue.is_empty():
 		var p: Vector2i = queue.pop_back()
 		if visited[p.y][p.x]: continue
@@ -67,7 +73,8 @@ func _flood(map_data: Array, visited: Array, x: int, y: int, sec: SSector, w: in
 			var nx: int = p.x + d.x; var ny: int = p.y + d.y
 			if nx >= 0 and ny >= 0 and nx < w and ny < h:
 				if _is_walkable(map_data, nx, ny) and not visited[ny][nx]:
-					queue.append(Vector2i(nx, ny))
+					if abs(_height_at(hd, nx, ny) - target_h) < 0.01:
+						queue.append(Vector2i(nx, ny))
 
 func _find_walls(map_data: Array, visited: Array, sec: SSector, si: int, w: int, h: int, hd: Array):
 	var edges: Dictionary = {}
