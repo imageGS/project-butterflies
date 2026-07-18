@@ -84,6 +84,8 @@ func _update_floor_shader():
 	_floor_mat.set_shader_parameter("cam_angle", player_angle)
 	_floor_mat.set_shader_parameter("view_size", Vector2(_view_w, _view_h))
 	_floor_mat.set_shader_parameter("fog_dist", fog_distance)
+	_floor_mat.set_shader_parameter("fog_fade", fog_fade)
+	_floor_mat.set_shader_parameter("fog_color", fog_color)
 
 func _fill_zbuf():
 	var fov: float = deg_to_rad(90.0)

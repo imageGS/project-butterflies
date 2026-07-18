@@ -4,6 +4,8 @@ uniform vec2 cam_pos = vec2(1.5, 1.5);
 uniform float cam_angle = 0.0;
 uniform vec2 view_size = vec2(858, 449);
 uniform float fog_dist = 7.0;
+uniform float fog_fade = 2.5;
+uniform vec4 fog_color : source_color = vec4(0.0, 0.0, 0.0, 1.0);
 uniform sampler2D map_tex;
 uniform sampler2D floor_tex;
 uniform sampler2D rail_tex;
@@ -33,8 +35,9 @@ void fragment() {
 			vec4 cell = texture(map_tex, uv);
 			float fh = cell.g * 4.0 - 2.0;
 			vec4 fc = fh < -0.5 ? texture(rail_tex, fract(vec2(wx, wy))) : texture(floor_tex, fract(vec2(wx, wy)));
-			float shade = clamp(1.0 - d / fog_dist, 0.0, 1.0);
-			COLOR = fc * shade;
+			float fog_start = max(fog_dist - fog_fade, 0.0);
+			float fog = clamp((d - fog_start) / fog_fade, 0.0, 1.0);
+			COLOR = vec4(mix(fc.rgb, fog_color.rgb, fog), 1.0);
 		} else {
 			COLOR = vec4(0.06, 0.06, 0.07, 1.0);
 		}
