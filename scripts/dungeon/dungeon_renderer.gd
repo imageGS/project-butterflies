@@ -130,7 +130,10 @@ func _draw_floor_ceiling(hh: float, floor_h_override: float = 0.0):
 	var eye_h: float = 0.5
 	var max_dist: float = fog_distance + 1.0
 	var fov_half: float = deg_to_rad(45.0)
-	var block: int = 16
+	var block: int = 64
+	var tw: float = _floor_tex.get_width()
+	var th: float = _floor_tex.get_height()
+	var tex_world: float = 2.0
 
 	var cols: int = max(1, int(ceil(float(_view_w) / block)))
 	var fstart: int = int(hh)
@@ -152,12 +155,20 @@ func _draw_floor_ceiling(hh: float, floor_h_override: float = 0.0):
 			var wy: float = cam_y + sin(ray_angle) * d
 			var fh: float = sector_map.get_floor_height(int(floor(wx)), int(floor(wy))) if sector_map else 0.0
 
-			var tex: Texture2D = _floor_tex
-			if fh < -0.5 and _rail_tex:
-				tex = _rail_tex
+		var tex: Texture2D = _floor_tex
+		var use_tw: float = tw; var use_th: float = th
+		if fh < -0.5 and _rail_tex:
+			tex = _rail_tex
+			use_tw = tex.get_width(); use_th = tex.get_height()
 
-			var shade: float = clamp(1.0 - d / max_dist, 0.0, 1.0)
-			draw_texture_rect(tex, Rect2(sx, sy, bw, bh), false, Color(shade, shade, shade))
+		var region_sz: float = 1.0
+		var u: float = fposmod(wx, tex_world) / tex_world * use_tw
+		var v: float = fposmod(wy, tex_world) / tex_world * use_th
+		var rw: float = region_sz / tex_world * use_tw
+		var rh: float = region_sz / tex_world * use_th
+
+		var shade: float = clamp(1.0 - d / max_dist, 0.0, 1.0)
+		draw_texture_rect_region(tex, Rect2(sx, sy, bw, bh), Rect2(u, v, rw, rh), Color(shade, shade, shade))
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var dir: Vector2 = Vector2(cos(angle), sin(angle))
