@@ -62,6 +62,9 @@ void fragment() {
 		if (sy >= wall_top && sy <= wall_bot) {
 			float w_x = hit_side == 0 ? cam_pos.y + perp_dist * rd.y : cam_pos.x + perp_dist * rd.x;
 			w_x = fract(w_x);
+			if ((hit_side == 0 && rd.x > 0.0) || (hit_side == 1 && rd.y < 0.0)) {
+				w_x = 1.0 - w_x;
+			}
 			float shade = clamp(1.0 - perp_dist * 0.04, 0.3, 1.0);
 			if (hit_side == 1) shade *= 0.7;
 			if (perp_dist > fog_dist - 2.5) {
@@ -86,8 +89,21 @@ void fragment() {
 				COLOR = vec4(0.06, 0.06, 0.07, 1.0);
 			}
 		} else {
-			float t = sy / view_size.y;
-			COLOR = mix(vec4(0.03, 0.03, 0.04, 1.0), vec4(0.0, 0.0, 0.0, 1.0), t * 2.0);
+			float d = (1.0 - (0.5)) * focal / max(half_h - sy, 0.5);
+			float ang = ray_angle;
+			float wx = cam_pos.x + cos(ang) * d;
+			float wy = cam_pos.y + sin(ang) * d;
+			ivec2 tc = ivec2(int(floor(wx)), int(floor(wy)));
+			if (tc.x >= 0 && tc.y >= 0 && tc.x < map_w && tc.y < map_h) {
+				vec4 cell = texelFetch(map_tex, tc, 0);
+				float fh = cell.g * 4.0 - 2.0;
+				vec4 fc = fh < -0.5 ? texture(rail_tex, fract(vec2(wx, wy))) : texture(floor_tex, fract(vec2(wx, wy)));
+				float s2 = clamp(1.0 - d / (fog_dist * 0.7), 0.0, 1.0);
+				COLOR = fc * s2;
+			} else {
+				float t = sy / view_size.y;
+				COLOR = mix(vec4(0.03, 0.03, 0.04, 1.0), vec4(0.0, 0.0, 0.0, 1.0), t * 2.0);
+			}
 		}
 	} else {
 		if (sy >= half_h) {
@@ -106,8 +122,21 @@ void fragment() {
 				COLOR = vec4(0.06, 0.06, 0.07, 1.0);
 			}
 		} else {
-			float t = sy / view_size.y;
-			COLOR = mix(vec4(0.03, 0.03, 0.04, 1.0), vec4(0.0, 0.0, 0.0, 1.0), t * 2.0);
+			float d = (1.0 - (0.5)) * focal / max(half_h - sy, 0.5);
+			float ang = ray_angle;
+			float wx = cam_pos.x + cos(ang) * d;
+			float wy = cam_pos.y + sin(ang) * d;
+			ivec2 tc = ivec2(int(floor(wx)), int(floor(wy)));
+			if (tc.x >= 0 && tc.y >= 0 && tc.x < map_w && tc.y < map_h) {
+				vec4 cell = texelFetch(map_tex, tc, 0);
+				float fh = cell.g * 4.0 - 2.0;
+				vec4 fc = fh < -0.5 ? texture(rail_tex, fract(vec2(wx, wy))) : texture(floor_tex, fract(vec2(wx, wy)));
+				float s2 = clamp(1.0 - d / (fog_dist * 0.7), 0.0, 1.0);
+				COLOR = fc * s2;
+			} else {
+				float t = sy / view_size.y;
+				COLOR = mix(vec4(0.03, 0.03, 0.04, 1.0), vec4(0.0, 0.0, 0.0, 1.0), t * 2.0);
+			}
 		}
 	}
 
