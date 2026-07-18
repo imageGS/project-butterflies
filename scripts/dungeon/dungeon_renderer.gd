@@ -129,46 +129,63 @@ func _draw_floor_ceiling(hh: float, floor_h_override: float = 0.0):
 	var focal: float = float(_view_w) * 0.5
 	var eye_h: float = 0.5
 	var max_dist: float = fog_distance + 1.0
-	var fov_half: float = deg_to_rad(45.0)
-	var block: int = 64
-	var tw: float = _floor_tex.get_width()
-	var th: float = _floor_tex.get_height()
-	var tex_world: float = 2.0
+	var r: int = int(ceil(max_dist)) + 1
+	var cx: int = int(floor(cam_x))
+	var cy: int = int(floor(cam_y))
 
-	var cols: int = max(1, int(ceil(float(_view_w) / block)))
-	var fstart: int = int(hh)
-	var rows: int = max(1, int(ceil(float(_view_h - fstart)) / block))
+	var dir_x: float = cos(player_angle)
+	var dir_y: float = sin(player_angle)
 
-	for ri in range(rows):
-		var sy: float = fstart + ri * block
-		var bh: float = min(block, _view_h - sy)
-		var y_mid: float = sy + bh * 0.5
-		var d: float = eye_h * focal / max(y_mid - hh, 0.5)
-		if d > max_dist: continue
+	var visible_tiles: Array[Dictionary] = []
 
-		for ci in range(cols):
-			var sx: float = ci * block
-			var bw: float = min(block, _view_w - sx)
-			var frac: float = (sx + bw * 0.5) / float(_view_w)
-			var ray_angle: float = player_angle - fov_half + frac * fov_half * 2.0
-			var wx: float = cam_x + cos(ray_angle) * d
-			var wy: float = cam_y + sin(ray_angle) * d
-			var fh: float = sector_map.get_floor_height(int(floor(wx)), int(floor(wy))) if sector_map else 0.0
+	for ty in range(cy - r, cy + r + 1):
+		for tx in range(cx - r, cx + r + 1):
+			if tx < 0 or ty < 0: continue
+			if map_data.is_empty() or ty >= map_data.size() or tx >= map_data[ty].size(): continue
+			if map_data[ty][tx] == TILE_WALL or map_data[ty][tx] == TILE_BLOCKED: continue
 
+			var corners: Array[Vector2] = [
+				_project_floor(tx, ty, focal, eye_h, hh, dir_x, dir_y),
+				_project_floor(tx + 1, ty, focal, eye_h, hh, dir_x, dir_y),
+				_project_floor(tx + 1, ty + 1, focal, eye_h, hh, dir_x, dir_y),
+				_project_floor(tx, ty + 1, focal, eye_h, hh, dir_x, dir_y),
+			]
+			if corners[0].y < 0 and corners[1].y < 0 and corners[2].y < 0 and corners[3].y < 0: continue
+
+			var min_sx: float = min(corners[0].x, corners[1].x, corners[2].x, corners[3].x)
+			var max_sx: float = max(corners[0].x, corners[1].x, corners[2].x, corners[3].x)
+			var min_sy: float = min(corners[0].y, corners[1].y, corners[2].y, corners[3].y)
+			var max_sy: float = max(corners[0].y, corners[1].y, corners[2].y, corners[3].y)
+
+			if min_sx >= _view_w or max_sx <= 0: continue
+
+			var fh: float = sector_map.get_floor_height(tx, ty) if sector_map else 0.0
+			var dist: float = sqrt(pow(tx + 0.5 - cam_x, 2) + pow(ty + 0.5 - cam_y, 2))
+			visible_tiles.append({
+				"dist": dist,
+				"sx": min_sx, "sy": min_sy,
+				"sw": max_sx - min_sx, "sh": max_sy - min_sy,
+				"fh": fh,
+			})
+
+	visible_tiles.sort_custom(func(a, b): return a.dist > b.dist)
+
+	for tile in visible_tiles:
 		var tex: Texture2D = _floor_tex
-		var use_tw: float = tw; var use_th: float = th
-		if fh < -0.5 and _rail_tex:
+		if tile.fh < -0.5 and _rail_tex:
 			tex = _rail_tex
-			use_tw = tex.get_width(); use_th = tex.get_height()
+		var shade: float = clamp(1.0 - tile.dist / max_dist, 0.0, 1.0)
+		draw_texture_rect(tex, Rect2(tile.sx, tile.sy, tile.sw, tile.sh), false, Color(shade, shade, shade))
 
-		var region_sz: float = 1.0
-		var u: float = fposmod(wx, tex_world) / tex_world * use_tw
-		var v: float = fposmod(wy, tex_world) / tex_world * use_th
-		var rw: float = region_sz / tex_world * use_tw
-		var rh: float = region_sz / tex_world * use_th
-
-		var shade: float = clamp(1.0 - d / max_dist, 0.0, 1.0)
-		draw_texture_rect_region(tex, Rect2(sx, sy, bw, bh), Rect2(u, v, rw, rh), Color(shade, shade, shade))
+func _project_floor(wx: float, wy: float, focal: float, eye_h: float, hh: float, dir_x: float, dir_y: float) -> Vector2:
+	var rx: float = wx - cam_x
+	var ry: float = wy - cam_y
+	var tz: float = rx * dir_x + ry * dir_y
+	if tz <= 0.01: return Vector2(-999, -999)
+	var tx: float = ry * dir_x - rx * dir_y
+	var sx: float = tx / tz * focal + float(_view_w) * 0.5
+	var sy: float = hh + eye_h * focal / tz
+	return Vector2(sx, sy)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var dir: Vector2 = Vector2(cos(angle), sin(angle))
