@@ -35,7 +35,10 @@ func _draw():
 	var half_h: float = _view_h / 2.0
 
 	var floor_h: float = sector_map.get_floor_height(int(floor(cam_x)), int(floor(cam_y))) if sector_map else 0.0
-	_draw_floor_ceiling(half_h, floor_h)
+	var cam_offset: float = -floor_h * _view_h * 0.35
+	var hh: float = half_h + cam_offset
+
+	_draw_floor_ceiling(hh, floor_h)
 	_wall_zbuf.resize(num_strips)
 
 	for i in range(num_strips):
@@ -49,15 +52,15 @@ func _draw():
 			var fbl: float = clamp((perp - fog_distance) / fog_fade, 0.0, 1.0)
 			if fbl <= 0.0: continue
 			var fh: float = _view_h / perp
-			var ft: float = half_h - fh * 0.5
+			var ft: float = hh - fh * 0.5
 			var fc: Color = fog_color
 			fc.a = fbl * 0.85
 			draw_rect(Rect2(i * _strip_w, ft, _strip_w + 1, fh), fc)
 			continue
 
 		var wall_h: float = _view_h / perp
-		var wall_top: float = half_h - wall_h * 0.5
-		var wall_bot: float = half_h + wall_h * 0.5
+		var wall_top: float = hh - wall_h * 0.5
+		var wall_bot: float = hh + wall_h * 0.5
 
 		# --- Height adjustment ---
 		var hx: int = result.get("mx", int(cam_x))
@@ -95,7 +98,7 @@ func _draw():
 			c *= shade
 			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_bot - wall_top), c)
 
-	_render_entities(num_strips, half_h)
+	_render_entities(num_strips, hh)
 	_draw_fog()
 
 func _setup_view():
