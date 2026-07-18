@@ -64,7 +64,7 @@ func _fill_map_tex():
 	_map_img = Image.create(_map_w, _map_h, false, Image.FORMAT_RGBA8)
 	for y in _map_h:
 		for x in _map_w:
-			var is_wall := map_data[y][x] == TILE_WALL or map_data[y][x] == TILE_BLOCKED
+			var is_wall: bool = map_data[y][x] == TILE_WALL or map_data[y][x] == TILE_BLOCKED
 			var fh: float = sector_map.get_floor_height(x, y) if sector_map else 0.0
 			var r := 1.0 if is_wall else 0.0
 			var g := (fh + 2.0) / 4.0
@@ -140,7 +140,7 @@ func _on_entity_draw():
 	var num_strips: int = int(float(_view_w) / _strip_w)
 
 	var visible_entities: Array[Dictionary] = []
-	for ent in entities_on_map:
+	for ent: Dictionary in entities_on_map:
 		var sx: float = ent.grid_x + 0.5 - cam_x
 		var sy: float = ent.grid_y + 0.5 - cam_y
 		var dist: float = sqrt(sx * sx + sy * sy)
@@ -161,7 +161,7 @@ func _on_entity_draw():
 		var spy: float = feety - scale_h
 		visible_entities.append({"depth":ty,"dx1":dx1,"dx2":dx2,"spy":spy,"spw":spw,"sph":scale_h,"scx":scx,"tex":tex,"texw":texw,"texh":texh,"col":ent.get("color",Color.WHITE)})
 
-	visible_entities.sort_custom(func(a,b): return a.depth > b.depth)
+	visible_entities.sort_custom(func(a: Dictionary, b: Dictionary): return a.depth > b.depth)
 
 	for ve in visible_entities:
 		var ss: int = ve.dx1 / _strip_w
@@ -208,7 +208,7 @@ func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array
 	_update_shader()
 	_update_map_if_needed()
 	_fill_zbuf()
-	_redraw_entities()
+	_draw_entities()
 
 func _update_map_if_needed():
 	if map_data.is_empty(): return
