@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/resources/station_data.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/resources/exit_data.gd" id="2"]
-[ext_resource type="Script" path="res://scripts/resources/entity_spawn.gd" id="3_entity"]
+[ext_resource type="Script" uid="uid://3gcudehlx3nq" path="res://scripts/resources/entity_spawn.gd" id="3_entity"]
 
 [sub_resource type="Resource" script_class="ExitData" id="ExitData_1"]
 script = ExtResource("2")
