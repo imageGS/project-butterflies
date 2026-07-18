@@ -84,34 +84,32 @@ func _find_walls(map_data: Array, visited: Array, sec: SSector, si: int, w: int,
 			for d in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
 				var nx: int = x + d.x; var ny: int = y + d.y
 				if nx < 0 or ny < 0 or nx >= w or ny >= h: continue
-				if not _is_walkable(map_data, nx, ny) or (visited[ny][nx] != si and _height_at(hd, nx, ny) != sec.floor_h):
+				var is_wall: bool = not _is_walkable(map_data, nx, ny)
+				if not is_wall:
+					if visited[ny][nx] != si and _height_at(hd, nx, ny) != sec.floor_h:
+						is_wall = true
+				if is_wall:
 					var key := "%d %d %d %d" % [x, y, nx, ny]
 					var rkey := "%d %d %d %d" % [nx, ny, x, y]
 					if not edges.has(rkey):
 						edges[key] = true
 
-	var processed: Dictionary = {}
 	for key in edges.keys():
 		var parts: PackedStringArray = key.split(" ")
 		var ax: int = int(parts[0]); var ay: int = int(parts[1])
 		var bx: int = int(parts[2]); var by: int = int(parts[3])
-
 		var portal: int = -1
-		var px: int = bx; var py: int = by
-		if px >= 0 and py >= 0 and px < w and py < h and _is_walkable(map_data, px, py):
-			var ns: int = visited[py][px] if visited[py][px] is int else -1
+		if bx >= 0 and by >= 0 and bx < w and by < h and _is_walkable(map_data, bx, by):
+			var ns: int = visited[by][bx] if visited[by][bx] is int else -1
 			if ns >= 0 and ns != si:
 				portal = ns
-
-		# Try to merge with adjacent wall
 		var merged := false
 		for wi in sec.walls:
 			var ww := walls[wi]
-			if (ww.x2 == ax and ww.y2 == ay and ww.portal == portal):
+			if ww.x2 == ax and ww.y2 == ay and ww.portal == portal:
 				ww.x2 = bx; ww.y2 = by
 				merged = true
 				break
-
 		if not merged:
 			var wall := SWall.new()
 			wall.x1 = ax; wall.y1 = ay; wall.x2 = bx; wall.y2 = by
