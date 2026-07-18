@@ -47,9 +47,20 @@ var _grid_control: Control
 var _tool_buttons: Dictionary = {}
 
 func _ready():
-	custom_minimum_size = Vector2(1920, 1080)
 	_setup_ui()
 	_new_station()
+	call_deferred("_fit_to_window")
+	get_viewport().size_changed.connect(_fit_to_window)
+
+func _fit_to_window():
+	var vs := get_viewport().get_visible_rect().size
+	# Adjust minimum sizes based on viewport
+	if vs.x < 1000:
+		# Compact mode: right panel narrower
+		pass
+	# Grid fills the area between left and right panels
+	_grid_control.offset_left = 125
+	_grid_control.offset_right = -280
 
 func _setup_ui():
 	# Top toolbar
@@ -86,14 +97,18 @@ func _setup_ui():
 		_tool_buttons[tool] = btn
 	_highlight_tool()
 
-	# Right metadata panel
+	# Right metadata panel (scrollable)
+	var right_scroll := ScrollContainer.new()
+	right_scroll.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
+	right_scroll.offset_top = 45
+	right_scroll.offset_left = -280
+	right_scroll.offset_right = 0
+	right_scroll.offset_bottom = 0
+	add_child(right_scroll)
+
 	var right_panel := VBoxContainer.new()
-	right_panel.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
-	right_panel.offset_top = 45
-	right_panel.offset_left = -280
-	right_panel.offset_right = -10
-	right_panel.offset_bottom = -10
-	add_child(right_panel)
+	right_panel.custom_minimum_size = Vector2(260, 0)
+	right_scroll.add_child(right_panel)
 
 	var meta_label := Label.new(); meta_label.text = "Station Metadata"; meta_label.add_theme_font_size_override("font_size", 18); right_panel.add_child(meta_label)
 
@@ -188,8 +203,8 @@ func _setup_ui():
 	_grid_control.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_grid_control.offset_left = 125
 	_grid_control.offset_top = 45
-	_grid_control.offset_right = -290
-	_grid_control.offset_bottom = -10
+	_grid_control.offset_right = -280
+	_grid_control.offset_bottom = 0
 	_grid_control.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_grid_control)
 	_grid_control.draw.connect(_draw_grid)
