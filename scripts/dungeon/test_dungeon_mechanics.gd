@@ -58,12 +58,7 @@ var _awareness_pool: Array[String] = [
 	"По полу пробегает крыса. Обычная, не падальщик.",
 ]
 
-var _dialogue_portrait_window: TextureRect
-var _dialogue_box_window: TextureRect
-var _dialogue_portrait: TextureRect
 var _npc_portrait_texture: Texture2D
-var _dialogue_name: Label
-var _dialogue_text: Label
 var _dialogue_prompt: Label
 var _dialogue_responses: Array[Label] = []
 var _dialogue_nodes: Array = []

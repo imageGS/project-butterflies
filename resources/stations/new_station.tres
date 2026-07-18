@@ -4,15 +4,9 @@
 [ext_resource type="Script" path="res://scripts/resources/exit_data.gd" id="2_w0t4c"]
 [ext_resource type="Script" path="res://scripts/resources/station_data.gd" id="3_wu7y4"]
 
-[sub_resource type="Resource" id="Resource_1qvov"]
-script = ExtResource("1_q50cg")
-position = Vector2i(14, 7)
-type = 1
-
 [resource]
 script = ExtResource("3_wu7y4")
-station_name = "New Station"
+station_name = "NPC TEST"
 map_file = "res://resources/stations/maps/new_station.txt"
 spawn = Vector2i(1, 1)
 outer_ring = false
-entity_spawns = Array[ExtResource("1_q50cg")]([SubResource("Resource_1qvov")])

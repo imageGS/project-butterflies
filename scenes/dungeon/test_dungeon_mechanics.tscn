@@ -11,9 +11,9 @@
 [ext_resource type="Texture2D" uid="uid://8yxie12b1xfd" path="res://assets/UI/DL_BALL.png" id="11_hud"]
 [ext_resource type="Texture2D" uid="uid://cgjm604m48xsd" path="res://assets/UI/DR_BALL.png" id="12_hud"]
 [ext_resource type="Script" uid="uid://bobjk5jnoroeq" path="res://scripts/ui/minimap_control.gd" id="13_hud"]
-[ext_resource type="Texture2D" path="res://assets/UI/DIALOGUE_BOX.png" id="14_dlg"]
-[ext_resource type="Texture2D" path="res://assets/UI/DIALOGUE_PORTRAIT_WINDOW.png" id="15_dlg"]
-[ext_resource type="Resource" path="res://resources/stations/akio.tres" id="16_stn"]
+[ext_resource type="Texture2D" uid="uid://c45he1iujo4ea" path="res://assets/UI/DIALOGUE_BOX.png" id="14_dlg"]
+[ext_resource type="Texture2D" uid="uid://bw2dbgvpjdox5" path="res://assets/UI/DIALOGUE_PORTRAIT_WINDOW.png" id="15_dlg"]
+[ext_resource type="Resource" uid="uid://i03cp0og02s4" path="res://resources/stations/akio.tres" id="16_stn"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
 viewport_path = NodePath("CRT_Root/GameViewport")
@@ -174,10 +174,10 @@ texture = ExtResource("12_hud")
 [node name="DialoguePortraitWindow" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=66377145]
 texture_filter = 1
 layout_mode = 0
-offset_left = 50.0
-offset_top = 350.0
-offset_right = 250.0
-offset_bottom = 550.0
+offset_left = 841.6667
+offset_top = 288.62747
+offset_right = 1041.6667
+offset_bottom = 488.62747
 mouse_filter = 2
 texture = ExtResource("15_dlg")
 
@@ -192,10 +192,10 @@ stretch_mode = 5
 
 [node name="DialogueName" type="Label" parent="CRT_Root/GameViewport/UI/HUDOverlay/DialoguePortraitWindow" unique_id=66377147]
 layout_mode = 0
-offset_left = 10.0
-offset_top = 155.0
-offset_right = 190.0
-offset_bottom = 185.0
+offset_left = 8.823547
+offset_top = 173.60786
+offset_right = 190.1961
+offset_bottom = 199.60786
 theme_override_colors/font_color = Color(0.9, 0.85, 0.7, 1)
 theme_override_font_sizes/font_size = 18
 horizontal_alignment = 1
@@ -203,10 +203,11 @@ horizontal_alignment = 1
 [node name="DialogueBoxWindow" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=66377148]
 texture_filter = 1
 layout_mode = 0
-offset_left = 300.0
-offset_top = 380.0
-offset_right = 850.0
-offset_bottom = 550.0
+offset_left = 325.9804
+offset_top = 336.66672
+offset_right = 875.9804
+offset_bottom = 506.66672
+scale = Vector2(0.88235295, 0.88235295)
 mouse_filter = 2
 texture = ExtResource("14_dlg")
 
