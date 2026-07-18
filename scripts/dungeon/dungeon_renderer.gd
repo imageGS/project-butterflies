@@ -142,7 +142,8 @@ func _on_entity_draw():
 		var feety: float = half_h + half_h / ty; var spy: float = feety - scale_h
 		visible_entities.append({"depth":ty,"dx1":dx1,"dx2":dx2,"spy":spy,"spw":spw,"sph":scale_h,"scx":scx,"tex":tex,"texw":texw,"texh":texh,"col":ent.get("color",Color.WHITE)})
 
-	visible_entities.sort_custom(func(a:Dictionary,b:Dictionary): return a.depth > b.depth)
+	var sorter := func(a: Dictionary, b: Dictionary): return a.depth > b.depth
+	visible_entities.sort_custom(sorter)
 
 	for ve in visible_entities:
 		var ss: int = ve.dx1 / _strip_w; var se: int = (ve.dx2 + _strip_w - 1) / _strip_w
@@ -165,9 +166,11 @@ func _get_ent_texture(ent: Dictionary) -> Texture2D:
 	var dx: float = cam_x - (ex + 0.5); var dy: float = cam_y - (ey + 0.5); var va: float = atan2(dy, dx)
 	var fi: int = ent.get("facing", 2); var ea: float = [-PI/2,0,PI/2,PI][fi]; var di: float = va - ea
 	while di > PI: di -= TAU; while di < -PI: di += TAU
-	match posmod(int(round(di/(PI*0.5))),4):
-		0: return texs.get("front",null); 1: return texs.get("right",null)
-		2: return texs.get("back",null); _: return texs.get("left",null)
+	match posmod(int(round(di / (PI * 0.5))), 4):
+		0: return texs.get("front", null)
+		1: return texs.get("right", null)
+		2: return texs.get("back", null)
+		_: return texs.get("left", null)
 
 func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array):
 	cam_x = cx; cam_y = cy; player_angle = angle
