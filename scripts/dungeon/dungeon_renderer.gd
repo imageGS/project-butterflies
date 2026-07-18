@@ -35,7 +35,7 @@ func _draw():
 	var half_h: float = _view_h / 2.0
 
 	var floor_h: float = sector_map.get_floor_height(int(floor(cam_x)), int(floor(cam_y))) if sector_map else 0.0
-	var eye_shift: float = -floor_h * _view_h * 0.08
+	var eye_shift: float = floor_h * _view_h * 0.08
 	var hh: float = half_h + eye_shift
 
 	_draw_floor_ceiling(hh, floor_h)
