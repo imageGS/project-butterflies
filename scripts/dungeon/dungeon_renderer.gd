@@ -153,7 +153,7 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 		return { "hit": false, "distance": fog_distance * 1.5, "fog": true }
 	var wall_x: float = oy + perp * dir.y if side == 0 else ox + perp * dir.x
 	wall_x -= floor(wall_x)
-	return { "hit": true, "distance": perp, "fog": false, "side": side, "wall_x": wall_x, "rdx": dir.x, "rdy": dir.y, "mx": map_x, "my": map_y }
+	return { "hit": true, "distance": perp, "fog": false, "side": side, "wall_x": wall_x, "rdx": dir.x, "rdy": dir.y, "mx": map_x, "my": map_y, "sx": step_x, "sy": step_y }
 
 func _render_entities(num_strips: int, half_h: float):
 	var dir_x: float = cos(player_angle)
