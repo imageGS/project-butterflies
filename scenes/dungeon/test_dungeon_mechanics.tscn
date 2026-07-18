@@ -11,7 +11,9 @@
 [ext_resource type="Texture2D" uid="uid://8yxie12b1xfd" path="res://assets/UI/DL_BALL.png" id="11_hud"]
 [ext_resource type="Texture2D" uid="uid://cgjm604m48xsd" path="res://assets/UI/DR_BALL.png" id="12_hud"]
 [ext_resource type="Script" uid="uid://bobjk5jnoroeq" path="res://scripts/ui/minimap_control.gd" id="13_hud"]
-[ext_resource type="Resource" path="res://resources/stations/akio.tres" id="15_stn"]
+[ext_resource type="Texture2D" path="res://assets/UI/DIALOGUE_BOX.png" id="14_dlg"]
+[ext_resource type="Texture2D" path="res://assets/UI/DIALOGUE_PORTRAIT_WINDOW.png" id="15_dlg"]
+[ext_resource type="Resource" path="res://resources/stations/akio.tres" id="16_stn"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
 viewport_path = NodePath("CRT_Root/GameViewport")
@@ -32,7 +34,7 @@ shader_parameter/wobble_strength = 0.302000014345
 
 [node name="TestDungeon" type="Node" unique_id=1919637851]
 script = ExtResource("2_r7h3n")
-station_data = ExtResource("15_stn")
+station_data = ExtResource("16_stn")
 
 [node name="CRT_Root" type="Control" parent="." unique_id=640219047]
 layout_mode = 3
@@ -169,6 +171,55 @@ pivot_offset = Vector2(59, 59)
 mouse_filter = 2
 texture = ExtResource("12_hud")
 
+[node name="DialoguePortraitWindow" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=66377145]
+texture_filter = 1
+layout_mode = 0
+offset_left = 50.0
+offset_top = 350.0
+offset_right = 250.0
+offset_bottom = 550.0
+mouse_filter = 2
+texture = ExtResource("15_dlg")
+
+[node name="DialoguePortrait" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay/DialoguePortraitWindow" unique_id=66377146]
+layout_mode = 0
+offset_left = 25.0
+offset_top = 25.0
+offset_right = 175.0
+offset_bottom = 150.0
+mouse_filter = 2
+stretch_mode = 5
+
+[node name="DialogueName" type="Label" parent="CRT_Root/GameViewport/UI/HUDOverlay/DialoguePortraitWindow" unique_id=66377147]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 155.0
+offset_right = 190.0
+offset_bottom = 185.0
+theme_override_colors/font_color = Color(0.9, 0.85, 0.7, 1)
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+
+[node name="DialogueBoxWindow" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=66377148]
+texture_filter = 1
+layout_mode = 0
+offset_left = 300.0
+offset_top = 380.0
+offset_right = 850.0
+offset_bottom = 550.0
+mouse_filter = 2
+texture = ExtResource("14_dlg")
+
+[node name="DialogueText" type="Label" parent="CRT_Root/GameViewport/UI/HUDOverlay/DialogueBoxWindow" unique_id=66377149]
+layout_mode = 0
+offset_left = 25.0
+offset_top = 25.0
+offset_right = 525.0
+offset_bottom = 145.0
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 18
+autowrap_mode = 3
+
 [node name="AwarenessLabel" type="Label" parent="CRT_Root/GameViewport/UI" unique_id=1640949735]
 z_index = 5
 layout_mode = 0
@@ -181,6 +232,15 @@ theme_override_font_sizes/font_size = 16
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 1
+
+[node name="DialogueResponses" type="VBoxContainer" parent="CRT_Root/GameViewport/UI" unique_id=1640949736]
+z_index = 5
+layout_mode = 0
+offset_left = 266.0
+offset_top = 520.0
+offset_right = 886.0
+offset_bottom = 620.0
+mouse_filter = 2
 
 [node name="CentralViewport" type="Control" parent="CRT_Root/GameViewport/UI" unique_id=919060473]
 anchors_preset = 0

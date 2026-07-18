@@ -58,10 +58,9 @@ var _awareness_pool: Array[String] = [
 	"По полу пробегает крыса. Обычная, не падальщик.",
 ]
 
-var _dialogue_overlay: CanvasLayer
-var _dialogue_root: ColorRect
-var _dialogue_portrait_bg: ColorRect
-var _dialogue_portrait_sprite: TextureRect
+var _dialogue_portrait_window: TextureRect
+var _dialogue_box_window: TextureRect
+var _dialogue_portrait: TextureRect
 var _npc_portrait_texture: Texture2D
 var _dialogue_name: Label
 var _dialogue_text: Label
@@ -73,10 +72,21 @@ var _dialogue_active: bool = false
 var _dialogue_busy: bool = false
 var _passive_cache: Dictionary = {}
 
+var _dialogue_portrait_on_pos: Vector2
+var _dialogue_portrait_off_pos: Vector2
+var _dialogue_box_on_pos: Vector2
+var _dialogue_box_off_pos: Vector2
+
 @onready var _renderer: Control = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView
 @onready var _label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/InfoLabel
 @onready var _awareness_label: Label = $CRT_Root/GameViewport/UI/AwarenessLabel
 @onready var _minimap_ctrl: MinimapControl = $CRT_Root/GameViewport/UI/HUDOverlay/UL_Window/Minimap
+@onready var _dialogue_portrait_window: TextureRect = $CRT_Root/GameViewport/UI/HUDOverlay/DialoguePortraitWindow
+@onready var _dialogue_box_window: TextureRect = $CRT_Root/GameViewport/UI/HUDOverlay/DialogueBoxWindow
+@onready var _dialogue_portrait: TextureRect = $CRT_Root/GameViewport/UI/HUDOverlay/DialoguePortraitWindow/DialoguePortrait
+@onready var _dialogue_name: Label = $CRT_Root/GameViewport/UI/HUDOverlay/DialoguePortraitWindow/DialogueName
+@onready var _dialogue_text: Label = $CRT_Root/GameViewport/UI/HUDOverlay/DialogueBoxWindow/DialogueText
+@onready var _dialogue_responses_root: VBoxContainer = $CRT_Root/GameViewport/UI/DialogueResponses
 
 # HUD elements above UI_BACK (z_index 5+)
 var _hud_balls: Array[TextureRect] = []
@@ -459,40 +469,24 @@ func _setup_fallback_entities():
 			})
 
 func _setup_dialogue_ui():
-	_dialogue_overlay = CanvasLayer.new()
-	_dialogue_overlay.layer = 100
-	_dialogue_overlay.visible = false
+	# Store on/off positions for slide animations
+	_dialogue_portrait_on_pos = _dialogue_portrait_window.position
+	_dialogue_portrait_off_pos = _dialogue_portrait_on_pos - Vector2(300, 0)
+	_dialogue_box_on_pos = _dialogue_box_window.position
+	_dialogue_box_off_pos = _dialogue_box_on_pos + Vector2(0, 300)
 
-	_dialogue_root = ColorRect.new()
-	_dialogue_root.mouse_filter = Control.MOUSE_FILTER_STOP
-	_dialogue_root.color = Color(0.0, 0.0, 0.0, 0.75)
-	_dialogue_overlay.add_child(_dialogue_root)
+	# Hide windows off-screen initially
+	_dialogue_portrait_window.position = _dialogue_portrait_off_pos
+	_dialogue_box_window.position = _dialogue_box_off_pos
+	_dialogue_portrait_window.visible = false
+	_dialogue_box_window.visible = false
+	_dialogue_responses_root.visible = false
 
-	_dialogue_portrait_bg = ColorRect.new()
-	_dialogue_portrait_bg.color = Color(0.08, 0.08, 0.1)
-	_dialogue_overlay.add_child(_dialogue_portrait_bg)
-
-	_dialogue_portrait_sprite = TextureRect.new()
-	_dialogue_portrait_sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_dialogue_portrait_sprite.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-	_dialogue_portrait_sprite.modulate = Color(1, 1, 1, 0.9)
-	_dialogue_overlay.add_child(_dialogue_portrait_sprite)
-
+	# Default portrait texture
 	_npc_portrait_texture = load("res://sprites/npc/17_sprite.png")
-	_dialogue_portrait_sprite.texture = _npc_portrait_texture
+	_dialogue_portrait.texture = _npc_portrait_texture
 
-	_dialogue_name = Label.new()
-	_dialogue_name.add_theme_color_override("font_color", Color(0.9, 0.85, 0.7))
-	_dialogue_name.add_theme_font_size_override("font_size", 28)
-	_dialogue_overlay.add_child(_dialogue_name)
-
-	_dialogue_text = Label.new()
-	_dialogue_text.add_theme_color_override("font_color", Color(0.95, 0.95, 0.95))
-	_dialogue_text.add_theme_font_size_override("font_size", 20)
-	_dialogue_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_dialogue_text.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_dialogue_overlay.add_child(_dialogue_text)
-
+	# Create response labels inside the bottom panel container
 	for i in 6:
 		var resp: Label = Label.new()
 		resp.add_theme_color_override("font_color", Color(0.85, 0.8, 0.65))
@@ -500,10 +494,11 @@ func _setup_dialogue_ui():
 		resp.text = ""
 		resp.visible = false
 		resp.mouse_filter = Control.MOUSE_FILTER_STOP
+		resp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		resp.gui_input.connect(_on_resp_gui_input.bind(resp))
 		resp.mouse_entered.connect(_on_resp_mouse_entered.bind(resp))
 		resp.mouse_exited.connect(_on_resp_mouse_exited.bind(resp))
-		_dialogue_overlay.add_child(resp)
+		_dialogue_responses_root.add_child(resp)
 		_dialogue_responses.append(resp)
 
 	_dialogue_prompt = Label.new()
@@ -511,10 +506,8 @@ func _setup_dialogue_ui():
 	_dialogue_prompt.add_theme_font_size_override("font_size", 18)
 	_dialogue_prompt.text = ""
 	_dialogue_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_dialogue_overlay.add_child(_dialogue_prompt)
-
-	add_child(_dialogue_overlay)
-	get_viewport().connect("size_changed", _update_dialogue_layout)
+	_dialogue_prompt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_dialogue_responses_root.add_child(_dialogue_prompt)
 
 func _play_enemy_step(ent: Dictionary):
 	if _footstep_sounds.is_empty(): return
@@ -686,48 +679,27 @@ func _interact_object(obj: Dictionary):
 			if _stats_panel: _stats_panel.refresh()
 			_show_tip(data.get("description", "Ловушка!") + " -" + str(data.get("damage", 2)) + " HP.")
 
-func _update_dialogue_layout():
-	if not _dialogue_overlay or not _dialogue_overlay.visible:
+func _set_dialogue_portrait(portrait_path: String):
+	if portrait_path.is_empty():
+		_dialogue_portrait.texture = _npc_portrait_texture
 		return
-	var vs := get_viewport().get_visible_rect().size
-	_dialogue_root.set_size(vs)
-	_dialogue_root.position = Vector2.ZERO
-
-	var portrait_w: float = vs.x * 0.35
-	_dialogue_portrait_bg.set_size(Vector2(portrait_w, vs.y))
-	_dialogue_portrait_bg.position = Vector2.ZERO
-
-	if _npc_portrait_texture:
-		var tex_size: Vector2 = _npc_portrait_texture.get_size()
-		var scale: float = min(portrait_w / tex_size.x, vs.y / tex_size.y) * 0.8
-		var spr_w: float = tex_size.x * scale
-		var spr_h: float = tex_size.y * scale
-		_dialogue_portrait_sprite.set_size(Vector2(spr_w, spr_h))
-		_dialogue_portrait_sprite.position = Vector2((portrait_w - spr_w) * 0.5, (vs.y - spr_h) * 0.5)
-
-	_dialogue_name.position = Vector2(portrait_w + 30, 40)
-	_dialogue_name.set_size(Vector2(vs.x - portrait_w - 60, 50))
-
-	_dialogue_text.position = Vector2(portrait_w + 40, 100)
-	_dialogue_text.set_size(Vector2(vs.x - portrait_w - 80, vs.y * 0.4))
-
-	var resp_y: float = vs.y * 0.55
-	for i in _dialogue_responses.size():
-		var lbl: Label = _dialogue_responses[i]
-		lbl.position = Vector2(portrait_w + 50, resp_y)
-		lbl.set_size(Vector2(vs.x - portrait_w - 90, 30))
-		resp_y += 34
-
-	_dialogue_prompt.position = Vector2(portrait_w + 20, vs.y - 40)
-	_dialogue_prompt.set_size(Vector2(vs.x - portrait_w - 40, 30))
+	var tex := load(portrait_path) as Texture2D
+	if tex:
+		_dialogue_portrait.texture = tex
+	else:
+		_dialogue_portrait.texture = _npc_portrait_texture
 
 func _start_dialogue(nodes: Array, npc_name: String = "Незнакомец"):
 	_dialogue_active = true
 	_dialogue_nodes = nodes
 	_dialogue_index = 0
 	_dialogue_name.text = npc_name
-	_dialogue_overlay.visible = true
-	_update_dialogue_layout()
+	_dialogue_portrait_window.visible = true
+	_dialogue_box_window.visible = true
+	_dialogue_responses_root.visible = true
+	var tw := create_tween().set_parallel()
+	tw.tween_property(_dialogue_portrait_window, "position", _dialogue_portrait_on_pos, 0.25).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_dialogue_box_window, "position", _dialogue_box_on_pos, 0.25).set_ease(Tween.EASE_OUT)
 	_show_dialogue_node()
 
 func _show_dialogue_node():
@@ -741,6 +713,8 @@ func _show_dialogue_node():
 
 	var node: Dictionary = _dialogue_nodes[_dialogue_index]
 	_dialogue_text.text = node.get("text", "")
+	var portrait_path: String = node.get("portrait", "")
+	_set_dialogue_portrait(portrait_path)
 	var responses: Array = node.get("responses", [])
 	_passive_cache.clear()
 	var visible_count: int = 0
@@ -916,7 +890,13 @@ func _go_to_node(idx: int):
 
 func _close_dialogue():
 	_dialogue_active = false
-	_dialogue_overlay.visible = false
+	var tw := create_tween().set_parallel()
+	tw.tween_property(_dialogue_portrait_window, "position", _dialogue_portrait_off_pos, 0.2).set_ease(Tween.EASE_IN)
+	tw.tween_property(_dialogue_box_window, "position", _dialogue_box_off_pos, 0.2).set_ease(Tween.EASE_IN)
+	await tw.finished
+	_dialogue_portrait_window.visible = false
+	_dialogue_box_window.visible = false
+	_dialogue_responses_root.visible = false
 
 func _is_walkable(x: int, y: int) -> bool:
 	if x < 0 or x >= _map_data[0].size() or y < 0 or y >= _map_data.size():
