@@ -7,4 +7,10 @@ extends Resource
 @export var spawn_dir: int = 2
 @export var outer_ring: bool = true
 @export var fog_distance: float = 7.0
-@export var shelter_mode: bool = false
+@export var exits: Array[ExitData] = []
+
+func get_exit_at(pos: Vector2i) -> ExitData:
+	for e: ExitData in exits:
+		if e.position == pos:
+			return e
+	return null

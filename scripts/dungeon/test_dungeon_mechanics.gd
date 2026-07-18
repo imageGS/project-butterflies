@@ -94,25 +94,44 @@ var _dl_on_pos: Vector2
 var _ul_off_pos: Vector2
 var _dl_off_pos: Vector2
 
-@export var shelter_mode: bool = false
+@export var shelter_mode: bool = false  # deprecated, station_data defines the level
 @export var station_data: StationData
 
 func _ready():
-	_build_test_level()
+	_load_station()
 	_setup_entities()
 	_current_angle = DIR_ANGLES[_player_dir]
 	_setup_dialogue_ui()
 	_setup_audio()
 	_setup_hud()
 	_refresh()
-	if shelter_mode:
+	if station_data and station_data.station_name == "Убежище":
 		return
 	_awareness_timer = _awareness_interval
 
+func _load_station():
+	if not PlayerStats.current_station:
+		if station_data:
+			PlayerStats.current_station = station_data
+		else:
+			PlayerStats.current_station = load("res://resources/stations/shelter.tres")
+	station_data = PlayerStats.current_station
+
+	var spawn: Vector2i = station_data.spawn
+	var dir: int = station_data.spawn_dir
+	if PlayerStats.flags.has("_transition_spawn"):
+		spawn = PlayerStats.flags["_transition_spawn"]
+		PlayerStats.flags.erase("_transition_spawn")
+	if PlayerStats.flags.has("_transition_dir"):
+		dir = PlayerStats.flags["_transition_dir"]
+		PlayerStats.flags.erase("_transition_dir")
+
+	_build_from_station_data()
+	_player_x = float(spawn.x)
+	_player_y = float(spawn.y)
+	_player_dir = dir
+
 func _build_test_level():
-	if shelter_mode:
-		_build_shelter()
-		return
 	if station_data:
 		_build_from_station_data()
 		return
@@ -278,73 +297,73 @@ func _setup_entities():
 			"data": { "name": "Труп", "description": "Вы убили это существо в бою." },
 		})
 		PlayerStats._pending_corpse = Vector2i(-1, -1)
-	if shelter_mode:
-		_player_x = 3.0; _player_y = 3.0
+	var is_shelter: bool = station_data != null and station_data.station_name == "Убежище"
+	if is_shelter:
 		_entities.append({ "grid_x": 3, "grid_y": 5, "color": Color(0.3, 0.5, 0.7), "type": "object", "object_type": "rest",
 			"data": { "name": "кровать", "description": "Старая кровать." }})
 		_entities.append({ "grid_x": 10, "grid_y": 10, "color": Color(0.4, 0.8, 0.4), "type": "object", "object_type": "lore",
 			"data": { "name": "ТВ", "description": "Работает. Помехи, потом голос: «...проход открыт в западном крыле». И снова помехи." }})
-		return
-	# Враги на @ позициях
-	var tex_f := load("res://sprites/enemy/bunny/bunny_enemy.png")
-	var tex_b := load("res://sprites/enemy/bunny/bunny_enemy_back.png")
-	var tex_l := load("res://sprites/enemy/bunny/bunny_enemy_left.png")
-	var tex_r := load("res://sprites/enemy/bunny/bunny_enemy_right.png")
-	# Каждый враг: pos, соседние точки для патруля (маршрут)
-	var spawns: Array[Dictionary] = [
-		{ "pos": Vector2i(2, 10), "dir": Dir.SOUTH },
-		{ "pos": Vector2i(46, 10), "dir": Dir.SOUTH },
-		{ "pos": Vector2i(25, 2), "dir": Dir.EAST },
-	]
-	for s in spawns:
-		var audio := AudioStreamPlayer.new()
-		audio.volume_db = -4.0
-		add_child(audio)
-		_entities.append({
-			"grid_x": s.pos.x, "grid_y": s.pos.y,
-			"anim_x": float(s.pos.x), "anim_y": float(s.pos.y),
-			"color": Color(0.8, 0.2, 0.2),
-			"type": "enemy",
-			"facing": s.dir,
-			"textures": { "front": tex_f, "back": tex_b, "left": tex_l, "right": tex_r, "chase": load("res://sprites/enemy/bunny/bunny_enemy_chase.png") },
-			"move_progress": 1.0,
-			"move_timer": randf_range(0.5, 1.0),
-			"chase_active": false,
-			"audio_player": audio,
-		})
-
-	# Интерактивные объекты
-	var objects: Array[Dictionary] = [
-		{ "grid_x": 1, "grid_y": 9, "type": "object", "object_type": "container", "data": { "name": "Рюкзак", "description": "Чей-то брошенный рюкзак.", "loot": ["Консервы", "Бинт"] }},
-		{ "grid_x": 16, "grid_y": 13, "type": "object", "object_type": "lore", "data": { "name": "Стена", "description": "Кто-то выцарапал: «NEW DAWN — ЭТО АД». Буквы дрожат." }},
-		{ "grid_x": 28, "grid_y": 15, "type": "object", "object_type": "rest", "data": { "name": "скамья", "description": "Обшарпанная деревянная скамья." }},
-		{ "grid_x": 28, "grid_y": 22, "type": "object", "object_type": "container", "data": { "name": "Ящик", "description": "Деревянный ящик с инструментами.", "loot": ["Аптечка"] }},
-		{ "grid_x": 19, "grid_y": 20, "type": "object", "object_type": "lore", "data": { "name": "Труп", "description": "Тело в форме охранника. В кармане пусто. Нашивка: NEW DAWN." }},
-		{ "grid_x": 36, "grid_y": 23, "type": "object", "object_type": "container", "data": { "name": "Сейф", "description": "Небольшой сейф. Код сбит, но дверца открыта.", "loot": ["Патроны", "Золотая монета"] }},
-		{ "grid_x": 1, "grid_y": 22, "type": "object", "object_type": "lore", "data": { "name": "Газета", "description": "Скомканная газета. Заголовок: «ПРОПАЖА ЛЮДЕЙ В МЕТРО — ПОЛИЦИЯ БЕССИЛЬНА». Дата — полгода назад." }},
-		{ "grid_x": 24, "grid_y": 24, "type": "object", "object_type": "lore", "data": { "name": "Алтарь", "description": "Странная конструкция в центре лабиринта. Свечи, символы. Кто-то проводил здесь ритуал." }},
-	]
-	for o in objects:
-		_entities.append(o)
-
-	# Маркеры выходов
-	_entities.append({ "grid_x": 10, "grid_y": 1, "color": Color(1, 0.9, 0.2, 0.9), "type": "exit_marker" })
-	_entities.append({ "grid_x": 2, "grid_y": 10, "color": Color(1, 0.9, 0.2, 0.9), "type": "exit_marker" })
-	_entities.append({ "grid_x": 46, "grid_y": 10, "color": Color(1, 0.9, 0.2, 0.9), "type": "exit_marker" })
-
-	# NPC-странник
-	var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
-	if file:
-		var data: Dictionary = JSON.parse_string(file)
-		if data and data.has("nodes"):
+	else:
+		# Враги на @ позициях
+		var tex_f := load("res://sprites/enemy/bunny/bunny_enemy.png")
+		var tex_b := load("res://sprites/enemy/bunny/bunny_enemy_back.png")
+		var tex_l := load("res://sprites/enemy/bunny/bunny_enemy_left.png")
+		var tex_r := load("res://sprites/enemy/bunny/bunny_enemy_right.png")
+		# Каждый враг: pos, соседние точки для патруля (маршрут)
+		var spawns: Array[Dictionary] = [
+			{ "pos": Vector2i(2, 10), "dir": Dir.SOUTH },
+			{ "pos": Vector2i(46, 10), "dir": Dir.SOUTH },
+			{ "pos": Vector2i(25, 2), "dir": Dir.EAST },
+		]
+		for s in spawns:
+			var audio := AudioStreamPlayer.new()
+			audio.volume_db = -4.0
+			add_child(audio)
 			_entities.append({
-				"grid_x": 35, "grid_y": 23,
-				"color": Color(0.2, 0.6, 0.2),
-				"type": "npc",
-				"name": data.get("name", "Незнакомец"),
-				"texture": load("res://sprites/npc/17_sprite.png"),
-				"dialogue": data.nodes,
+				"grid_x": s.pos.x, "grid_y": s.pos.y,
+				"anim_x": float(s.pos.x), "anim_y": float(s.pos.y),
+				"color": Color(0.8, 0.2, 0.2),
+				"type": "enemy",
+				"facing": s.dir,
+				"textures": { "front": tex_f, "back": tex_b, "left": tex_l, "right": tex_r, "chase": load("res://sprites/enemy/bunny/bunny_enemy_chase.png") },
+				"move_progress": 1.0,
+				"move_timer": randf_range(0.5, 1.0),
+				"chase_active": false,
+				"audio_player": audio,
 			})
+
+		# Интерактивные объекты
+		var objects: Array[Dictionary] = [
+			{ "grid_x": 1, "grid_y": 9, "type": "object", "object_type": "container", "data": { "name": "Рюкзак", "description": "Чей-то брошенный рюкзак.", "loot": ["Консервы", "Бинт"] }},
+			{ "grid_x": 16, "grid_y": 13, "type": "object", "object_type": "lore", "data": { "name": "Стена", "description": "Кто-то выцарапал: «NEW DAWN — ЭТО АД». Буквы дрожат." }},
+			{ "grid_x": 28, "grid_y": 15, "type": "object", "object_type": "rest", "data": { "name": "скамья", "description": "Обшарпанная деревянная скамья." }},
+			{ "grid_x": 28, "grid_y": 22, "type": "object", "object_type": "container", "data": { "name": "Ящик", "description": "Деревянный ящик с инструментами.", "loot": ["Аптечка"] }},
+			{ "grid_x": 19, "grid_y": 20, "type": "object", "object_type": "lore", "data": { "name": "Труп", "description": "Тело в форме охранника. В кармане пусто. Нашивка: NEW DAWN." }},
+			{ "grid_x": 36, "grid_y": 23, "type": "object", "object_type": "container", "data": { "name": "Сейф", "description": "Небольшой сейф. Код сбит, но дверца открыта.", "loot": ["Патроны", "Золотая монета"] }},
+			{ "grid_x": 1, "grid_y": 22, "type": "object", "object_type": "lore", "data": { "name": "Газета", "description": "Скомканная газета. Заголовок: «ПРОПАЖА ЛЮДЕЙ В МЕТРО — ПОЛИЦИЯ БЕССИЛЬНА». Дата — полгода назад." }},
+			{ "grid_x": 24, "grid_y": 24, "type": "object", "object_type": "lore", "data": { "name": "Алтарь", "description": "Странная конструкция в центре лабиринта. Свечи, символы. Кто-то проводил здесь ритуал." }},
+		]
+		for o in objects:
+			_entities.append(o)
+
+		# NPC-странник
+		var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
+		if file:
+			var data: Dictionary = JSON.parse_string(file)
+			if data and data.has("nodes"):
+				_entities.append({
+					"grid_x": 35, "grid_y": 23,
+					"color": Color(0.2, 0.6, 0.2),
+					"type": "npc",
+					"name": data.get("name", "Незнакомец"),
+					"texture": load("res://sprites/npc/17_sprite.png"),
+					"dialogue": data.nodes,
+				})
+
+	# Маркеры выходов из station_data
+	if station_data:
+		for exit: ExitData in station_data.exits:
+			_entities.append({ "grid_x": exit.position.x, "grid_y": exit.position.y, "color": Color(1, 0.9, 0.2, 0.9), "type": "exit_marker" })
 
 func _setup_dialogue_ui():
 	_dialogue_overlay = CanvasLayer.new()
@@ -780,6 +799,7 @@ func _tick_hud_balls(delta: float):
 		_hud_balls[i].rotation = _hud_ball_angles[i]
 
 func _ask_leave_station():
+	PlayerStats.current_station = load("res://resources/stations/shelter.tres")
 	var exit_dialogue := [
 		{ "text": "Выход из станции. Уйти?", "responses": [
 			{ "text": "Да, уйти в убежище.", "next": 1 },
@@ -794,8 +814,7 @@ func _ask_leave_station():
 func _go_to_node(idx: int):
 	if idx <= -2:
 		_close_dialogue()
-		var target: String = "res://scenes/dungeon/test_dungeon_mechanics.tscn" if shelter_mode else "res://scenes/dungeon/safe_station.tscn"
-		TransitionManager.change_scene(target)
+		TransitionManager.change_scene("res://scenes/dungeon/test_dungeon_mechanics.tscn")
 	elif idx < 0:
 		_close_dialogue()
 	else:
@@ -895,7 +914,23 @@ func _check_entity():
 				TransitionManager.change_scene("res://scenes/battle/node.tscn")
 	var tile_val: int = _map_data[ry][rx] if ry < _map_data.size() and rx < _map_data[0].size() else TILE_WALL
 	if tile_val == TILE_EXIT and not _dialogue_active:
+		var exit: ExitData = station_data.get_exit_at(Vector2i(rx, ry)) if station_data else null
+		if exit:
+			_transition_to_station(exit)
+		else:
+			_ask_leave_station()
+
+func _transition_to_station(exit: ExitData):
+	var target: StationData = exit.resolve_target_station()
+	if not target:
 		_ask_leave_station()
+		return
+	PlayerStats.current_station = target
+	var spawn: Vector2i = exit.resolve_spawn(target.spawn)
+	var dir: int = exit.resolve_dir(target.spawn_dir)
+	PlayerStats.flags["_transition_spawn"] = spawn
+	PlayerStats.flags["_transition_dir"] = dir
+	TransitionManager.change_scene("res://scenes/dungeon/test_dungeon_mechanics.tscn")
 
 func _update_enemies(delta: float):
 	if _world_frozen: return
@@ -1101,7 +1136,6 @@ func _build_from_station_data():
 				"E": row.append(TILE_EXIT)
 				_: row.append(TILE_FLOOR)
 		_map_data.append(row)
-	_player_x = float(sd.spawn.x); _player_y = float(sd.spawn.y); _player_dir = sd.spawn_dir
 	if _renderer: _renderer.fog_distance = sd.fog_distance
 	if sd.outer_ring:
 		# Рельсы (нижний уровень, 2 тайла сверху)
@@ -1128,18 +1162,3 @@ func _build_from_station_data():
 		_set_tile(10, 1, TILE_EXIT); _set_tile(2, 10, TILE_EXIT); _set_tile(46, 10, TILE_EXIT)
 	_build_height_data()
 
-func _build_shelter():
-	if station_data:
-		_build_from_station_data()
-		return
-	var w := 15; var h := 20
-	_map_data = []
-	for y in range(h):
-		var row: Array = []; for x in range(w): row.append(TILE_WALL)
-		_map_data.append(row)
-	for y in range(2, 18):
-		for x in range(2, 13):
-			_map_data[y][x] = TILE_FLOOR
-	for y in range(4, 7): _map_data[y][1] = TILE_FLOOR
-	for y in range(12, 15): _map_data[y][13] = TILE_FLOOR
-	_set_tile(7, 1, TILE_EXIT); _set_tile(7, 2, TILE_FLOOR)

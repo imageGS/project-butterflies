@@ -685,7 +685,8 @@ func end_battle(result: String):
 		PlayerStats.sanity = PlayerStats.max_sanity
 		PlayerStats._pending_corpse = Vector2i(-1, -1)
 	await get_tree().create_timer(2.5).timeout
-	TransitionManager.change_scene("res://scenes/dungeon/safe_station.tscn")
+	PlayerStats.current_station = load("res://resources/stations/shelter.tres")
+	TransitionManager.change_scene("res://scenes/dungeon/test_dungeon_mechanics.tscn")
 
 # ==================================================== Подменю действий
 func _setup_action_submenu():

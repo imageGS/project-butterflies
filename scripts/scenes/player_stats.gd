@@ -25,6 +25,7 @@ const SKILL_NAMES_RU := ["Хладнокровие", "Стойкость", "По
 var inventory: InventoryGrid = InventoryGrid.new()
 var flags: Dictionary = {}
 
+var current_station: StationData = null
 var _pending_corpse: Vector2i = Vector2i(-1, -1)
 var _just_won: bool = false
 
