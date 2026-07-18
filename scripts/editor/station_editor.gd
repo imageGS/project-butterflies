@@ -62,6 +62,85 @@ func _fit_to_window():
 	_grid_control.offset_left = 125
 	_grid_control.offset_right = -280
 
+func _scan_resources(folder: String, extension: String) -> Array[String]:
+	var result: Array[String] = []
+	var dir := DirAccess.open(folder)
+	if not dir:
+		return result
+	dir.list_dir_begin()
+	var file: String = dir.get_next()
+	while file != "":
+		if not dir.current_is_dir() and file.ends_with(extension):
+			result.append(folder.path_join(file))
+		file = dir.get_next()
+	dir.list_dir_end()
+	result.sort()
+	return result
+
+func _refresh_station_dropdown():
+	if not _exit_target_select:
+		return
+	var current: String = ""
+	if _exit_target_select.selected >= 0:
+		current = _exit_target_select.get_item_text(_exit_target_select.selected)
+	_exit_target_select.clear()
+	var stations: Array[String] = _scan_resources("res://resources/stations", ".tres")
+	var selected_idx: int = -1
+	for i in stations.size():
+		_exit_target_select.add_item(stations[i])
+		if stations[i] == current:
+			selected_idx = i
+	if selected_idx >= 0:
+		_exit_target_select.selected = selected_idx
+
+func _on_exit_target_selected(index: int):
+	if index < 0:
+		return
+	var path: String = _exit_target_select.get_item_text(index)
+	_exit_target_select.set_meta("target_path", path)
+
+func _get_exit_target_path() -> String:
+	if not _exit_target_select:
+		return ""
+	var idx: int = _exit_target_select.selected
+	if idx < 0:
+		return _exit_target_select.get_meta("target_path", "") as String
+	return _exit_target_select.get_item_text(idx)
+
+func _on_entity_type_changed(index: int):
+	_refresh_entity_subtype_dropdown(index)
+
+func _refresh_entity_subtype_dropdown(type_index: int = -1):
+	if type_index < 0:
+		type_index = _entity_type.selected
+	var current: String = ""
+	if _entity_subtype.selected >= 0:
+		current = _entity_subtype.get_item_text(_entity_subtype.selected)
+	_entity_subtype.clear()
+	var options: Array[String] = []
+	match type_index:
+		EntitySpawn.Type.ENEMY:
+			options = _scan_resources("res://resources/enemies", ".tres")
+			if options.is_empty():
+				options = ["bunny", "scav"]
+		EntitySpawn.Type.NPC:
+			options = _scan_resources("res://dialogues", ".json")
+			if options.is_empty():
+				options = ["wanderer"]
+		EntitySpawn.Type.ITEM:
+			options = _scan_resources("res://resources/items", ".tres")
+			if options.is_empty():
+				options = ["medkit", "canned_food", "bandage"]
+		EntitySpawn.Type.OBJECT:
+			options = ["rest", "lore", "container"]
+	var selected_idx: int = -1
+	for i in options.size():
+		_entity_subtype.add_item(options[i])
+		if options[i] == current:
+			selected_idx = i
+	if selected_idx >= 0:
+		_entity_subtype.selected = selected_idx
+
 func _setup_ui():
 	# Top toolbar
 	var toolbar := HBoxContainer.new()
@@ -151,7 +230,12 @@ func _setup_ui():
 	_add_labeled_spin(right_panel, "Exit X", _exit_pos_x)
 	_add_labeled_spin(right_panel, "Exit Y", _exit_pos_y)
 
-	_exit_target_edit = LineEdit.new(); _exit_target_edit.placeholder_text = "Target station path"; right_panel.add_child(_exit_target_edit)
+	var target_label := Label.new(); target_label.text = "Target Station:"; right_panel.add_child(target_label)
+	_exit_target_select = OptionButton.new()
+	_exit_target_select.item_selected.connect(_on_exit_target_selected)
+	right_panel.add_child(_exit_target_select)
+	_refresh_station_dropdown()
+
 	_exit_target_x = SpinBox.new(); _exit_target_x.min_value = -1; _exit_target_x.max_value = 127; _exit_target_x.value = -1
 	_exit_target_y = SpinBox.new(); _exit_target_y.min_value = -1; _exit_target_y.max_value = 127; _exit_target_y.value = -1
 	_add_labeled_spin(right_panel, "Target Spawn X", _exit_target_x)
@@ -177,9 +261,14 @@ func _setup_ui():
 	for t: String in ["Enemy", "NPC", "Item", "Object"]:
 		_entity_type.add_item(t)
 	_entity_type.selected = 0
+	_entity_type.item_selected.connect(_on_entity_type_changed)
 	right_panel.add_child(_entity_type)
 
-	_entity_subtype = LineEdit.new(); _entity_subtype.placeholder_text = "Subtype / ID"; right_panel.add_child(_entity_subtype)
+	var subtype_label := Label.new(); subtype_label.text = "Subtype:"; right_panel.add_child(subtype_label)
+	_entity_subtype = OptionButton.new()
+	_entity_subtype.editable = true
+	right_panel.add_child(_entity_subtype)
+	_refresh_entity_subtype_dropdown()
 
 	_entity_extra = LineEdit.new(); _entity_extra.placeholder_text = "Extra JSON (optional)"; right_panel.add_child(_entity_extra)
 
@@ -221,7 +310,7 @@ var _spawn_dir: OptionButton
 var _exit_list: ItemList
 var _exit_pos_x: SpinBox
 var _exit_pos_y: SpinBox
-var _exit_target_edit: LineEdit
+var _exit_target_select: OptionButton
 var _exit_target_x: SpinBox
 var _exit_target_y: SpinBox
 var _exit_target_dir: OptionButton
@@ -229,7 +318,7 @@ var _selected_exit_index: int = -1
 
 var _entity_list: ItemList
 var _entity_type: OptionButton
-var _entity_subtype: LineEdit
+var _entity_subtype: OptionButton
 var _entity_extra: LineEdit
 var _selected_entity_index: int = -1
 
@@ -531,17 +620,27 @@ func _on_exit_selected(index: int):
 	var e: ExitData = _station_data.exits[index]
 	_exit_pos_x.value = e.position.x
 	_exit_pos_y.value = e.position.y
-	_exit_target_edit.text = e.target_station_path
 	_exit_target_x.value = e.target_spawn.x
 	_exit_target_y.value = e.target_spawn.y
 	_exit_target_dir.selected = 4 if e.target_dir < 0 else e.target_dir
+	_refresh_station_dropdown()
+	var target_path: String = e.target_station_path
+	var found: bool = false
+	for i in _exit_target_select.item_count:
+		if _exit_target_select.get_item_text(i) == target_path:
+			_exit_target_select.selected = i
+			found = true
+			break
+	if not found:
+		_exit_target_select.selected = -1
+		_exit_target_select.set_meta("target_path", target_path)
 
 func _apply_exit():
 	if _selected_exit_index < 0 or _selected_exit_index >= _station_data.exits.size():
 		return
 	var e: ExitData = _station_data.exits[_selected_exit_index]
 	e.position = Vector2i(int(_exit_pos_x.value), int(_exit_pos_y.value))
-	e.target_station_path = _exit_target_edit.text
+	e.target_station_path = _get_exit_target_path()
 	e.target_spawn = Vector2i(int(_exit_target_x.value), int(_exit_target_y.value))
 	e.target_dir = -1 if _exit_target_dir.selected == 4 else _exit_target_dir.selected
 	_refresh_exit_list()
@@ -577,7 +676,10 @@ func _add_entity_at_selection():
 	var s := EntitySpawn.new()
 	s.position = pos
 	s.type = _entity_type.selected as EntitySpawn.Type
-	s.subtype = _entity_subtype.text
+	var subtype_text: String = ""
+	if _entity_subtype.selected >= 0:
+		subtype_text = _entity_subtype.get_item_text(_entity_subtype.selected)
+	s.subtype = subtype_text
 	_station_data.entity_spawns.append(s)
 	_selected_entity_index = _station_data.entity_spawns.size() - 1
 	_refresh_entity_list()
@@ -592,7 +694,16 @@ func _on_entity_selected(index: int):
 		return
 	var s: EntitySpawn = _station_data.entity_spawns[index]
 	_entity_type.selected = s.type
-	_entity_subtype.text = s.subtype
+	_refresh_entity_subtype_dropdown(s.type)
+	var subtype: String = s.subtype
+	var found: bool = false
+	for i in _entity_subtype.item_count:
+		if _entity_subtype.get_item_text(i) == subtype:
+			_entity_subtype.selected = i
+			found = true
+			break
+	if not found:
+		_entity_subtype.selected = -1
 	_entity_extra.text = JSON.stringify(s.extra)
 
 func _apply_entity():
@@ -600,7 +711,10 @@ func _apply_entity():
 		return
 	var s: EntitySpawn = _station_data.entity_spawns[_selected_entity_index]
 	s.type = _entity_type.selected as EntitySpawn.Type
-	s.subtype = _entity_subtype.text
+	var subtype_text: String = ""
+	if _entity_subtype.selected >= 0:
+		subtype_text = _entity_subtype.get_item_text(_entity_subtype.selected)
+	s.subtype = subtype_text
 	var extra_text: String = _entity_extra.text.strip_edges()
 	if not extra_text.is_empty():
 		var parsed: Variant = JSON.parse_string(extra_text)

@@ -5,26 +5,14 @@
 [ext_resource type="Script" path="res://scripts/resources/station_data.gd" id="3_wu7y4"]
 
 [sub_resource type="Resource" id="Resource_1qvov"]
-script = ExtResource("2_w0t4c")
-position = Vector2i(14, 0)
-
-[sub_resource type="Resource" id="Resource_ppjig"]
-script = ExtResource("2_w0t4c")
-position = Vector2i(14, 1)
-
-[sub_resource type="Resource" id="Resource_7uka5"]
-script = ExtResource("2_w0t4c")
-position = Vector2i(0, 0)
-
-[sub_resource type="Resource" id="Resource_h7dk2"]
-script = ExtResource("2_w0t4c")
-position = Vector2i(0, 1)
+script = ExtResource("1_q50cg")
+position = Vector2i(14, 7)
+type = 1
 
 [resource]
 script = ExtResource("3_wu7y4")
 station_name = "New Station"
 map_file = "res://resources/stations/maps/new_station.txt"
-spawn = Vector2i(7, 5)
-spawn_dir = 0
+spawn = Vector2i(1, 1)
 outer_ring = false
-exits = Array[ExtResource("2_w0t4c")]([SubResource("Resource_1qvov"), SubResource("Resource_ppjig"), SubResource("Resource_7uka5"), SubResource("Resource_h7dk2")])
+entity_spawns = Array[ExtResource("1_q50cg")]([SubResource("Resource_1qvov")])
