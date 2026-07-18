@@ -124,11 +124,40 @@ func _draw_floor_ceiling(hh: float, floor_h_override: float = 0.0):
 		var c: Color = ceil_color.lerp(Color(0.0, 0.0, 0.0), t * 2.0)
 		draw_rect(Rect2(0, y, _view_w, 1), c)
 
-	var tex: Texture2D = _floor_tex
-	if floor_h_override < -0.5 and _rail_tex:
-		tex = _rail_tex
-	if tex:
-		draw_texture_rect(tex, Rect2(0, hh, _view_w, _view_h - hh), true)
+	if not _floor_tex: return
+
+	var focal: float = float(_view_w) * 0.5
+	var eye_h: float = 0.5
+	var max_dist: float = fog_distance + 1.0
+	var fov_half: float = deg_to_rad(45.0)
+	var block: int = 16
+
+	var cols: int = max(1, int(ceil(float(_view_w) / block)))
+	var fstart: int = int(hh)
+	var rows: int = max(1, int(ceil(float(_view_h - fstart)) / block))
+
+	for ri in range(rows):
+		var sy: float = fstart + ri * block
+		var bh: float = min(block, _view_h - sy)
+		var y_mid: float = sy + bh * 0.5
+		var d: float = eye_h * focal / max(y_mid - hh, 0.5)
+		if d > max_dist: continue
+
+		for ci in range(cols):
+			var sx: float = ci * block
+			var bw: float = min(block, _view_w - sx)
+			var frac: float = (sx + bw * 0.5) / float(_view_w)
+			var ray_angle: float = player_angle - fov_half + frac * fov_half * 2.0
+			var wx: float = cam_x + cos(ray_angle) * d
+			var wy: float = cam_y + sin(ray_angle) * d
+			var fh: float = sector_map.get_floor_height(int(floor(wx)), int(floor(wy))) if sector_map else 0.0
+
+			var tex: Texture2D = _floor_tex
+			if fh < -0.5 and _rail_tex:
+				tex = _rail_tex
+
+			var shade: float = clamp(1.0 - d / max_dist, 0.0, 1.0)
+			draw_texture_rect(tex, Rect2(sx, sy, bw, bh), false, Color(shade, shade, shade))
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var dir: Vector2 = Vector2(cos(angle), sin(angle))
