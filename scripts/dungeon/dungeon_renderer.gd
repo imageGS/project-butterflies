@@ -84,21 +84,17 @@ func _draw():
 		if perp > fog_distance - fog_fade:
 			fbl = clamp((perp - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
 
-		var use_tex: Texture2D = _wall_tex
-		if wh < -0.5 and _rail_tex:
-			use_tex = _rail_tex
-
-		if use_tex:
+		if _wall_tex:
 			var wall_x: float = result.get("wall_x", 0.0)
-			var tex_w: float = use_tex.get_width()
-			var tex_h: float = use_tex.get_height()
+			var tex_w: float = _wall_tex.get_width()
+			var tex_h: float = _wall_tex.get_height()
 			var tex_xx: int = int(wall_x * tex_w)
 			if (result.side == 0 and result.get("rdx", 0.0) > 0) or (result.side == 1 and result.get("rdy", 0.0) < 0):
 				tex_xx = int(tex_w) - tex_xx - 1
 			var shade: float = clamp(1.0 - perp * 0.04, 0.3, 1.0)
 			if result.side == 1: shade *= 0.7
 			shade = lerpf(shade, 0.0, fbl)
-			draw_texture_rect_region(use_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_bot - wall_top), Rect2(tex_xx, 0, 1, tex_h), Color(shade, shade, shade))
+			draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_bot - wall_top), Rect2(tex_xx, 0, 1, tex_h), Color(shade, shade, shade))
 		else:
 			var c: Color = wall_color
 			if result.side == 0: c *= 0.75
