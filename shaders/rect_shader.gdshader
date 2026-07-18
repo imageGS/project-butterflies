@@ -62,8 +62,8 @@ void fragment() {
 		if (sy >= wall_top && sy <= wall_bot) {
 			float w_x = hit_side == 0 ? cam_pos.y + perp_dist * rd.y : cam_pos.x + perp_dist * rd.x;
 			w_x = fract(w_x);
-			float shade = clamp(1.0 - perp_dist * 0.04, 0.3, 1.0);
-			if (hit_side == 1) shade *= 0.7;
+			float shade = clamp(1.0 - perp_dist * 0.06, 0.15, 1.0);
+			if (hit_side == 1) shade *= 0.65;
 			vec4 tex = texture(wall_tex, vec2(w_x, (sy - wall_top) / (wall_bot - wall_top)));
 			COLOR = tex * shade;
 		} else if (sy > wall_bot) {
@@ -76,7 +76,7 @@ void fragment() {
 				vec4 cell = texelFetch(map_tex, tc, 0);
 				float fh = cell.g * 4.0 - 2.0;
 				vec4 fc = fh < -0.5 ? texture(rail_tex, fract(vec2(wx, wy))) : texture(floor_tex, fract(vec2(wx, wy)));
-				float s2 = clamp(1.0 - d / fog_dist, 0.0, 1.0);
+				float s2 = clamp(1.0 - d * 0.2, 0.0, 1.0);
 				COLOR = fc * s2;
 			} else {
 				COLOR = vec4(0.06, 0.06, 0.07, 1.0);
@@ -96,7 +96,7 @@ void fragment() {
 				vec4 cell = texelFetch(map_tex, tc, 0);
 				float fh = cell.g * 4.0 - 2.0;
 				vec4 fc = fh < -0.5 ? texture(rail_tex, fract(vec2(wx, wy))) : texture(floor_tex, fract(vec2(wx, wy)));
-				float s2 = clamp(1.0 - d / fog_dist, 0.0, 1.0);
+				float s2 = clamp(1.0 - d * 0.2, 0.0, 1.0);
 				COLOR = fc * s2;
 			} else {
 				COLOR = vec4(0.06, 0.06, 0.07, 1.0);
