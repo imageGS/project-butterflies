@@ -39,7 +39,7 @@ func _draw():
 	var eye_shift: float = floor_h * _view_h * 0.15
 	var hh: float = half_h + eye_shift
 
-	_draw_floor_ceiling(hh)
+	_draw_floor_ceiling(hh, floor_h)
 	_wall_zbuf.resize(num_strips)
 
 	for i in range(num_strips):
@@ -113,19 +113,24 @@ func _setup_view():
 	if _view_h <= 0: _view_h = 449
 
 func _draw_floor_ceiling(hh: float, floor_h_override: float = 0.0):
-	var floor_color: Color = Color(0.05, 0.05, 0.06)
+	var ceil_color: Color = Color(0.03, 0.03, 0.04)
+	var floor_color: Color = Color(0.06, 0.06, 0.07)
 	if floor_h_override < -0.5:
-		floor_color = Color(0.14, 0.08, 0.04)
+		floor_color = Color(0.15, 0.07, 0.03)
 	elif floor_h_override < -0.1:
-		floor_color = Color(0.09, 0.06, 0.05)
+		floor_color = Color(0.10, 0.07, 0.05)
 
 	for y in range(_view_h):
 		var t: float = float(y) / float(_view_h)
 		if y < hh:
-			var c: Color = Color(0.03, 0.03, 0.04).lerp(Color(0.0, 0.0, 0.0), t * 2.0)
+			var c: Color = ceil_color.lerp(Color(0.0, 0.0, 0.0), t * 2.0)
 			draw_rect(Rect2(0, y, _view_w, 1), c)
 		else:
-			var c: Color = floor_color.lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
+			var dist: float = 1.0 / max((t - hh / float(_view_h)) * 2.0, 0.01)
+			var band: float = sin(dist * 0.3) * 0.03
+			var c: Color = floor_color.lerp(Color(0.0, 0.0, 0.0), min((t - 0.4) * 3.0, 1.0))
+			c.r += band; c.g += band; c.b += band
+			c.r = clamp(c.r, 0.0, 1.0); c.g = clamp(c.g, 0.0, 1.0); c.b = clamp(c.b, 0.0, 1.0)
 			draw_rect(Rect2(0, y, _view_w, 1), c)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
