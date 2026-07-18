@@ -37,8 +37,12 @@ func _draw():
 	var half_h: float = _view_h / 2.0
 
 	var floor_h: float = sector_map.get_floor_height(int(floor(cam_x)), int(floor(cam_y))) if sector_map else 0.0
-	var eye_shift: float = floor_h * _view_h * 0.15
+	var eye_shift: float = floor_h * _view_h * 0.25
 	var hh: float = half_h + eye_shift
+
+	# Debug: show floor height at camera position
+	var dbg_str := "fh=%.1f  hh=%d" % [floor_h, int(hh)]
+	draw_string(ThemeDB.fallback_font, Vector2(8, 20), dbg_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.YELLOW)
 
 	_draw_floor_ceiling(hh, floor_h)
 	_wall_zbuf.resize(num_strips)
@@ -77,9 +81,9 @@ func _draw():
 
 		var wall_color: Color = Color(0.4, 0.4, 0.5)
 		if wh < -0.5:
-			wall_color = Color(0.55, 0.35, 0.25)
+			wall_color = Color(0.7, 0.3, 0.15)
 		elif wh < -0.1:
-			wall_color = Color(0.45, 0.38, 0.35)
+			wall_color = Color(0.5, 0.35, 0.25)
 
 		var fbl: float = 0.0
 		if perp > fog_distance - fog_fade:
@@ -115,11 +119,11 @@ func _setup_view():
 
 func _draw_floor_ceiling(hh: float, floor_h_override: float = 0.0):
 	var ceil_color: Color = Color(0.03, 0.03, 0.04)
-	var floor_color: Color = Color(0.06, 0.06, 0.07)
+	var floor_color: Color = Color(0.06, 0.07, 0.08)
 	if floor_h_override < -0.5:
-		floor_color = Color(0.15, 0.07, 0.03)
+		floor_color = Color(0.2, 0.08, 0.02)
 	elif floor_h_override < -0.1:
-		floor_color = Color(0.10, 0.07, 0.05)
+		floor_color = Color(0.12, 0.07, 0.04)
 
 	for y in range(_view_h):
 		var t: float = float(y) / float(_view_h)
