@@ -35,10 +35,7 @@ func _draw():
 	var half_h: float = _view_h / 2.0
 
 	var floor_h: float = sector_map.get_floor_height(int(floor(cam_x)), int(floor(cam_y))) if sector_map else 0.0
-	var cam_offset: float = -floor_h * _view_h * 0.35
-	var hh: float = half_h + cam_offset
-
-	_draw_floor_ceiling(hh, floor_h)
+	_draw_floor_ceiling(half_h, floor_h)
 	_wall_zbuf.resize(num_strips)
 
 	for i in range(num_strips):
@@ -52,15 +49,15 @@ func _draw():
 			var fbl: float = clamp((perp - fog_distance) / fog_fade, 0.0, 1.0)
 			if fbl <= 0.0: continue
 			var fh: float = _view_h / perp
-			var ft: float = hh - fh * 0.5
+			var ft: float = half_h - fh * 0.5
 			var fc: Color = fog_color
 			fc.a = fbl * 0.85
 			draw_rect(Rect2(i * _strip_w, ft, _strip_w + 1, fh), fc)
 			continue
 
 		var wall_h: float = _view_h / perp
-		var wall_top: float = hh - wall_h * 0.5
-		var wall_bot: float = hh + wall_h * 0.5
+		var wall_top: float = half_h - wall_h * 0.5
+		var wall_bot: float = half_h + wall_h * 0.5
 
 		# --- Height adjustment ---
 		var hx: int = result.get("mx", int(cam_x))
@@ -74,6 +71,12 @@ func _draw():
 		if wh < 0.0:
 			wall_bot -= wh * wall_h
 		# --- End height adjustment ---
+
+		var wall_color: Color = Color(0.4, 0.4, 0.5)
+		if wh < -0.5:
+			wall_color = Color(0.55, 0.35, 0.25)
+		elif wh < -0.1:
+			wall_color = Color(0.45, 0.38, 0.35)
 
 		var fbl: float = 0.0
 		if perp > fog_distance - fog_fade:
@@ -91,14 +94,14 @@ func _draw():
 			shade = lerpf(shade, 0.0, fbl)
 			draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_bot - wall_top), Rect2(tex_xx, 0, 1, tex_h), Color(shade, shade, shade))
 		else:
-			var c: Color = Color(0.4, 0.4, 0.5)
-			if result.side == 0: c = Color(0.3, 0.3, 0.4)
+			var c: Color = wall_color
+			if result.side == 0: c *= 0.75
 			var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
 			shade = lerpf(shade, 0.0, fbl)
 			c *= shade
 			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_bot - wall_top), c)
 
-	_render_entities(num_strips, hh)
+	_render_entities(num_strips, half_h)
 	_draw_fog()
 
 func _setup_view():
@@ -108,11 +111,11 @@ func _setup_view():
 	if _view_h <= 0: _view_h = 449
 
 func _draw_floor_ceiling(hh: float, floor_h_override: float = 0.0):
-	var floor_color: Color = Color(0.06, 0.05, 0.04)
+	var floor_color: Color = Color(0.05, 0.05, 0.06)
 	if floor_h_override < -0.5:
-		floor_color = Color(0.12, 0.07, 0.04)
+		floor_color = Color(0.14, 0.08, 0.04)
 	elif floor_h_override < -0.1:
-		floor_color = Color(0.09, 0.06, 0.04)
+		floor_color = Color(0.09, 0.06, 0.05)
 
 	for y in range(_view_h):
 		var t: float = float(y) / float(_view_h)
