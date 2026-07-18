@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://csdjjp2doowrq" path="res://scripts/resources/station_data.gd" id="1"]
 [ext_resource type="Script" uid="uid://dfcaawdjgi8lu" path="res://scripts/resources/exit_data.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/resources/entity_spawn.gd" id="3_entity"]
 
 [sub_resource type="Resource" id="ExitData_1"]
 script = ExtResource("2")
@@ -18,3 +19,4 @@ spawn = Vector2i(3, 3)
 outer_ring = false
 fog_distance = 15.0
 exits = Array[ExtResource("2")]([SubResource("ExitData_1")])
+entity_spawns = Array[ExtResource("3_entity")]([])

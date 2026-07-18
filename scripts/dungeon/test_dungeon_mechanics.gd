@@ -296,73 +296,167 @@ func _setup_entities():
 			"data": { "name": "Труп", "description": "Вы убили это существо в бою." },
 		})
 		PlayerStats._pending_corpse = Vector2i(-1, -1)
+
 	var is_shelter: bool = station_data != null and station_data.station_name == "Убежище"
-	if is_shelter:
+	if station_data and not station_data.entity_spawns.is_empty():
+		for spawn: EntitySpawn in station_data.entity_spawns:
+			var ent: Dictionary = _create_entity_from_spawn(spawn)
+			if not ent.is_empty():
+				_entities.append(ent)
+	elif is_shelter:
 		_entities.append({ "grid_x": 3, "grid_y": 5, "color": Color(0.3, 0.5, 0.7), "type": "object", "object_type": "rest",
 			"data": { "name": "кровать", "description": "Старая кровать." }})
 		_entities.append({ "grid_x": 10, "grid_y": 10, "color": Color(0.4, 0.8, 0.4), "type": "object", "object_type": "lore",
 			"data": { "name": "ТВ", "description": "Работает. Помехи, потом голос: «...проход открыт в западном крыле». И снова помехи." }})
 	else:
-		# Враги на @ позициях
-		var tex_f := load("res://sprites/enemy/bunny/bunny_enemy.png")
-		var tex_b := load("res://sprites/enemy/bunny/bunny_enemy_back.png")
-		var tex_l := load("res://sprites/enemy/bunny/bunny_enemy_left.png")
-		var tex_r := load("res://sprites/enemy/bunny/bunny_enemy_right.png")
-		# Каждый враг: pos, соседние точки для патруля (маршрут)
-		var spawns: Array[Dictionary] = [
-			{ "pos": Vector2i(2, 10), "dir": Dir.SOUTH },
-			{ "pos": Vector2i(46, 10), "dir": Dir.SOUTH },
-			{ "pos": Vector2i(25, 2), "dir": Dir.EAST },
-		]
-		for s in spawns:
-			var audio := AudioStreamPlayer.new()
-			audio.volume_db = -4.0
-			add_child(audio)
-			_entities.append({
-				"grid_x": s.pos.x, "grid_y": s.pos.y,
-				"anim_x": float(s.pos.x), "anim_y": float(s.pos.y),
-				"color": Color(0.8, 0.2, 0.2),
-				"type": "enemy",
-				"facing": s.dir,
-				"textures": { "front": tex_f, "back": tex_b, "left": tex_l, "right": tex_r, "chase": load("res://sprites/enemy/bunny/bunny_enemy_chase.png") },
-				"move_progress": 1.0,
-				"move_timer": randf_range(0.5, 1.0),
-				"chase_active": false,
-				"audio_player": audio,
-			})
-
-		# Интерактивные объекты
-		var objects: Array[Dictionary] = [
-			{ "grid_x": 1, "grid_y": 9, "type": "object", "object_type": "container", "data": { "name": "Рюкзак", "description": "Чей-то брошенный рюкзак.", "loot": ["Консервы", "Бинт"] }},
-			{ "grid_x": 16, "grid_y": 13, "type": "object", "object_type": "lore", "data": { "name": "Стена", "description": "Кто-то выцарапал: «NEW DAWN — ЭТО АД». Буквы дрожат." }},
-			{ "grid_x": 28, "grid_y": 15, "type": "object", "object_type": "rest", "data": { "name": "скамья", "description": "Обшарпанная деревянная скамья." }},
-			{ "grid_x": 28, "grid_y": 22, "type": "object", "object_type": "container", "data": { "name": "Ящик", "description": "Деревянный ящик с инструментами.", "loot": ["Аптечка"] }},
-			{ "grid_x": 19, "grid_y": 20, "type": "object", "object_type": "lore", "data": { "name": "Труп", "description": "Тело в форме охранника. В кармане пусто. Нашивка: NEW DAWN." }},
-			{ "grid_x": 36, "grid_y": 23, "type": "object", "object_type": "container", "data": { "name": "Сейф", "description": "Небольшой сейф. Код сбит, но дверца открыта.", "loot": ["Патроны", "Золотая монета"] }},
-			{ "grid_x": 1, "grid_y": 22, "type": "object", "object_type": "lore", "data": { "name": "Газета", "description": "Скомканная газета. Заголовок: «ПРОПАЖА ЛЮДЕЙ В МЕТРО — ПОЛИЦИЯ БЕССИЛЬНА». Дата — полгода назад." }},
-			{ "grid_x": 24, "grid_y": 24, "type": "object", "object_type": "lore", "data": { "name": "Алтарь", "description": "Странная конструкция в центре лабиринта. Свечи, символы. Кто-то проводил здесь ритуал." }},
-		]
-		for o in objects:
-			_entities.append(o)
-
-		# NPC-странник
-		var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
-		if file:
-			var data: Dictionary = JSON.parse_string(file)
-			if data and data.has("nodes"):
-				_entities.append({
-					"grid_x": 35, "grid_y": 23,
-					"color": Color(0.2, 0.6, 0.2),
-					"type": "npc",
-					"name": data.get("name", "Незнакомец"),
-					"texture": load("res://sprites/npc/17_sprite.png"),
-					"dialogue": data.nodes,
-				})
+		_setup_fallback_entities()
 
 	# Маркеры выходов из station_data
 	if station_data:
 		for exit: ExitData in station_data.exits:
 			_entities.append({ "grid_x": exit.position.x, "grid_y": exit.position.y, "color": Color(1, 0.9, 0.2, 0.9), "type": "exit_marker" })
+
+func _create_entity_from_spawn(spawn: EntitySpawn) -> Dictionary:
+	match spawn.type:
+		EntitySpawn.Type.ENEMY:
+			return _create_enemy_entity(spawn)
+		EntitySpawn.Type.NPC:
+			return _create_npc_entity(spawn)
+		EntitySpawn.Type.ITEM:
+			return _create_item_entity(spawn)
+		EntitySpawn.Type.OBJECT:
+			return _create_object_entity(spawn)
+	return {}
+
+func _create_enemy_entity(spawn: EntitySpawn) -> Dictionary:
+	var subtype: String = spawn.subtype
+	if subtype.is_empty(): subtype = "bunny"
+	var tex_base: String = "res://sprites/enemy/bunny/bunny_enemy" if subtype == "bunny" else "res://sprites/enemy/scav_enemy_1"
+	var tex_f: Texture2D = load(tex_base + ".png") if subtype == "bunny" else load(tex_base + ".png")
+	var tex_b: Texture2D = load("res://sprites/enemy/bunny/bunny_enemy_back.png") if subtype == "bunny" else tex_f
+	var tex_l: Texture2D = load("res://sprites/enemy/bunny/bunny_enemy_left.png") if subtype == "bunny" else tex_f
+	var tex_r: Texture2D = load("res://sprites/enemy/bunny/bunny_enemy_right.png") if subtype == "bunny" else tex_f
+	var tex_c: Texture2D = load("res://sprites/enemy/bunny/bunny_enemy_chase.png") if subtype == "bunny" else tex_f
+	var audio := AudioStreamPlayer.new()
+	audio.volume_db = -4.0
+	add_child(audio)
+	return {
+		"grid_x": spawn.position.x, "grid_y": spawn.position.y,
+		"anim_x": float(spawn.position.x), "anim_y": float(spawn.position.y),
+		"color": Color(0.8, 0.2, 0.2),
+		"type": "enemy",
+		"facing": spawn.facing,
+		"textures": { "front": tex_f, "back": tex_b, "left": tex_l, "right": tex_r, "chase": tex_c },
+		"move_progress": 1.0,
+		"move_timer": randf_range(0.5, 1.0),
+		"chase_active": false,
+		"audio_player": audio,
+	}
+
+func _create_npc_entity(spawn: EntitySpawn) -> Dictionary:
+	var subtype: String = spawn.subtype
+	if subtype.is_empty(): subtype = "wanderer"
+	var portrait: Texture2D = load("res://sprites/npc/17_sprite.png")
+	var name: String = "Незнакомец"
+	var dialogue: Array = []
+	if subtype == "wanderer":
+		var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
+		if file:
+			var data: Dictionary = JSON.parse_string(file)
+			if data:
+				name = data.get("name", name)
+				dialogue = data.get("nodes", [])
+	return {
+		"grid_x": spawn.position.x, "grid_y": spawn.position.y,
+		"color": Color(0.2, 0.6, 0.2),
+		"type": "npc",
+		"name": name,
+		"texture": portrait,
+		"dialogue": dialogue,
+	}
+
+func _create_item_entity(spawn: EntitySpawn) -> Dictionary:
+	var subtype: String = spawn.subtype
+	if subtype.is_empty(): subtype = "misc"
+	return {
+		"grid_x": spawn.position.x, "grid_y": spawn.position.y,
+		"color": Color(0.2, 0.9, 0.2),
+		"type": "object",
+		"object_type": "container",
+		"data": { "name": subtype, "description": "Лежит на полу.", "loot": [subtype] },
+	}
+
+func _create_object_entity(spawn: EntitySpawn) -> Dictionary:
+	var subtype: String = spawn.subtype
+	if subtype.is_empty(): subtype = "lore"
+	var data: Dictionary = spawn.extra.duplicate()
+	if not data.has("name"):
+		data.name = subtype
+	if not data.has("description"):
+		data.description = "Ничего особенного."
+	return {
+		"grid_x": spawn.position.x, "grid_y": spawn.position.y,
+		"color": Color(0.6, 0.6, 0.6),
+		"type": "object",
+		"object_type": subtype,
+		"data": data,
+	}
+
+func _setup_fallback_entities():
+	# Враги
+	var tex_f := load("res://sprites/enemy/bunny/bunny_enemy.png")
+	var tex_b := load("res://sprites/enemy/bunny/bunny_enemy_back.png")
+	var tex_l := load("res://sprites/enemy/bunny/bunny_enemy_left.png")
+	var tex_r := load("res://sprites/enemy/bunny/bunny_enemy_right.png")
+	var spawns: Array[Dictionary] = [
+		{ "pos": Vector2i(2, 10), "dir": Dir.SOUTH },
+		{ "pos": Vector2i(46, 10), "dir": Dir.SOUTH },
+		{ "pos": Vector2i(25, 2), "dir": Dir.EAST },
+	]
+	for s in spawns:
+		var audio := AudioStreamPlayer.new()
+		audio.volume_db = -4.0
+		add_child(audio)
+		_entities.append({
+			"grid_x": s.pos.x, "grid_y": s.pos.y,
+			"anim_x": float(s.pos.x), "anim_y": float(s.pos.y),
+			"color": Color(0.8, 0.2, 0.2),
+			"type": "enemy",
+			"facing": s.dir,
+			"textures": { "front": tex_f, "back": tex_b, "left": tex_l, "right": tex_r, "chase": load("res://sprites/enemy/bunny/bunny_enemy_chase.png") },
+			"move_progress": 1.0,
+			"move_timer": randf_range(0.5, 1.0),
+			"chase_active": false,
+			"audio_player": audio,
+		})
+
+	# Объекты
+	var objects: Array[Dictionary] = [
+		{ "grid_x": 1, "grid_y": 9, "type": "object", "object_type": "container", "data": { "name": "Рюкзак", "description": "Чей-то брошенный рюкзак.", "loot": ["Консервы", "Бинт"] }},
+		{ "grid_x": 16, "grid_y": 13, "type": "object", "object_type": "lore", "data": { "name": "Стена", "description": "Кто-то выцарапал: «NEW DAWN — ЭТО АД». Буквы дрожат." }},
+		{ "grid_x": 28, "grid_y": 15, "type": "object", "object_type": "rest", "data": { "name": "скамья", "description": "Обшарпанная деревянная скамья." }},
+		{ "grid_x": 28, "grid_y": 22, "type": "object", "object_type": "container", "data": { "name": "Ящик", "description": "Деревянный ящик с инструментами.", "loot": ["Аптечка"] }},
+		{ "grid_x": 19, "grid_y": 20, "type": "object", "object_type": "lore", "data": { "name": "Труп", "description": "Тело в форме охранника. В кармане пусто. Нашивка: NEW DAWN." }},
+		{ "grid_x": 36, "grid_y": 23, "type": "object", "object_type": "container", "data": { "name": "Сейф", "description": "Небольшой сейф. Код сбит, но дверца открыта.", "loot": ["Патроны", "Золотая монета"] }},
+		{ "grid_x": 1, "grid_y": 22, "type": "object", "object_type": "lore", "data": { "name": "Газета", "description": "Скомканная газета. Заголовок: «ПРОПАЖА ЛЮДЕЙ В МЕТРО — ПОЛИЦИЯ БЕССИЛЬНА». Дата — полгода назад." }},
+		{ "grid_x": 24, "grid_y": 24, "type": "object", "object_type": "lore", "data": { "name": "Алтарь", "description": "Странная конструкция в центре лабиринта. Свечи, символы. Кто-то проводил здесь ритуал." }},
+	]
+	for o in objects:
+		_entities.append(o)
+
+	# NPC
+	var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
+	if file:
+		var data: Dictionary = JSON.parse_string(file)
+		if data and data.has("nodes"):
+			_entities.append({
+				"grid_x": 35, "grid_y": 23,
+				"color": Color(0.2, 0.6, 0.2),
+				"type": "npc",
+				"name": data.get("name", "Незнакомец"),
+				"texture": load("res://sprites/npc/17_sprite.png"),
+				"dialogue": data.nodes,
+			})
 
 func _setup_dialogue_ui():
 	_dialogue_overlay = CanvasLayer.new()

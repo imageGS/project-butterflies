@@ -3,8 +3,9 @@ extends Control
 
 const CELL_SIZE: int = 24
 
-const TOOLS: Array[String] = [".", "#", "E", "D", "L", "S", "R", "I", "@", "N", "B"]
+const TOOLS: Array[String] = ["cursor", ".", "#", "E", "D", "L", "S", "R", "I", "@", "N", "B"]
 const TOOL_NAMES: Dictionary = {
+	"cursor": "Cursor",
 	".": "Floor",
 	"#": "Wall",
 	"E": "Exit",
@@ -35,12 +36,12 @@ var _station_data: StationData = null
 var _map_grid: Array[Array] = []
 var _grid_width: int = 32
 var _grid_height: int = 24
-var _current_tool: String = "."
-@warning_ignore("unused_private_class_variable")
+var _current_tool: String = "cursor"
 var _draw_exit_marker: bool = true
 var _camera_offset: Vector2 = Vector2.ZERO
 var _is_dragging: bool = false
 var _last_tile_pos: Vector2i = Vector2i(-1, -1)
+var _selected_tile: Vector2i = Vector2i(-1, -1)
 
 var _grid_control: Control
 var _tool_buttons: Dictionary = {}
@@ -152,6 +153,29 @@ func _setup_ui():
 
 	var exit_apply := Button.new(); exit_apply.text = "Apply Exit"; exit_apply.pressed.connect(_apply_exit); right_panel.add_child(exit_apply)
 
+	# Entity spawns inspector
+	var entity_label := Label.new(); entity_label.text = "Entity Spawns"; entity_label.add_theme_font_size_override("font_size", 18); right_panel.add_child(entity_label)
+
+	_entity_list = ItemList.new()
+	_entity_list.custom_minimum_size = Vector2(0, 100)
+	_entity_list.item_selected.connect(_on_entity_selected)
+	right_panel.add_child(_entity_list)
+
+	var entity_add := Button.new(); entity_add.text = "Add Entity at Selection"; entity_add.pressed.connect(_add_entity_at_selection); right_panel.add_child(entity_add)
+	var entity_del := Button.new(); entity_del.text = "Remove Selected Entity"; entity_del.pressed.connect(_remove_selected_entity); right_panel.add_child(entity_del)
+
+	_entity_type = OptionButton.new()
+	for t: String in ["Enemy", "NPC", "Item", "Object"]:
+		_entity_type.add_item(t)
+	_entity_type.selected = 0
+	right_panel.add_child(_entity_type)
+
+	_entity_subtype = LineEdit.new(); _entity_subtype.placeholder_text = "Subtype / ID"; right_panel.add_child(_entity_subtype)
+
+	_entity_extra = LineEdit.new(); _entity_extra.placeholder_text = "Extra JSON (optional)"; right_panel.add_child(_entity_extra)
+
+	var entity_apply := Button.new(); entity_apply.text = "Apply Entity"; entity_apply.pressed.connect(_apply_entity); right_panel.add_child(entity_apply)
+
 	_status_label = Label.new(); _status_label.text = "Ready"; right_panel.add_child(_status_label)
 
 	# Grid control
@@ -181,8 +205,15 @@ var _exit_target_edit: LineEdit
 var _exit_target_x: SpinBox
 var _exit_target_y: SpinBox
 var _exit_target_dir: OptionButton
-var _status_label: Label
 var _selected_exit_index: int = -1
+
+var _entity_list: ItemList
+var _entity_type: OptionButton
+var _entity_subtype: LineEdit
+var _entity_extra: LineEdit
+var _selected_entity_index: int = -1
+
+var _status_label: Label
 
 func _add_labeled_spin(parent: Control, label_text: String, spin: SpinBox):
 	var hbox := HBoxContainer.new(); parent.add_child(hbox)
@@ -295,6 +326,7 @@ func _refresh_ui():
 	_spawn_y.value = _station_data.spawn.y
 	_spawn_dir.selected = _station_data.spawn_dir
 	_refresh_exit_list()
+	_refresh_entity_list()
 
 func _refresh_exit_list():
 	_exit_list.clear()
@@ -340,15 +372,40 @@ func _draw_grid():
 				var font := _grid_control.get_theme_default_font()
 				if font:
 					_grid_control.draw_string(font, rect.position + Vector2(6, 16), tile, HORIZONTAL_ALIGNMENT_CENTER, -1, 12, Color.WHITE)
-	# Draw spawn
-	var spawn_rect := Rect2(offset.x + _station_data.spawn.x * CELL_SIZE, offset.y + _station_data.spawn.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-	_grid_control.draw_rect(spawn_rect, Color(0, 1, 0, 0.4))
-	_grid_control.draw_rect(spawn_rect, Color(0, 1, 0), false)
+
+	# Draw entity spawns
+	for s: EntitySpawn in _station_data.entity_spawns:
+		var sr := Rect2(offset.x + s.position.x * CELL_SIZE, offset.y + s.position.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+		var sc: Color
+		match s.type:
+			EntitySpawn.Type.ENEMY: sc = Color(0.9, 0.1, 0.1, 0.5)
+			EntitySpawn.Type.NPC: sc = Color(0.1, 0.6, 0.9, 0.5)
+			EntitySpawn.Type.ITEM: sc = Color(0.1, 0.9, 0.1, 0.5)
+			EntitySpawn.Type.OBJECT: sc = Color(0.7, 0.5, 0.1, 0.5)
+		_grid_control.draw_rect(sr, sc)
+		_grid_control.draw_rect(sr, Color.WHITE, false)
+
 	# Draw exits
 	for e: ExitData in _station_data.exits:
 		var er := Rect2(offset.x + e.position.x * CELL_SIZE, offset.y + e.position.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
 		_grid_control.draw_rect(er, Color(1, 0, 1, 0.4))
 		_grid_control.draw_rect(er, Color(1, 0, 1), false)
+
+	# Draw spawn
+	var spawn_rect := Rect2(offset.x + _station_data.spawn.x * CELL_SIZE, offset.y + _station_data.spawn.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+	_grid_control.draw_rect(spawn_rect, Color(0, 1, 0, 0.4))
+	_grid_control.draw_rect(spawn_rect, Color(0, 1, 0), false)
+
+	# Hover highlight
+	if _last_tile_pos.x >= 0 and _last_tile_pos.y >= 0:
+		var hr := Rect2(offset.x + _last_tile_pos.x * CELL_SIZE, offset.y + _last_tile_pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+		_grid_control.draw_rect(hr, Color(1, 1, 1, 0.2))
+
+	# Selected tile highlight
+	if _selected_tile.x >= 0 and _selected_tile.y >= 0:
+		var sr := Rect2(offset.x + _selected_tile.x * CELL_SIZE, offset.y + _selected_tile.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+		_grid_control.draw_rect(sr, Color(1, 1, 1, 0.35))
+		_grid_control.draw_rect(sr, Color(1, 1, 1), false, 2.0)
 
 func _on_grid_input(event: InputEvent):
 	if event is InputEventMouseButton:
@@ -356,6 +413,8 @@ func _on_grid_input(event: InputEvent):
 			if event.pressed:
 				if Input.is_key_pressed(KEY_SHIFT):
 					_set_spawn_at_mouse(event.position)
+				elif _current_tool == "cursor":
+					_select_tile_at_mouse(event.position)
 				else:
 					_is_dragging = true
 					_paint_at_mouse(event.position)
@@ -365,6 +424,16 @@ func _on_grid_input(event: InputEvent):
 		_update_last_tile(event.position)
 		if _is_dragging:
 			_paint_at_mouse(event.position)
+
+func _select_tile_at_mouse(pos: Vector2):
+	_update_last_tile(pos)
+	var gx: int = _last_tile_pos.x
+	var gy: int = _last_tile_pos.y
+	if gx < 0 or gy < 0 or gy >= _grid_height or gx >= _grid_width:
+		return
+	_selected_tile = Vector2i(gx, gy)
+	_grid_control.queue_redraw()
+	_refresh_selected_tile_info()
 
 func _set_spawn_at_mouse(pos: Vector2):
 	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * CELL_SIZE, _grid_height * CELL_SIZE) * 0.5 + _camera_offset
@@ -396,7 +465,13 @@ func _paint_at_mouse(pos: Vector2):
 		_grid_control.queue_redraw()
 
 func _add_exit_at_selection():
-	var pos: Vector2i = _last_tile_pos if _last_tile_pos.x >= 0 else _station_data.spawn
+	var pos: Vector2i
+	if _selected_tile.x >= 0:
+		pos = _selected_tile
+	elif _last_tile_pos.x >= 0:
+		pos = _last_tile_pos
+	else:
+		pos = _station_data.spawn
 	# Ensure tile at exit position is marked as Exit
 	if pos.y >= 0 and pos.y < _grid_height and pos.x >= 0 and pos.x < _grid_width:
 		_map_grid[pos.y][pos.x] = "E"
@@ -446,20 +521,95 @@ func _remove_selected_exit():
 	_refresh_exit_list()
 	_grid_control.queue_redraw()
 
+func _refresh_entity_list():
+	_entity_list.clear()
+	if not _station_data: return
+	for i in _station_data.entity_spawns.size():
+		var s: EntitySpawn = _station_data.entity_spawns[i]
+		_entity_list.add_item("%d: (%d,%d) %s" % [i, s.position.x, s.position.y, s.display_name()])
+
+func _add_entity_at_selection():
+	var pos: Vector2i
+	if _selected_tile.x >= 0:
+		pos = _selected_tile
+	elif _last_tile_pos.x >= 0:
+		pos = _last_tile_pos
+	else:
+		pos = _station_data.spawn
+	# Remove existing spawn at same position
+	for i in range(_station_data.entity_spawns.size() - 1, -1, -1):
+		if _station_data.entity_spawns[i].position == pos:
+			_station_data.entity_spawns.remove_at(i)
+	var s := EntitySpawn.new()
+	s.position = pos
+	s.type = _entity_type.selected as EntitySpawn.Type
+	s.subtype = _entity_subtype.text
+	_station_data.entity_spawns.append(s)
+	_selected_entity_index = _station_data.entity_spawns.size() - 1
+	_refresh_entity_list()
+	_entity_list.select(_selected_entity_index)
+	_on_entity_selected(_selected_entity_index)
+	_grid_control.queue_redraw()
+	_status_label.text = "Entity added at (%d, %d)" % [pos.x, pos.y]
+
+func _on_entity_selected(index: int):
+	_selected_entity_index = index
+	if index < 0 or index >= _station_data.entity_spawns.size():
+		return
+	var s: EntitySpawn = _station_data.entity_spawns[index]
+	_entity_type.selected = s.type
+	_entity_subtype.text = s.subtype
+	_entity_extra.text = JSON.stringify(s.extra)
+
+func _apply_entity():
+	if _selected_entity_index < 0 or _selected_entity_index >= _station_data.entity_spawns.size():
+		return
+	var s: EntitySpawn = _station_data.entity_spawns[_selected_entity_index]
+	s.type = _entity_type.selected as EntitySpawn.Type
+	s.subtype = _entity_subtype.text
+	var extra_text: String = _entity_extra.text.strip_edges()
+	if not extra_text.is_empty():
+		var parsed: Variant = JSON.parse_string(extra_text)
+		if parsed is Dictionary:
+			s.extra = parsed
+	_refresh_entity_list()
+	_grid_control.queue_redraw()
+
+func _remove_selected_entity():
+	if _selected_entity_index < 0 or _selected_entity_index >= _station_data.entity_spawns.size():
+		return
+	_station_data.entity_spawns.remove_at(_selected_entity_index)
+	_selected_entity_index = -1
+	_refresh_entity_list()
+	_grid_control.queue_redraw()
+
+func _refresh_selected_tile_info():
+	if not _station_data:
+		return
+	var info: String = "Tile (%d,%d): %s" % [_selected_tile.x, _selected_tile.y, _map_grid[_selected_tile.y][_selected_tile.x]]
+	var ent: EntitySpawn = _station_data.get_entity_spawn_at(_selected_tile)
+	if ent:
+		info += " | %s" % ent.display_name()
+	var ex: ExitData = _station_data.get_exit_at(_selected_tile)
+	if ex:
+		info += " | exit"
+	_status_label.text = info
+
 func _input(event: InputEvent):
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
-			KEY_1: _select_tool(".")
-			KEY_2: _select_tool("#")
-			KEY_3: _select_tool("E")
-			KEY_4: _select_tool("D")
-			KEY_5: _select_tool("L")
-			KEY_6: _select_tool("S")
-			KEY_7: _select_tool("R")
-			KEY_8: _select_tool("I")
-			KEY_9: _select_tool("@")
-			KEY_0: _select_tool("N")
-			KEY_MINUS: _select_tool("B")
+			KEY_1: _select_tool("cursor")
+			KEY_2: _select_tool(".")
+			KEY_3: _select_tool("#")
+			KEY_4: _select_tool("E")
+			KEY_5: _select_tool("D")
+			KEY_6: _select_tool("L")
+			KEY_7: _select_tool("S")
+			KEY_8: _select_tool("R")
+			KEY_9: _select_tool("I")
+			KEY_0: _select_tool("@")
+			KEY_MINUS: _select_tool("N")
+			KEY_EQUAL: _select_tool("B")
 			KEY_S:
 				if event.ctrl_pressed:
 					_save_station()
