@@ -120,14 +120,14 @@ func _draw():
 			if result.side == 1: shade *= 0.7
 			shade = lerp(shade, 0.0, fog_blend)
 			var region: Rect2 = Rect2(tex_xx, 0, 1, tex_h)
-			draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), region, Color(shade, shade, shade))
+			draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h + 2), region, Color(shade, shade, shade))
 		else:
 			var c: Color = Color(0.4, 0.4, 0.5)
 			if result.side == 0: c = Color(0.3, 0.3, 0.4)
 			var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
 			shade = lerp(shade, 0.0, fog_blend)
 			c *= shade
-			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
+			draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h + 2), c)
 
 	var dir_x: float = cos(player_angle)
 	var dir_y: float = sin(player_angle)
