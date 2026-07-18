@@ -1,0 +1,452 @@
+class_name StationEditor
+extends Control
+
+const CELL_SIZE: int = 24
+
+const TOOLS: Array[String] = [".", "#", "E", "D", "L", "S", "R", "I", "@", "N", "B"]
+const TOOL_NAMES: Dictionary = {
+	".": "Floor",
+	"#": "Wall",
+	"E": "Exit",
+	"D": "Door",
+	"L": "Locked",
+	"S": "Stairs",
+	"R": "Rail",
+	"I": "Item",
+	"@": "Enemy",
+	"N": "NPC",
+	"B": "Blocked",
+}
+const TOOL_COLORS: Dictionary = {
+	".": Color(0.18, 0.18, 0.18),
+	"#": Color(0.55, 0.55, 0.55),
+	"E": Color(0.95, 0.75, 0.05),
+	"D": Color(0.55, 0.37, 0.18),
+	"L": Color(0.75, 0.18, 0.18),
+	"S": Color(0.35, 0.35, 0.75),
+	"R": Color(0.15, 0.15, 0.25),
+	"I": Color(0.1, 0.7, 0.1),
+	"@": Color(0.75, 0.05, 0.05),
+	"N": Color(0.05, 0.55, 0.75),
+	"B": Color(0.08, 0.08, 0.08),
+}
+
+var _station_data: StationData = null
+var _map_grid: Array[Array] = []
+var _grid_width: int = 32
+var _grid_height: int = 24
+var _current_tool: String = "."
+var _draw_exit_marker: bool = true
+var _camera_offset: Vector2 = Vector2.ZERO
+var _is_dragging: bool = false
+var _last_tile_pos: Vector2i = Vector2i(-1, -1)
+
+var _grid_control: Control
+var _tool_buttons: Dictionary = {}
+
+func _ready():
+	custom_minimum_size = Vector2(1152, 648)
+	_setup_ui()
+	_new_station()
+
+func _setup_ui():
+	# Top toolbar
+	var toolbar := HBoxContainer.new()
+	toolbar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	toolbar.offset_bottom = 40
+	add_child(toolbar)
+
+	var new_btn := Button.new(); new_btn.text = "New"; new_btn.pressed.connect(_new_station); toolbar.add_child(new_btn)
+	var load_btn := Button.new(); load_btn.text = "Load"; load_btn.pressed.connect(_load_station_dialog); toolbar.add_child(load_btn)
+	var save_btn := Button.new(); save_btn.text = "Save"; save_btn.pressed.connect(_save_station); toolbar.add_child(save_btn)
+	var play_btn := Button.new(); play_btn.text = "Play"; play_btn.pressed.connect(_play_station); toolbar.add_child(play_btn)
+
+	toolbar.add_spacer(false)
+	var resize_x := SpinBox.new(); resize_x.min_value = 4; resize_x.max_value = 128; resize_x.value = _grid_width; resize_x.value_changed.connect(_on_resize_x); toolbar.add_child(resize_x)
+	var resize_y := SpinBox.new(); resize_y.min_value = 4; resize_y.max_value = 128; resize_y.value = _grid_height; resize_y.value_changed.connect(_on_resize_y); toolbar.add_child(resize_y)
+	var resize_btn := Button.new(); resize_btn.text = "Resize"; resize_btn.pressed.connect(_resize_grid); toolbar.add_child(resize_btn)
+
+	# Left tool palette
+	var left_panel := VBoxContainer.new()
+	left_panel.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	left_panel.offset_top = 45
+	left_panel.offset_right = 120
+	left_panel.offset_bottom = -10
+	add_child(left_panel)
+
+	var tools_label := Label.new(); tools_label.text = "Tools"; tools_label.add_theme_font_size_override("font_size", 18); left_panel.add_child(tools_label)
+	for tool: String in TOOLS:
+		var btn := Button.new()
+		btn.text = tool + " " + TOOL_NAMES[tool]
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.pressed.connect(_select_tool.bind(tool))
+		left_panel.add_child(btn)
+		_tool_buttons[tool] = btn
+	_highlight_tool()
+
+	# Right metadata panel
+	var right_panel := VBoxContainer.new()
+	right_panel.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
+	right_panel.offset_top = 45
+		right_panel.offset_left = -280
+		right_panel.offset_right = -10
+		right_panel.offset_bottom = -10
+	add_child(right_panel)
+
+	var meta_label := Label.new(); meta_label.text = "Station Metadata"; meta_label.add_theme_font_size_override("font_size", 18); right_panel.add_child(meta_label)
+
+	_name_edit = LineEdit.new(); _name_edit.placeholder_text = "Station Name"; right_panel.add_child(_name_edit)
+
+	var map_file_hbox := HBoxContainer.new(); right_panel.add_child(map_file_hbox)
+	var map_file_label := Label.new(); map_file_label.text = "Map File:"; map_file_hbox.add_child(map_file_label)
+	_map_file_edit = LineEdit.new(); _map_file_edit.placeholder_text = "res://resources/stations/maps/name.txt"; map_file_hbox.add_child(_map_file_edit); _map_file_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	_fog_edit = SpinBox.new(); _fog_edit.min_value = 1; _fog_edit.max_value = 50; _fog_edit.step = 0.5; _fog_edit.value = 7.0
+	_add_labeled_spin(right_panel, "Fog Distance", _fog_edit)
+
+	_outer_ring_check = CheckBox.new(); _outer_ring_check.text = "Outer Ring"
+	right_panel.add_child(_outer_ring_check)
+
+	_spawn_x = SpinBox.new(); _spawn_x.min_value = 0; _spawn_x.max_value = 127; _spawn_x.value = 1
+	_spawn_y = SpinBox.new(); _spawn_y.min_value = 0; _spawn_y.max_value = 127; _spawn_y.value = 1
+	_add_labeled_spin(right_panel, "Spawn X", _spawn_x)
+	_add_labeled_spin(right_panel, "Spawn Y", _spawn_y)
+
+	_spawn_dir = OptionButton.new()
+	for d: String in ["North", "East", "South", "West"]:
+		_spawn_dir.add_item(d)
+	_spawn_dir.selected = 2
+	right_panel.add_child(_spawn_dir)
+
+	# Exit inspector
+	var exit_label := Label.new(); exit_label.text = "Exits"; exit_label.add_theme_font_size_override("font_size", 18); right_panel.add_child(exit_label)
+
+	_exit_list = ItemList.new()
+	_exit_list.custom_minimum_size = Vector2(0, 120)
+	_exit_list.item_selected.connect(_on_exit_selected)
+	right_panel.add_child(_exit_list)
+
+	var exit_add := Button.new(); exit_add.text = "Add Exit at Selection"; exit_add.pressed.connect(_add_exit_at_selection); right_panel.add_child(exit_add)
+	var exit_del := Button.new(); exit_del.text = "Remove Selected Exit"; exit_del.pressed.connect(_remove_selected_exit); right_panel.add_child(exit_del)
+
+	_exit_pos_x = SpinBox.new(); _exit_pos_x.min_value = 0; _exit_pos_x.max_value = 127; _exit_pos_x.value = 0
+	_exit_pos_y = SpinBox.new(); _exit_pos_y.min_value = 0; _exit_pos_y.max_value = 127; _exit_pos_y.value = 0
+	_add_labeled_spin(right_panel, "Exit X", _exit_pos_x)
+	_add_labeled_spin(right_panel, "Exit Y", _exit_pos_y)
+
+	_exit_target_edit = LineEdit.new(); _exit_target_edit.placeholder_text = "Target station path"; right_panel.add_child(_exit_target_edit)
+	_exit_target_x = SpinBox.new(); _exit_target_x.min_value = -1; _exit_target_x.max_value = 127; _exit_target_x.value = -1
+	_exit_target_y = SpinBox.new(); _exit_target_y.min_value = -1; _exit_target_y.max_value = 127; _exit_target_y.value = -1
+	_add_labeled_spin(right_panel, "Target Spawn X", _exit_target_x)
+	_add_labeled_spin(right_panel, "Target Spawn Y", _exit_target_y)
+
+	_exit_target_dir = OptionButton.new()
+	for d: String in ["North", "East", "South", "West", "Default"]:
+		_exit_target_dir.add_item(d)
+	_exit_target_dir.selected = 4
+	right_panel.add_child(_exit_target_dir)
+
+	var exit_apply := Button.new(); exit_apply.text = "Apply Exit"; exit_apply.pressed.connect(_apply_exit); right_panel.add_child(exit_apply)
+
+	_status_label = Label.new(); _status_label.text = "Ready"; right_panel.add_child(_status_label)
+
+	# Grid control
+	_grid_control = Control.new()
+	_grid_control.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_grid_control.offset_left = 125
+	_grid_control.offset_top = 45
+	_grid_control.offset_right = -290
+	_grid_control.offset_bottom = -10
+	_grid_control.mouse_filter = Control.MOUSE_FILTER_PASS
+	add_child(_grid_control)
+	_grid_control.draw.connect(_draw_grid)
+	_grid_control.gui_input.connect(_on_grid_input)
+
+var _name_edit: LineEdit
+var _map_file_edit: LineEdit
+var _fog_edit: SpinBox
+var _outer_ring_check: CheckBox
+var _spawn_x: SpinBox
+var _spawn_y: SpinBox
+var _spawn_dir: OptionButton
+
+var _exit_list: ItemList
+var _exit_pos_x: SpinBox
+var _exit_pos_y: SpinBox
+var _exit_target_edit: LineEdit
+var _exit_target_x: SpinBox
+var _exit_target_y: SpinBox
+var _exit_target_dir: OptionButton
+var _status_label: Label
+var _selected_exit_index: int = -1
+
+func _add_labeled_spin(parent: Control, label_text: String, spin: SpinBox):
+	var hbox := HBoxContainer.new(); parent.add_child(hbox)
+	var lbl := Label.new(); lbl.text = label_text; hbox.add_child(lbl)
+	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL; hbox.add_child(spin)
+
+func _new_station():
+	_station_data = StationData.new()
+	_station_data.station_name = "New Station"
+	_station_data.map_file = "res://resources/stations/maps/new_station.txt"
+	_station_data.spawn = Vector2i(1, 1)
+	_station_data.spawn_dir = 2
+	_station_data.fog_distance = 7.0
+	_station_data.outer_ring = false
+	_grid_width = 32
+	_grid_height = 24
+	_map_grid = []
+	for y in _grid_height:
+		var row: Array[String] = []; for x in _grid_width: row.append(".")
+		_map_grid.append(row)
+	_refresh_ui()
+	_grid_control.queue_redraw()
+
+func _load_station_dialog():
+	# Dev-only: use FileDialog via code
+	var dlg := FileDialog.new()
+	dlg.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	dlg.access = FileDialog.ACCESS_RESOURCES
+	dlg.filters = ["*.tres"]
+	dlg.file_selected.connect(_load_station)
+	add_child(dlg)
+	dlg.popup_centered(Vector2(800, 600))
+
+func _load_station(path: String):
+	var res := load(path)
+	if not res is StationData:
+		_status_label.text = "Not a StationData resource"
+		return
+	_station_data = res
+	_parse_map_file(_station_data.map_file)
+	_refresh_ui()
+	_grid_control.queue_redraw()
+	_status_label.text = "Loaded: " + path
+
+func _parse_map_file(path: String):
+	var text: String = FileAccess.get_file_as_string(path)
+	var rows: PackedStringArray = text.split("\n", false)
+	_map_grid = []
+	_grid_height = rows.size()
+	_grid_width = 0
+	for y in rows.size():
+		var line: String = rows[y]
+		_grid_width = max(_grid_width, line.length())
+		var row: Array[String] = []
+		for x in line.length():
+			row.append(line[x])
+		_map_grid.append(row)
+	# Pad rows
+	for row in _map_grid:
+		while row.size() < _grid_width:
+			row.append(".")
+
+func _save_station():
+	if not _station_data:
+		return
+	_update_station_from_ui()
+	_write_map_file(_station_data.map_file)
+	var err := ResourceSaver.save(_station_data, _get_tres_path())
+	if err == OK:
+		_status_label.text = "Saved: " + _get_tres_path()
+	else:
+		_status_label.text = "Save failed: " + str(err)
+
+func _get_tres_path() -> String:
+	var map_path: String = _station_data.map_file
+	var base: String = map_path.get_basename().get_file()
+	return "res://resources/stations/" + base + ".tres"
+
+func _write_map_file(path: String):
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if not file:
+		_status_label.text = "Failed to write map file"
+		return
+	for y in _grid_height:
+		var line: String = ""
+		for x in _grid_width:
+			line += _map_grid[y][x]
+		file.store_line(line)
+	file.close()
+
+func _play_station():
+	_save_station()
+	PlayerStats.current_station = _station_data
+	TransitionManager.change_scene("res://scenes/dungeon/test_dungeon_mechanics.tscn")
+
+func _update_station_from_ui():
+	_station_data.station_name = _name_edit.text
+	_station_data.map_file = _map_file_edit.text
+	_station_data.fog_distance = _fog_edit.value
+	_station_data.outer_ring = _outer_ring_check.button_pressed
+	_station_data.spawn = Vector2i(int(_spawn_x.value), int(_spawn_y.value))
+	_station_data.spawn_dir = _spawn_dir.selected
+
+func _refresh_ui():
+	_name_edit.text = _station_data.station_name
+	_map_file_edit.text = _station_data.map_file
+	_fog_edit.value = _station_data.fog_distance
+	_outer_ring_check.button_pressed = _station_data.outer_ring
+	_spawn_x.value = _station_data.spawn.x
+	_spawn_y.value = _station_data.spawn.y
+	_spawn_dir.selected = _station_data.spawn_dir
+	_refresh_exit_list()
+
+func _refresh_exit_list():
+	_exit_list.clear()
+	if not _station_data: return
+	for i in _station_data.exits.size():
+		var e: ExitData = _station_data.exits[i]
+		_exit_list.add_item("%d: (%d,%d) -> %s" % [i, e.position.x, e.position.y, e.target_station_path])
+
+func _select_tool(tool: String):
+	_current_tool = tool
+	_highlight_tool()
+
+func _highlight_tool():
+	for tool: String in _tool_buttons:
+		_tool_buttons[tool].modulate = Color(1.3, 1.3, 0.6) if tool == _current_tool else Color.WHITE
+
+func _on_resize_x(v: float): _grid_width = int(v)
+func _on_resize_y(v: float): _grid_height = int(v)
+
+func _resize_grid():
+	var new_grid: Array[Array] = []
+	for y in _grid_height:
+		var row: Array[String] = []
+		for x in _grid_width:
+			if y < _map_grid.size() and x < _map_grid[y].size():
+				row.append(_map_grid[y][x])
+			else:
+				row.append(".")
+		new_grid.append(row)
+	_map_grid = new_grid
+	_grid_control.queue_redraw()
+
+func _draw_grid():
+	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * CELL_SIZE, _grid_height * CELL_SIZE) * 0.5 + _camera_offset
+	for y in _grid_height:
+		for x in _grid_width:
+			var tile: String = _map_grid[y][x]
+			var color: Color = TOOL_COLORS.get(tile, Color.MAGENTA)
+			var rect := Rect2(offset.x + x * CELL_SIZE, offset.y + y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+			_grid_control.draw_rect(rect, color)
+			_grid_control.draw_rect(rect, Color(0.3, 0.3, 0.3), false)
+			if tile != ".":
+				var font := _grid_control.get_theme_default_font()
+				if font:
+					_grid_control.draw_string(font, rect.position + Vector2(6, 16), tile, HORIZONTAL_ALIGNMENT_CENTER, -1, 12, Color.WHITE)
+	# Draw spawn
+	var spawn_rect := Rect2(offset.x + _station_data.spawn.x * CELL_SIZE, offset.y + _station_data.spawn.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+	_grid_control.draw_rect(spawn_rect, Color(0, 1, 0, 0.4))
+	_grid_control.draw_rect(spawn_rect, Color(0, 1, 0), false)
+	# Draw exits
+	for e: ExitData in _station_data.exits:
+		var er := Rect2(offset.x + e.position.x * CELL_SIZE, offset.y + e.position.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+		_grid_control.draw_rect(er, Color(1, 0, 1, 0.4))
+		_grid_control.draw_rect(er, Color(1, 0, 1), false)
+
+func _on_grid_input(event: InputEvent):
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				if Input.is_key_pressed(KEY_SHIFT):
+					_set_spawn_at_mouse(event.position)
+				else:
+					_is_dragging = true
+					_paint_at_mouse(event.position)
+			else:
+				_is_dragging = false
+	elif event is InputEventMouseMotion and _is_dragging:
+		_paint_at_mouse(event.position)
+
+func _set_spawn_at_mouse(pos: Vector2):
+	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * CELL_SIZE, _grid_height * CELL_SIZE) * 0.5 + _camera_offset
+	var gx: int = int((pos.x - offset.x) / CELL_SIZE)
+	var gy: int = int((pos.y - offset.y) / CELL_SIZE)
+	if gx < 0 or gy < 0 or gy >= _grid_height or gx >= _grid_width:
+		return
+	_station_data.spawn = Vector2i(gx, gy)
+	_spawn_x.value = gx
+	_spawn_y.value = gy
+	_grid_control.queue_redraw()
+
+func _paint_at_mouse(pos: Vector2):
+	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * CELL_SIZE, _grid_height * CELL_SIZE) * 0.5 + _camera_offset
+	var gx: int = int((pos.x - offset.x) / CELL_SIZE)
+	var gy: int = int((pos.y - offset.y) / CELL_SIZE)
+	if gx < 0 or gy < 0 or gy >= _grid_height or gx >= _grid_width:
+		return
+	_last_tile_pos = Vector2i(gx, gy)
+	if _map_grid[gy][gx] != _current_tool:
+		_map_grid[gy][gx] = _current_tool
+		_grid_control.queue_redraw()
+
+func _add_exit_at_selection():
+	var pos: Vector2i = _last_tile_pos if _last_tile_pos.x >= 0 else _station_data.spawn
+	var e := ExitData.new()
+	e.position = pos
+	e.target_station_path = ""
+	_station_data.exits.append(e)
+	_selected_exit_index = _station_data.exits.size() - 1
+	_exit_list.select(_selected_exit_index)
+	_on_exit_selected(_selected_exit_index)
+	_refresh_exit_list()
+	_grid_control.queue_redraw()
+
+func _on_exit_selected(index: int):
+	_selected_exit_index = index
+	if index < 0 or index >= _station_data.exits.size():
+		return
+	var e: ExitData = _station_data.exits[index]
+	_exit_pos_x.value = e.position.x
+	_exit_pos_y.value = e.position.y
+	_exit_target_edit.text = e.target_station_path
+	_exit_target_x.value = e.target_spawn.x
+	_exit_target_y.value = e.target_spawn.y
+	_exit_target_dir.selected = 4 if e.target_dir < 0 else e.target_dir
+
+func _apply_exit():
+	if _selected_exit_index < 0 or _selected_exit_index >= _station_data.exits.size():
+		return
+	var e: ExitData = _station_data.exits[_selected_exit_index]
+	e.position = Vector2i(int(_exit_pos_x.value), int(_exit_pos_y.value))
+	e.target_station_path = _exit_target_edit.text
+	e.target_spawn = Vector2i(int(_exit_target_x.value), int(_exit_target_y.value))
+	e.target_dir = -1 if _exit_target_dir.selected == 4 else _exit_target_dir.selected
+	_refresh_exit_list()
+	_grid_control.queue_redraw()
+
+func _remove_selected_exit():
+	if _selected_exit_index < 0 or _selected_exit_index >= _station_data.exits.size():
+		return
+	_station_data.exits.remove_at(_selected_exit_index)
+	_selected_exit_index = -1
+	_refresh_exit_list()
+	_grid_control.queue_redraw()
+
+func _input(event: InputEvent):
+	if event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_1: _select_tool(".")
+			KEY_2: _select_tool("#")
+			KEY_3: _select_tool("E")
+			KEY_4: _select_tool("D")
+			KEY_5: _select_tool("L")
+			KEY_6: _select_tool("S")
+			KEY_7: _select_tool("R")
+			KEY_8: _select_tool("I")
+			KEY_9: _select_tool("@")
+			KEY_0: _select_tool("N")
+			KEY_MINUS: _select_tool("B")
+			KEY_S:
+				if event.ctrl_pressed:
+					_save_station()
+
+func _process(delta: float):
+	if Input.is_key_pressed(KEY_SHIFT):
+		if Input.is_key_pressed(KEY_LEFT): _camera_offset.x -= 200 * delta
+		if Input.is_key_pressed(KEY_RIGHT): _camera_offset.x += 200 * delta
+		if Input.is_key_pressed(KEY_UP): _camera_offset.y -= 200 * delta
+		if Input.is_key_pressed(KEY_DOWN): _camera_offset.y += 200 * delta
+		_grid_control.queue_redraw()

@@ -1133,6 +1133,14 @@ func _build_from_station_data():
 			match line[x]:
 				"#": row.append(TILE_WALL)
 				"E": row.append(TILE_EXIT)
+				"D": row.append(TILE_DOOR)
+				"L": row.append(TILE_LOCKED)
+				"S": row.append(TILE_STAIRS)
+				"R": row.append(TILE_RAIL)
+				"I": row.append(TILE_ITEM)
+				"B": row.append(TILE_BLOCKED)
+				"@", "N", "+", ".": row.append(TILE_FLOOR)
+				" ": row.append(TILE_WALL)
 				_: row.append(TILE_FLOOR)
 		_map_data.append(row)
 	if _renderer: _renderer.fog_distance = sd.fog_distance
