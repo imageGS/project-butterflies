@@ -67,10 +67,12 @@ func _render_portals(num_strips: int, half_h: float):
 	var dir_x: float = cos(player_angle)
 	var dir_y: float = sin(player_angle)
 
+	var fov_half: float = deg_to_rad(45.0)
+	var focal: float = float(_view_w) * 0.5 / tan(fov_half)
+
 	var queue: Array[Dictionary] = [{"sector": cs, "x0": 0, "x1": num_strips - 1}]
 	var cam_sec = sector_map.sectors[cs]
 
-	# Fast full-frame floor/ceiling using camera sector's floor height
 	_draw_floor_ceiling(half_h, cam_sec.floor_h)
 
 	while not queue.is_empty():
@@ -112,8 +114,8 @@ func _render_portals(num_strips: int, half_h: float):
 				tx2 = tx2 + (tx1 - tx2) * t
 				tz2 = 0.1
 
-			var sx1: float = (tx1 / tz1) * half_h + _view_w * 0.5
-			var sx2: float = (tx2 / tz2) * half_h + _view_w * 0.5
+			var sx1: float = (tx1 / tz1) * focal + float(_view_w) * 0.5
+			var sx2: float = (tx2 / tz2) * focal + float(_view_w) * 0.5
 
 			var s1: int = clampi(int(sx1 / _strip_w), 0, num_strips - 1)
 			var s2: int = clampi(int(sx2 / _strip_w), 0, num_strips - 1)
@@ -174,23 +176,23 @@ func _draw_wall_column_range(lo: int, hi: int, tz1: float, tz2: float, fh: float
 
 func _wall_wx1(wall: SectorMap.SWall) -> float:
 	if wall.x2 != wall.x1:
-		return float(wall.x1 + wall.x2) * 0.5
+		return float(max(wall.x1, wall.x2))
 	return float(wall.x1)
 
 func _wall_wy1(wall: SectorMap.SWall) -> float:
 	if wall.x2 != wall.x1:
 		return float(wall.y1)
-	return float(wall.y1 + wall.y2) * 0.5
+	return float(max(wall.y1, wall.y2))
 
 func _wall_wx2(wall: SectorMap.SWall) -> float:
 	if wall.x2 != wall.x1:
-		return float(wall.x1 + wall.x2) * 0.5
+		return float(max(wall.x1, wall.x2))
 	return float(wall.x1) + 1.0
 
 func _wall_wy2(wall: SectorMap.SWall) -> float:
 	if wall.x2 != wall.x1:
 		return float(wall.y1) + 1.0
-	return float(wall.y1 + wall.y2) * 0.5
+	return float(max(wall.y1, wall.y2))
 
 # ── DDA fallback renderer ──────────────────────────────────────
 
