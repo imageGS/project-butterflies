@@ -62,6 +62,11 @@ func _draw():
 		# --- Height adjustment ---
 		var hx: int = result.get("mx", int(cam_x))
 		var hy: int = result.get("my", int(cam_y))
+		# Step back from wall cell to the walkable floor cell
+		if result.side == 0:
+			hx -= result.get("sx", 0)
+		else:
+			hy -= result.get("sy", 0)
 		var wh: float = sector_map.get_floor_height(hx, hy) if sector_map else 0.0
 		if wh < 0.0:
 			wall_bot -= wh * wall_h
