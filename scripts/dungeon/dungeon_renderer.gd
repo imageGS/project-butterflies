@@ -172,7 +172,7 @@ func _render_entities(num_strips: int, half_h: float):
 			"color": ent.get("color", Color.WHITE),
 		})
 
-	var sorter := func(a: Dictionary, b: Dictionary): return a.depth > b.depth
+	var sorter: Callable = func(a: Dictionary, b: Dictionary): return a.depth > b.depth
 	visible_entities.sort_custom(sorter)
 
 	for ve in visible_entities:
@@ -215,9 +215,11 @@ func _get_ent_texture(ent: Dictionary) -> Texture2D:
 	var dx: float = cam_x - (ex + 0.5); var dy: float = cam_y - (ey + 0.5); var va: float = atan2(dy, dx)
 	var fi: int = ent.get("facing", 2); var ea: float = [-PI/2,0,PI/2,PI][fi]; var di: float = va - ea
 	while di > PI: di -= TAU; while di < -PI: di += TAU
-	match posmod(int(round(di/(PI*0.5))),4):
-		0: return texs.get("front",null); 1: return texs.get("right",null)
-		2: return texs.get("back",null); _: return texs.get("left",null)
+	match posmod(int(round(di / (PI * 0.5))), 4):
+		0: return texs.get("front", null)
+		1: return texs.get("right", null)
+		2: return texs.get("back", null)
+		_: return texs.get("left", null)
 
 func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array):
 	cam_x = cx; cam_y = cy; player_angle = angle
