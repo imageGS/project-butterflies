@@ -124,7 +124,8 @@ func _draw_floor_ceiling(hh: float, floor_h_override: float = 0.0):
 
 	var focal: float = float(_view_w) * 0.5
 	var eye_h: float = 0.5
-	var tile_sz: float = 0.5
+	var tile_sz: float = 1.0
+	var tex_scale: float = 2.0
 	var max_dist: float = fog_distance + 1.0
 	var fov_half: float = deg_to_rad(45.0)
 
@@ -150,14 +151,28 @@ func _draw_floor_ceiling(hh: float, floor_h_override: float = 0.0):
 			var ray_angle: float = player_angle - fov_half + frac * fov_half * 2.0
 			var wx: float = cam_x + cos(ray_angle) * d
 			var wy: float = cam_y + sin(ray_angle) * d
-			var fh: float = sector_map.get_floor_height(int(floor(wx)), int(floor(wy))) if sector_map else 0.0
 
+			var tw: float = _floor_tex.get_width()
+			var th: float = _floor_tex.get_height()
+			var u0: float = fposmod(wx - tile_sz * 0.5, tex_scale) / tex_scale * tw
+			var v0: float = fposmod(wy - tile_sz * 0.5, tex_scale) / tex_scale * th
+			var u1: float = u0 + tile_sz / tex_scale * tw
+			var v1: float = v0 + tile_sz / tex_scale * th
+			var region: Rect2 = Rect2(u0, v0, u1 - u0, v1 - v0)
+
+			var fh: float = sector_map.get_floor_height(int(floor(wx)), int(floor(wy))) if sector_map else 0.0
 			var tex: Texture2D = _floor_tex
 			if fh < -0.5 and _rail_tex:
 				tex = _rail_tex
+				tw = tex.get_width(); th = tex.get_height()
+				u0 = fposmod(wx - tile_sz * 0.5, tex_scale) / tex_scale * tw
+				v0 = fposmod(wy - tile_sz * 0.5, tex_scale) / tex_scale * th
+				u1 = u0 + tile_sz / tex_scale * tw
+				v1 = v0 + tile_sz / tex_scale * th
+				region = Rect2(u0, v0, u1 - u0, v1 - v0)
 
 			var shade: float = clamp(1.0 - d / max_dist, 0.0, 1.0)
-			draw_texture_rect(tex, Rect2(sx, prev_y, col_w + 1, band_h), false, Color(shade, shade, shade))
+			draw_texture_rect_region(tex, Rect2(sx, prev_y, col_w + 1, band_h), region, Color(shade, shade, shade))
 
 		prev_y = y_row
 		j += 1
