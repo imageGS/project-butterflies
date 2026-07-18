@@ -85,14 +85,14 @@ func _find_walls(map_data: Array, visited: Array, sec: SSector, si: int, w: int,
 				var nx: int = x + d.x; var ny: int = y + d.y
 				if nx < 0 or ny < 0 or nx >= w or ny >= h: continue
 				if not _is_walkable(map_data, nx, ny) or (visited[ny][nx] != si and _height_at(hd, nx, ny) != sec.floor_h):
-					var key := "%d,%d-%d,%d" % [x, y, nx, ny]
-					var rkey := "%d,%d-%d,%d" % [nx, ny, x, y]
+				var key := "%d %d %d %d" % [x, y, nx, ny]
+				var rkey := "%d %d %d %d" % [nx, ny, x, y]
 					if not edges.has(rkey):
 						edges[key] = true
 
 	var processed: Dictionary = {}
 	for key in edges.keys():
-		var parts: PackedStringArray = key.split(",")
+		var parts: PackedStringArray = key.split(" ")
 		var ax: int = int(parts[0]); var ay: int = int(parts[1])
 		var bx: int = int(parts[2]); var by: int = int(parts[3])
 
