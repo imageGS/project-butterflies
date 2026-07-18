@@ -87,8 +87,8 @@ func _find_walls(map_data: Array, visited: Array, sec: SSector, si: int, w: int,
 				if not _is_walkable(map_data, nx, ny) or (visited[ny][nx] != si and _height_at(hd, nx, ny) != sec.floor_h):
 				var key := "%d %d %d %d" % [x, y, nx, ny]
 				var rkey := "%d %d %d %d" % [nx, ny, x, y]
-					if not edges.has(rkey):
-						edges[key] = true
+				if not edges.has(rkey):
+					edges[key] = true
 
 	var processed: Dictionary = {}
 	for key in edges.keys():
