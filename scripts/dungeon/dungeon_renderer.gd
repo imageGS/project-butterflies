@@ -19,14 +19,59 @@ var _wall_zbuf: Array[float] = []
 var entities_on_map: Array = []
 var _wall_tex: Texture2D = load("res://assets/textures/wall.png")
 var _rail_tex: Texture2D = load("res://assets/textures/rails.png")
+var _floor_tex: Texture2D = load("res://assets/textures/floor.png")
 var fog_distance: float = 7.0
 var fog_fade: float = 2.5
 var fog_color: Color = Color(0.08, 0.08, 0.08)
 
+var _floor_shader_rect: ColorRect
+var _floor_shader_mat: ShaderMaterial
+var _map_img: Image
+var _map_tex: ImageTexture
+var _map_w: int = 0
+var _map_h: int = 0
+
 func _ready():
 	if not _ready_drawn:
+		_setup_floor_shader()
 		queue_redraw()
 		_ready_drawn = true
+
+func _fill_map_tex():
+	if map_data.is_empty(): return
+	_map_w = map_data[0].size(); _map_h = map_data.size()
+	_map_img = Image.create(_map_w, _map_h, false, Image.FORMAT_RGBA8)
+	for y in _map_h:
+		for x in _map_w:
+			var is_wall: bool = map_data[y][x] == TILE_WALL or map_data[y][x] == TILE_BLOCKED
+			var fh: float = height_data[y][x] if y < height_data.size() and x < height_data[y].size() else 0.0
+			_map_img.set_pixel(x, y, Color(1.0 if is_wall else 0.0, (fh + 2.0) / 4.0, 0, 1))
+	_map_tex = ImageTexture.create_from_image(_map_img)
+	if _floor_shader_mat:
+		_floor_shader_mat.set_shader_parameter("map_tex", _map_tex)
+		_floor_shader_mat.set_shader_parameter("map_w", _map_w)
+		_floor_shader_mat.set_shader_parameter("map_h", _map_h)
+
+func _update_floor_shader():
+	if not _floor_shader_mat: return
+	_floor_shader_mat.set_shader_parameter("cam_pos", Vector2(cam_x, cam_y))
+	_floor_shader_mat.set_shader_parameter("cam_angle", player_angle)
+	_floor_shader_mat.set_shader_parameter("view_size", Vector2(_view_w, _view_h))
+	_floor_shader_mat.set_shader_parameter("fog_dist", fog_distance)
+
+func _setup_floor_shader():
+	_floor_shader_rect = ColorRect.new()
+	_floor_shader_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_floor_shader_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_floor_shader_rect)
+	move_child(_floor_shader_rect, 0)
+	var shader := load("res://shaders/floor_shader.gdshader") as Shader
+	if not shader: return
+	_floor_shader_mat = ShaderMaterial.new()
+	_floor_shader_mat.shader = shader
+	_floor_shader_rect.material = _floor_shader_mat
+	_floor_shader_mat.set_shader_parameter("floor_tex", _floor_tex)
+	_floor_shader_mat.set_shader_parameter("rail_tex", _rail_tex)
 
 func _draw():
 	if _view_w == 0 or _view_h == 0:
@@ -164,23 +209,10 @@ func _setup_view():
 	if _view_h <= 0: _view_h = 449
 
 func _draw_floor_ceiling(hh: float):
-	var floor_color: Color = Color(0.06, 0.05, 0.04)
-	if not height_data.is_empty():
-		var px: int = int(floor(cam_x))
-		var py: int = int(floor(cam_y))
-		if px >= 0 and py >= 0 and py < height_data.size() and px < height_data[0].size():
-			var h: float = height_data[py][px]
-			if h < -0.5: floor_color = Color(0.12, 0.07, 0.04)
-			elif h < -0.1: floor_color = Color(0.09, 0.06, 0.04)
-
-	for y in range(_view_h):
+	for y in range(int(hh)):
 		var t: float = float(y) / float(_view_h)
-		if y < hh:
-			var c: Color = Color(0.03, 0.03, 0.04).lerp(Color(0.0, 0.0, 0.0), t * 2.0)
-			draw_rect(Rect2(0, y, _view_w, 1), c)
-		else:
-			var c: Color = floor_color.lerp(Color(0.0, 0.0, 0.0), (t - 0.5) * 2.0)
-			draw_rect(Rect2(0, y, _view_w, 1), c)
+		var c: Color = Color(0.03, 0.03, 0.04).lerp(Color(0.0, 0.0, 0.0), t * 2.0)
+		draw_rect(Rect2(0, y, _view_w, 1), c)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var dir: Vector2 = Vector2(cos(angle), sin(angle))
@@ -299,7 +331,11 @@ func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array
 	player_angle = angle
 	map_data = map
 	entities_on_map = entities
+	_update_floor_shader()
+	if _map_w != map_data[0].size() or _map_h != map_data.size() or not _map_tex:
+		_fill_map_tex()
 	queue_redraw()
 
 func update_height(data: Array):
 	height_data = data
+	_fill_map_tex()
