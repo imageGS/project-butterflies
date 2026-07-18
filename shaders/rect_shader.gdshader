@@ -84,7 +84,7 @@ void fragment() {
 		float ceil_dist = 0.5 - cam_height;
 		float floor_dist = cam_height - wall_height + 0.5;
 		float wall_top = hh - ceil_dist * wall_unit;
-		float wall_bot = hh + floor_dist * wall_unit;
+		float wall_bot = max(hh, hh + floor_dist * wall_unit);
 
 		if (sy >= wall_top && sy <= wall_bot) {
 			float w_x = hit_side == 0 ? cam_pos.y + perp_dist * rd.y : cam_pos.x + perp_dist * rd.x;
