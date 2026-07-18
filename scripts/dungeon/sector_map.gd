@@ -35,7 +35,7 @@ func build_from_grid(map_data: Array, height_data: Array):
 	# Flood-fill sectors
 	for y in range(h):
 		for x in range(w):
-			if _is_walkable(map_data, x, y) and not visited[y][x]:
+			if _is_walkable(map_data, x, y) and visited[y][x] == null:
 				var sec := SSector.new()
 				sec.floor_h = _height_at(height_data, x, y)
 				sec.ceil_h = 0.0
@@ -67,12 +67,12 @@ func _flood(map_data: Array, visited: Array, x: int, y: int, sec: SSector, w: in
 	var target_h: float = _height_at(hd, x, y)
 	while not queue.is_empty():
 		var p: Vector2i = queue.pop_back()
-		if visited[p.y][p.x]: continue
+		if visited[p.y][p.x] != null: continue
 		visited[p.y][p.x] = sectors.size()
 		for d in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
 			var nx: int = p.x + d.x; var ny: int = p.y + d.y
 			if nx >= 0 and ny >= 0 and nx < w and ny < h:
-				if _is_walkable(map_data, nx, ny) and not visited[ny][nx]:
+				if _is_walkable(map_data, nx, ny) and visited[ny][nx] == null:
 					if abs(_height_at(hd, nx, ny) - target_h) < 0.01:
 						queue.append(Vector2i(nx, ny))
 
