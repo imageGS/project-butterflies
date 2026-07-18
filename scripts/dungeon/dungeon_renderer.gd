@@ -37,15 +37,8 @@ func _draw():
 	var num_strips: int = int(float(_view_w) / _strip_w)
 	var half_h: float = _view_h / 2.0
 
-	# Floor — tiled texture
-	if _floor_tex:
-		var floor_tex: Texture2D = _floor_tex
-		if not height_data.is_empty():
-			var px: int = int(floor(cam_x)); var py: int = int(floor(cam_y))
-			if px >= 0 and py >= 0 and py < height_data.size() and px < height_data[0].size():
-				if height_data[py][px] < -0.5:
-					floor_tex = _rail_tex
-		draw_texture_rect(floor_tex, Rect2(0, half_h, _view_w, _view_h - half_h), true)
+	# Floor — per-tile projection
+	_draw_floor_tiles(half_h)
 
 	# Ceiling gradient
 	for y in range(int(half_h)):
@@ -107,6 +100,52 @@ func _setup_view():
 	_view_h = int(size.y)
 	if _view_w <= 0: _view_w = 858
 	if _view_h <= 0: _view_h = 449
+
+func _draw_floor_tiles(half_h: float):
+	if not _floor_tex: return
+	var focal: float = float(_view_w) * 0.5
+	var eye_h: float = 0.5
+	var max_dist: float = fog_distance + 1.0
+	var r: int = int(ceil(max_dist)) + 1
+	var cx: int = int(floor(cam_x)); var cy: int = int(floor(cam_y))
+
+	var tiles: Array[Dictionary] = []
+	for ty in range(cy - r, cy + r + 1):
+		for tx in range(cx - r, cx + r + 1):
+			if tx < 0 or ty < 0: continue
+			if map_data.is_empty() or ty >= map_data.size() or tx >= map_data[ty].size(): continue
+			if map_data[ty][tx] == TILE_WALL or map_data[ty][tx] == TILE_BLOCKED: continue
+			var c0: Vector2 = _project_floor(tx, ty, focal, eye_h, half_h)
+			var c1: Vector2 = _project_floor(tx + 1, ty, focal, eye_h, half_h)
+			var c2: Vector2 = _project_floor(tx + 1, ty + 1, focal, eye_h, half_h)
+			var c3: Vector2 = _project_floor(tx, ty + 1, focal, eye_h, half_h)
+			if c0.y < 0 and c1.y < 0 and c2.y < 0 and c3.y < 0: continue
+			var min_sx: float = min(c0.x, c1.x, c2.x, c3.x)
+			var max_sx: float = max(c0.x, c1.x, c2.x, c3.x)
+			var min_sy: float = min(c0.y, c1.y, c2.y, c3.y)
+			var max_sy: float = max(c0.y, c1.y, c2.y, c3.y)
+			if min_sx >= _view_w or max_sx <= 0: continue
+			var fh: float = height_data[ty][tx] if ty < height_data.size() and tx < height_data[ty].size() else 0.0
+			var dist: float = sqrt(pow(tx + 0.5 - cam_x, 2) + pow(ty + 0.5 - cam_y, 2))
+			tiles.append({"dist":dist,"sx":min_sx,"sy":min_sy,"sw":max_sx-min_sx,"sh":max_sy-min_sy,"fh":fh})
+
+	tiles.sort_custom(func(a:Dictionary,b:Dictionary): return a.dist > b.dist)
+
+	for tile in tiles:
+		var tex: Texture2D = _rail_tex if tile.fh < -0.5 else _floor_tex
+		if not tex: continue
+		var shade: Color = Color.WHITE.lerp(fog_color, clamp((tile.dist - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0))
+		shade.a = 1.0
+		draw_texture_rect(tex, Rect2(tile.sx, tile.sy, tile.sw, tile.sh), false, shade)
+
+func _project_floor(wx: float, wy: float, focal: float, eye_h: float, half_h: float) -> Vector2:
+	var rx: float = wx - cam_x; var ry: float = wy - cam_y
+	var tz: float = rx * cos(player_angle) + ry * sin(player_angle)
+	if tz <= 0.01: return Vector2(-999, -999)
+	var tx: float = ry * cos(player_angle) - rx * sin(player_angle)
+	var sx: float = tx / tz * focal + float(_view_w) * 0.5
+	var sy: float = half_h + eye_h * focal / tz
+	return Vector2(sx, sy)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var dir: Vector2 = Vector2(cos(angle), sin(angle))
