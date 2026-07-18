@@ -17,24 +17,26 @@ void fragment() {
 
 	vec2 px = UV * view_size;
 	float sy = px.y;
-	if (sy < half_h) { COLOR = vec4(0.0); return; }
-
-	float rx = (px.x - view_size.x * 0.5) / focal;
-	float ray_angle = cam_angle + atan(rx);
-	float d = eye_h * focal / max(sy - half_h, 0.5);
-	float wx = cam_pos.x + cos(ray_angle) * d;
-	float wy = cam_pos.y + sin(ray_angle) * d;
-
-	float gx = floor(wx);
-	float gy = floor(wy);
-	if (gx >= 0.0 && gy >= 0.0 && gx < map_w && gy < map_h) {
-		vec2 uv = (vec2(gx, gy) + 0.5) / vec2(map_w, map_h);
-		vec4 cell = texture(map_tex, uv);
-		float fh = cell.g * 4.0 - 2.0;
-		vec4 fc = fh < -0.5 ? texture(rail_tex, fract(vec2(wx, wy))) : texture(floor_tex, fract(vec2(wx, wy)));
-		float shade = clamp(1.0 - d / fog_dist, 0.0, 1.0);
-		COLOR = fc * shade;
+	if (sy < half_h) {
+		COLOR = vec4(0.0);
 	} else {
-		COLOR = vec4(0.06, 0.06, 0.07, 1.0);
+		float rx = (px.x - view_size.x * 0.5) / focal;
+		float ray_angle = cam_angle + atan(rx);
+		float d = eye_h * focal / max(sy - half_h, 0.5);
+		float wx = cam_pos.x + cos(ray_angle) * d;
+		float wy = cam_pos.y + sin(ray_angle) * d;
+
+		float gx = floor(wx);
+		float gy = floor(wy);
+		if (gx >= 0.0 && gy >= 0.0 && gx < map_w && gy < map_h) {
+			vec2 uv = (vec2(gx, gy) + 0.5) / vec2(map_w, map_h);
+			vec4 cell = texture(map_tex, uv);
+			float fh = cell.g * 4.0 - 2.0;
+			vec4 fc = fh < -0.5 ? texture(rail_tex, fract(vec2(wx, wy))) : texture(floor_tex, fract(vec2(wx, wy)));
+			float shade = clamp(1.0 - d / fog_dist, 0.0, 1.0);
+			COLOR = fc * shade;
+		} else {
+			COLOR = vec4(0.06, 0.06, 0.07, 1.0);
+		}
 	}
 }
