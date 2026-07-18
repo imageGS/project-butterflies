@@ -17,4 +17,3 @@ station_name = "Акио"
 map_file = "res://resources/stations/maps/akio.txt"
 spawn = Vector2i(10, 1)
 exits = Array[ExtResource("2")]([SubResource("ExitData_1")])
-entity_spawns = Array[ExtResource("3_entity")]([])

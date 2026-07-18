@@ -47,7 +47,7 @@ var _grid_control: Control
 var _tool_buttons: Dictionary = {}
 
 func _ready():
-	custom_minimum_size = Vector2(1152, 648)
+	custom_minimum_size = Vector2(1920, 1080)
 	_setup_ui()
 	_new_station()
 
@@ -131,9 +131,6 @@ func _setup_ui():
 	_exit_list.item_selected.connect(_on_exit_selected)
 	right_panel.add_child(_exit_list)
 
-	var exit_add := Button.new(); exit_add.text = "Add Exit at Selection"; exit_add.pressed.connect(_add_exit_at_selection); right_panel.add_child(exit_add)
-	var exit_del := Button.new(); exit_del.text = "Remove Selected Exit"; exit_del.pressed.connect(_remove_selected_exit); right_panel.add_child(exit_del)
-
 	_exit_pos_x = SpinBox.new(); _exit_pos_x.min_value = 0; _exit_pos_x.max_value = 127; _exit_pos_x.value = 0
 	_exit_pos_y = SpinBox.new(); _exit_pos_y.min_value = 0; _exit_pos_y.max_value = 127; _exit_pos_y.value = 0
 	_add_labeled_spin(right_panel, "Exit X", _exit_pos_x)
@@ -161,9 +158,6 @@ func _setup_ui():
 	_entity_list.item_selected.connect(_on_entity_selected)
 	right_panel.add_child(_entity_list)
 
-	var entity_add := Button.new(); entity_add.text = "Add Entity at Selection"; entity_add.pressed.connect(_add_entity_at_selection); right_panel.add_child(entity_add)
-	var entity_del := Button.new(); entity_del.text = "Remove Selected Entity"; entity_del.pressed.connect(_remove_selected_entity); right_panel.add_child(entity_del)
-
 	_entity_type = OptionButton.new()
 	for t: String in ["Enemy", "NPC", "Item", "Object"]:
 		_entity_type.add_item(t)
@@ -177,6 +171,17 @@ func _setup_ui():
 	var entity_apply := Button.new(); entity_apply.text = "Apply Entity"; entity_apply.pressed.connect(_apply_entity); right_panel.add_child(entity_apply)
 
 	_status_label = Label.new(); _status_label.text = "Ready"; right_panel.add_child(_status_label)
+
+	# Context menu
+	_context_menu = PopupMenu.new()
+	_context_menu.add_item("Set Spawn", 0)
+	_context_menu.add_item("Add Exit", 1)
+	_context_menu.add_item("Add Entity", 2)
+	_context_menu.add_item("Remove Exit", 3)
+	_context_menu.add_item("Remove Entity", 4)
+	_context_menu.add_item("Clear Tile", 5)
+	_context_menu.id_pressed.connect(_on_context_menu)
+	add_child(_context_menu)
 
 	# Grid control
 	_grid_control = Control.new()
@@ -214,6 +219,7 @@ var _entity_extra: LineEdit
 var _selected_entity_index: int = -1
 
 var _status_label: Label
+var _context_menu: PopupMenu
 
 func _add_labeled_spin(parent: Control, label_text: String, spin: SpinBox):
 	var hbox := HBoxContainer.new(); parent.add_child(hbox)
@@ -420,6 +426,9 @@ func _on_grid_input(event: InputEvent):
 					_paint_at_mouse(event.position)
 			else:
 				_is_dragging = false
+		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+			_select_tile_at_mouse(event.position)
+			_open_context_menu(event.position)
 	elif event is InputEventMouseMotion:
 		_update_last_tile(event.position)
 		if _is_dragging:
@@ -434,6 +443,16 @@ func _select_tile_at_mouse(pos: Vector2):
 	_selected_tile = Vector2i(gx, gy)
 	_grid_control.queue_redraw()
 	_refresh_selected_tile_info()
+
+func _open_context_menu(pos: Vector2):
+	if _selected_tile.x < 0:
+		return
+	var has_exit: bool = _station_data.get_exit_at(_selected_tile) != null
+	var has_entity: bool = _station_data.get_entity_spawn_at(_selected_tile) != null
+	_context_menu.set_item_disabled(3, not has_exit)
+	_context_menu.set_item_disabled(4, not has_entity)
+	_context_menu.position = _grid_control.global_position + pos
+	_context_menu.popup()
 
 func _set_spawn_at_mouse(pos: Vector2):
 	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * CELL_SIZE, _grid_height * CELL_SIZE) * 0.5 + _camera_offset
@@ -594,6 +613,47 @@ func _refresh_selected_tile_info():
 	if ex:
 		info += " | exit"
 	_status_label.text = info
+
+func _on_context_menu(id: int):
+	match id:
+		0: _set_spawn_at_tile(_selected_tile)
+		1: _add_exit_at_selection()
+		2: _add_entity_at_selection()
+		3: _remove_exit_at_tile(_selected_tile)
+		4: _remove_entity_at_tile(_selected_tile)
+		5: _clear_tile(_selected_tile)
+
+func _set_spawn_at_tile(pos: Vector2i):
+	_station_data.spawn = pos
+	_spawn_x.value = pos.x
+	_spawn_y.value = pos.y
+	_grid_control.queue_redraw()
+
+func _remove_exit_at_tile(pos: Vector2i):
+	for i in range(_station_data.exits.size() - 1, -1, -1):
+		if _station_data.exits[i].position == pos:
+			_station_data.exits.remove_at(i)
+	_selected_exit_index = -1
+	_refresh_exit_list()
+	_grid_control.queue_redraw()
+	_status_label.text = "Exit removed at (%d, %d)" % [pos.x, pos.y]
+
+func _remove_entity_at_tile(pos: Vector2i):
+	for i in range(_station_data.entity_spawns.size() - 1, -1, -1):
+		if _station_data.entity_spawns[i].position == pos:
+			_station_data.entity_spawns.remove_at(i)
+	_selected_entity_index = -1
+	_refresh_entity_list()
+	_grid_control.queue_redraw()
+	_status_label.text = "Entity removed at (%d, %d)" % [pos.x, pos.y]
+
+func _clear_tile(pos: Vector2i):
+	if pos.y >= 0 and pos.y < _grid_height and pos.x >= 0 and pos.x < _grid_width:
+		_map_grid[pos.y][pos.x] = "."
+	_remove_exit_at_tile(pos)
+	_remove_entity_at_tile(pos)
+	_grid_control.queue_redraw()
+	_status_label.text = "Tile cleared at (%d, %d)" % [pos.x, pos.y]
 
 func _input(event: InputEvent):
 	if event is InputEventKey and event.pressed and not event.echo:
