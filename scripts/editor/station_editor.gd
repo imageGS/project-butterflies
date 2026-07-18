@@ -88,9 +88,9 @@ func _setup_ui():
 	var right_panel := VBoxContainer.new()
 	right_panel.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
 	right_panel.offset_top = 45
-		right_panel.offset_left = -280
-		right_panel.offset_right = -10
-		right_panel.offset_bottom = -10
+	right_panel.offset_left = -280
+	right_panel.offset_right = -10
+	right_panel.offset_bottom = -10
 	add_child(right_panel)
 
 	var meta_label := Label.new(); meta_label.text = "Station Metadata"; meta_label.add_theme_font_size_override("font_size", 18); right_panel.add_child(meta_label)
@@ -99,7 +99,10 @@ func _setup_ui():
 
 	var map_file_hbox := HBoxContainer.new(); right_panel.add_child(map_file_hbox)
 	var map_file_label := Label.new(); map_file_label.text = "Map File:"; map_file_hbox.add_child(map_file_label)
-	_map_file_edit = LineEdit.new(); _map_file_edit.placeholder_text = "res://resources/stations/maps/name.txt"; map_file_hbox.add_child(_map_file_edit); _map_file_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_map_file_edit = LineEdit.new()
+	_map_file_edit.placeholder_text = "res://resources/stations/maps/name.txt"
+	_map_file_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map_file_hbox.add_child(_map_file_edit)
 
 	_fog_edit = SpinBox.new(); _fog_edit.min_value = 1; _fog_edit.max_value = 50; _fog_edit.step = 0.5; _fog_edit.value = 7.0
 	_add_labeled_spin(right_panel, "Fog Distance", _fog_edit)
