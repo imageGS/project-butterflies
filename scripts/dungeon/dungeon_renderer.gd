@@ -49,8 +49,8 @@ func _fill_map_tex():
 	_map_tex = ImageTexture.create_from_image(_map_img)
 	if _floor_shader_mat:
 		_floor_shader_mat.set_shader_parameter("map_tex", _map_tex)
-		_floor_shader_mat.set_shader_parameter("map_w", _map_w)
-		_floor_shader_mat.set_shader_parameter("map_h", _map_h)
+		_floor_shader_mat.set_shader_parameter("map_w", float(_map_w))
+		_floor_shader_mat.set_shader_parameter("map_h", float(_map_h))
 
 func _update_floor_shader():
 	if not _floor_shader_mat: return
