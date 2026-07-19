@@ -62,7 +62,7 @@ func _fit_to_window():
 	_grid_control.offset_left = 125
 	_grid_control.offset_right = -280
 
-func _scan_resources(folder: String, extension: String) -> Array[String]:
+func _scan_resources(folder: String, extension: String, return_full_path: bool = false) -> Array[String]:
 	var result: Array[String] = []
 	var dir := DirAccess.open(folder)
 	if not dir:
@@ -71,7 +71,10 @@ func _scan_resources(folder: String, extension: String) -> Array[String]:
 	var file: String = dir.get_next()
 	while file != "":
 		if not dir.current_is_dir() and file.ends_with(extension):
-			result.append(folder.path_join(file))
+			if return_full_path:
+				result.append(folder.path_join(file))
+			else:
+				result.append(file.get_basename())
 		file = dir.get_next()
 	dir.list_dir_end()
 	result.sort()
@@ -84,7 +87,7 @@ func _refresh_station_dropdown():
 	if _exit_target_select.selected >= 0:
 		current = _exit_target_select.get_item_text(_exit_target_select.selected)
 	_exit_target_select.clear()
-	var stations: Array[String] = _scan_resources("res://resources/stations", ".tres")
+	var stations: Array[String] = _scan_resources("res://resources/stations", ".tres", true)
 	var selected_idx: int = -1
 	for i in stations.size():
 		_exit_target_select.add_item(stations[i])
@@ -109,6 +112,7 @@ func _get_exit_target_path() -> String:
 
 func _on_entity_type_changed(index: int):
 	_refresh_entity_subtype_dropdown(index)
+	_refresh_entity_dialogue_dropdown(index)
 
 func _refresh_entity_subtype_dropdown(type_index: int = -1):
 	if type_index < 0:
@@ -152,6 +156,7 @@ func _setup_ui():
 	var load_btn := Button.new(); load_btn.text = "Load"; load_btn.pressed.connect(_load_station_dialog); toolbar.add_child(load_btn)
 	var save_btn := Button.new(); save_btn.text = "Save"; save_btn.pressed.connect(_save_station); toolbar.add_child(save_btn)
 	var play_btn := Button.new(); play_btn.text = "Play"; play_btn.pressed.connect(_play_station); toolbar.add_child(play_btn)
+	var dialogue_btn := Button.new(); dialogue_btn.text = "Dialogues"; dialogue_btn.pressed.connect(_open_dialogue_editor); toolbar.add_child(dialogue_btn)
 
 	toolbar.add_spacer(false)
 	var resize_x := SpinBox.new(); resize_x.min_value = 4; resize_x.max_value = 128; resize_x.value = _grid_width; resize_x.value_changed.connect(_on_resize_x); toolbar.add_child(resize_x)
@@ -269,6 +274,9 @@ func _setup_ui():
 	right_panel.add_child(_entity_subtype)
 	_refresh_entity_subtype_dropdown()
 
+	_entity_dialogue = OptionButton.new()
+	right_panel.add_child(_entity_dialogue)
+
 	_entity_extra = LineEdit.new(); _entity_extra.placeholder_text = "Extra JSON (optional)"; right_panel.add_child(_entity_extra)
 
 	var entity_apply := Button.new(); entity_apply.text = "Apply Entity"; entity_apply.pressed.connect(_apply_entity); right_panel.add_child(entity_apply)
@@ -318,6 +326,7 @@ var _selected_exit_index: int = -1
 var _entity_list: ItemList
 var _entity_type: OptionButton
 var _entity_subtype: OptionButton
+var _entity_dialogue: OptionButton
 var _entity_extra: LineEdit
 var _selected_entity_index: int = -1
 
@@ -417,6 +426,10 @@ func _play_station():
 	_save_station()
 	PlayerStats.current_station = _station_data
 	TransitionManager.change_scene("res://scenes/dungeon/test_dungeon_mechanics.tscn")
+
+func _open_dialogue_editor():
+	_save_station()
+	TransitionManager.change_scene("res://scenes/editor/dialogue_editor.tscn")
 
 func _update_station_from_ui():
 	_station_data.station_name = _name_edit.text
@@ -703,7 +716,26 @@ func _on_entity_selected(index: int):
 			break
 	if not found:
 		_entity_subtype.selected = -1
+	_refresh_entity_dialogue_dropdown(s.type)
+	var dlg_found: bool = false
+	for i in _entity_dialogue.item_count:
+		if _entity_dialogue.get_item_text(i) == s.dialogue_file:
+			_entity_dialogue.selected = i
+			dlg_found = true
+			break
+	if not dlg_found:
+		_entity_dialogue.selected = -1 if s.dialogue_file.is_empty() else 0
 	_entity_extra.text = JSON.stringify(s.extra)
+
+func _refresh_entity_dialogue_dropdown(type_index: int):
+	var shown: bool = type_index == EntitySpawn.Type.NPC
+	_entity_dialogue.visible = shown
+	if not shown: return
+	_entity_dialogue.clear()
+	_entity_dialogue.add_item("")
+	var files: Array[String] = _scan_resources("res://dialogues", ".json", true)
+	for f: String in files:
+		_entity_dialogue.add_item(f)
 
 func _apply_entity():
 	if _selected_entity_index < 0 or _selected_entity_index >= _station_data.entity_spawns.size():
@@ -714,6 +746,8 @@ func _apply_entity():
 	if _entity_subtype.selected >= 0:
 		subtype_text = _entity_subtype.get_item_text(_entity_subtype.selected)
 	s.subtype = subtype_text
+	if _entity_dialogue.selected >= 0:
+		s.dialogue_file = _entity_dialogue.get_item_text(_entity_dialogue.selected)
 	var extra_text: String = _entity_extra.text.strip_edges()
 	if not extra_text.is_empty():
 		var parsed: Variant = JSON.parse_string(extra_text)

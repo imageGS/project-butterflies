@@ -1,0 +1,110 @@
+{
+	"brave": {
+		"choices": [
+			{
+				"next": "help",
+				"text": "Я помогу, если смогу."
+			},
+			{
+				"next": "bye",
+				"text": "Это твои проблемы."
+			}
+		],
+		"icon": "kitsu/dialogue/Surprised",
+		"text": [
+			"Ты прав. Они убили почти всех, кого я знала. Но страх — не причина молчать."
+		]
+	},
+	"bye": {
+		"choices": [
+			{
+				"text": "..."
+			}
+		],
+		"icon": "kitsu/dialogue/Determined",
+		"text": [
+			"Береги себя. В этих туннелях тьма не самое страшное."
+		]
+	},
+	"help": {
+		"choices": [
+			{
+				"text": "До встречи."
+			}
+		],
+		"icon": "kitsu/dialogue/Compassionate",
+		"text": [
+			"Спасибо. Возможно, вместе у нас получится добраться до правды."
+		]
+	},
+	"name": "Кицунэ",
+	"start": {
+		"choices": [
+			{
+				"next": "waited",
+				"text": "Ты меня ждала?"
+			},
+			{
+				"next": "who",
+				"text": "Кто ты?"
+			},
+			{
+				"next": "bye",
+				"text": "Мне некогда."
+			}
+		],
+		"icon": "kitsu/dialogue/Neutral",
+		"text": [
+			"О, ты наконец пришёл. Я уже думала, что заблудишься в этих коридорах."
+		]
+	},
+	"story": {
+		"choices": [
+			{
+				"next": "brave",
+				"show_only_if": "check intuition 10 passive",
+				"text": "[Интуиция] Ты боишься их."
+			},
+			{
+				"next": "help",
+				"text": "Я разберусь."
+			}
+		],
+		"icon": "kitsu/dialogue/Angry",
+		"text": [
+			"New Dawn. Они открыли что-то в глубине. Что-то, что не стоило трогать."
+		]
+	},
+	"waited": {
+		"choices": [
+			{
+				"next": "story",
+				"text": "Что здесь произошло?"
+			},
+			{
+				"next": "bye",
+				"text": "Я пойду."
+			}
+		],
+		"icon": "kitsu/dialogue/Sad",
+		"text": [
+			"Не совсем ждала. Скорее... надеялась, что кто-то ещё выжил."
+		]
+	},
+	"who": {
+		"choices": [
+			{
+				"next": "story",
+				"text": "Расскажи подробнее."
+			},
+			{
+				"next": "bye",
+				"text": "Пока."
+			}
+		],
+		"icon": "kitsu/dialogue/Cautious",
+		"text": [
+			"Меня зовут Кицунэ. Я... была здесь до того, как всё пошло наперекосяк."
+		]
+	}
+}

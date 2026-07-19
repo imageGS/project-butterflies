@@ -61,11 +61,24 @@ var _awareness_pool: Array[String] = [
 var _npc_portrait_texture: Texture2D
 var _dialogue_prompt: Label
 var _dialogue_responses: Array[Label] = []
-var _dialogue_nodes: Array = []
-var _dialogue_index: int = 0
+var _dialogue_scroll: ScrollContainer
+var _dialogue_data: Dictionary = {}
+var _dialogue_current_id: String = ""
 var _dialogue_active: bool = false
 var _dialogue_busy: bool = false
 var _passive_cache: Dictionary = {}
+var _selected_response_idx: int = 0
+var _dialogue_visible_count: int = 0
+var _dialogue_char_index: int = 0
+var _dialogue_full_text: String = ""
+var _dialogue_text_done: bool = false
+var _dialogue_typing_timer: float = 0.0
+var _dialogue_typing_speed: float = 0.06
+var _dialogue_page_index: int = 0
+var _dialogue_page_texts: Array = []
+var _dialogue_npc_name: String = ""
+var _dialogue_blip: AudioStream
+var _dialogue_blip_player: AudioStreamPlayer
 
 var _dialogue_portrait_on_pos: Vector2
 var _dialogue_portrait_off_pos: Vector2
@@ -321,6 +334,14 @@ func _setup_entities():
 		for exit: ExitData in station_data.exits:
 			_entities.append({ "grid_x": exit.position.x, "grid_y": exit.position.y, "color": Color(1, 0.9, 0.2, 0.9), "type": "exit_marker" })
 
+func _sanitize_subtype(subtype: String) -> String:
+	var s: String = subtype
+	var slash: int = s.rfind("/")
+	if slash >= 0:
+		s = s.substr(slash + 1)
+	s = s.get_basename()
+	return s
+
 func _create_entity_from_spawn(spawn: EntitySpawn) -> Dictionary:
 	match spawn.type:
 		EntitySpawn.Type.ENEMY:
@@ -334,7 +355,7 @@ func _create_entity_from_spawn(spawn: EntitySpawn) -> Dictionary:
 	return {}
 
 func _create_enemy_entity(spawn: EntitySpawn) -> Dictionary:
-	var subtype: String = spawn.subtype
+	var subtype: String = _sanitize_subtype(spawn.subtype)
 	if subtype.is_empty(): subtype = "bunny"
 	var tex_base: String = "res://sprites/enemy/bunny/bunny_enemy" if subtype == "bunny" else "res://sprites/enemy/scav_enemy_1"
 	var tex_f: Texture2D = load(tex_base + ".png") if subtype == "bunny" else load(tex_base + ".png")
@@ -359,29 +380,69 @@ func _create_enemy_entity(spawn: EntitySpawn) -> Dictionary:
 	}
 
 func _create_npc_entity(spawn: EntitySpawn) -> Dictionary:
-	var subtype: String = spawn.subtype
-	if subtype.is_empty(): subtype = "wanderer"
-	var portrait: Texture2D = load("res://sprites/npc/17_sprite.png")
-	var name: String = "Незнакомец"
-	var dialogue: Array = []
-	if subtype == "wanderer":
-		var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
-		if file:
-			var data: Dictionary = JSON.parse_string(file)
-			if data:
-				name = data.get("name", name)
-				dialogue = data.get("nodes", [])
+	var subtype: String = _sanitize_subtype(spawn.subtype)
+	if subtype.is_empty(): subtype = "kitsu"
+	var portrait: Texture2D = _load_npc_portrait(subtype)
+	if not portrait:
+		portrait = load("res://sprites/npc/kitsu/dialogue/Neutral.png")
+	var name: String = subtype.capitalize()
+	var dialogue: Dictionary = {}
+	var dialogue_path: String = ""
+	if not spawn.dialogue_file.is_empty():
+		dialogue_path = spawn.dialogue_file
+		if not dialogue_path.begins_with("res://"):
+			dialogue_path = "res://dialogues/" + dialogue_path
+	else:
+		dialogue_path = "res://dialogues/" + subtype + ".json"
+	var file := FileAccess.get_file_as_string(dialogue_path)
+	if not file:
+		if dialogue_path != "res://dialogues/default_npc.json":
+			file = FileAccess.get_file_as_string("res://dialogues/default_npc.json")
+	if file:
+		var data: Dictionary = JSON.parse_string(file)
+		if data:
+			name = data.get("name", name)
+			dialogue = data.duplicate()
+			dialogue.erase("name")
+	var directional: Dictionary = _load_npc_directional_sprites(subtype)
 	return {
 		"grid_x": spawn.position.x, "grid_y": spawn.position.y,
-		"color": Color(0.2, 0.6, 0.2),
+		"anim_x": float(spawn.position.x), "anim_y": float(spawn.position.y),
+		"color": Color(0.9, 0.4, 0.5),
 		"type": "npc",
 		"name": name,
 		"texture": portrait,
+		"textures": directional,
 		"dialogue": dialogue,
 	}
 
+func _load_npc_directional_sprites(subtype: String) -> Dictionary:
+	var base: String = "res://sprites/npc/" + subtype + "/" + subtype
+	var out: Dictionary = {}
+	var f: Texture2D = load(base + "_front.png") as Texture2D
+	var b: Texture2D = load(base + "_back.png") as Texture2D
+	var l: Texture2D = load(base + "_left.png") as Texture2D
+	var r: Texture2D = load(base + "_right.png") as Texture2D
+	if f: out["front"] = f
+	if b: out["back"] = b
+	if l: out["left"] = l
+	if r: out["right"] = r
+	return out
+
+func _load_npc_portrait(subtype: String) -> Texture2D:
+	var paths: Array[String] = [
+		"res://sprites/npc/" + subtype + "/dialogue/Neutral.png",
+		"res://sprites/npc/" + subtype + "/" + subtype + ".png",
+		"res://sprites/npc/" + subtype + ".png",
+	]
+	for p: String in paths:
+		var tex := load(p) as Texture2D
+		if tex:
+			return tex
+	return null
+
 func _create_item_entity(spawn: EntitySpawn) -> Dictionary:
-	var subtype: String = spawn.subtype
+	var subtype: String = _sanitize_subtype(spawn.subtype)
 	if subtype.is_empty(): subtype = "misc"
 	return {
 		"grid_x": spawn.position.x, "grid_y": spawn.position.y,
@@ -392,7 +453,7 @@ func _create_item_entity(spawn: EntitySpawn) -> Dictionary:
 	}
 
 func _create_object_entity(spawn: EntitySpawn) -> Dictionary:
-	var subtype: String = spawn.subtype
+	var subtype: String = _sanitize_subtype(spawn.subtype)
 	if subtype.is_empty(): subtype = "lore"
 	var data: Dictionary = spawn.extra.duplicate()
 	if not data.has("name"):
@@ -450,23 +511,30 @@ func _setup_fallback_entities():
 		_entities.append(o)
 
 	# NPC
-	var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
+	var file := FileAccess.get_file_as_string("res://dialogues/kitsu.json")
 	if file:
 		var data: Dictionary = JSON.parse_string(file)
 		if data and data.has("nodes"):
 			_entities.append({
 				"grid_x": 35, "grid_y": 23,
-				"color": Color(0.2, 0.6, 0.2),
+				"anim_x": 35.0, "anim_y": 23.0,
+				"color": Color(0.9, 0.4, 0.5),
 				"type": "npc",
-				"name": data.get("name", "Незнакомец"),
-				"texture": load("res://sprites/npc/17_sprite.png"),
+				"name": data.get("name", "Кицунэ"),
+				"texture": load("res://sprites/npc/kitsu/dialogue/Neutral.png"),
+				"textures": {
+					"front": load("res://sprites/npc/kitsu/kitsu_front.png"),
+					"back": load("res://sprites/npc/kitsu/kitsu_back.png"),
+					"left": load("res://sprites/npc/kitsu/kitsu_left.png"),
+					"right": load("res://sprites/npc/kitsu/kitsu_right.png"),
+				},
 				"dialogue": data.nodes,
 			})
 
 func _setup_dialogue_ui():
 	# Store on/off positions for slide animations
 	_dialogue_portrait_on_pos = _dialogue_portrait_window.position
-	_dialogue_portrait_off_pos = _dialogue_portrait_on_pos - Vector2(300, 0)
+	_dialogue_portrait_off_pos = _dialogue_portrait_on_pos + Vector2(0, 300)
 	_dialogue_box_on_pos = _dialogue_box_window.position
 	_dialogue_box_off_pos = _dialogue_box_on_pos + Vector2(0, 300)
 
@@ -475,10 +543,37 @@ func _setup_dialogue_ui():
 	_dialogue_box_window.position = _dialogue_box_off_pos
 	_dialogue_portrait_window.visible = false
 	_dialogue_box_window.visible = false
+
+	# Wrap in ScrollContainer (keyboard only, no mouse interference)
+	var resp_parent: Control = _dialogue_responses_root.get_parent_control()
+	_dialogue_scroll = ScrollContainer.new()
+	_dialogue_scroll.name = "DialogueScroll"
+	_dialogue_scroll.z_index = 10
+	_dialogue_scroll.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dialogue_scroll.offset_left = _dialogue_responses_root.offset_left
+	_dialogue_scroll.offset_top = _dialogue_responses_root.offset_top
+	_dialogue_scroll.offset_right = _dialogue_responses_root.offset_right
+	_dialogue_scroll.offset_bottom = _dialogue_responses_root.offset_bottom
+	if resp_parent:
+		resp_parent.add_child(_dialogue_scroll)
+		resp_parent.move_child(_dialogue_scroll, _dialogue_responses_root.get_index())
+		_dialogue_responses_root.reparent(_dialogue_scroll)
+		_dialogue_responses_root.anchors_preset = Control.PRESET_FULL_RECT
+		_dialogue_responses_root.offset_left = 0
+		_dialogue_responses_root.offset_top = 0
+		_dialogue_responses_root.offset_right = 0
+		_dialogue_responses_root.offset_bottom = 0
+	_dialogue_responses_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_dialogue_responses_root.visible = false
 
+	# Load blip sound for typing effect
+	_dialogue_blip = load("res://audio/sfx/dialogue/blip.wav")
+	_dialogue_blip_player = AudioStreamPlayer.new()
+	_dialogue_blip_player.bus = "SFX"
+	add_child(_dialogue_blip_player)
+
 	# Default portrait texture
-	_npc_portrait_texture = load("res://sprites/npc/17_sprite.png")
+	_npc_portrait_texture = load("res://sprites/npc/kitsu/dialogue/Neutral.png")
 	_dialogue_portrait.texture = _npc_portrait_texture
 
 	# Create response labels inside the bottom panel container
@@ -488,7 +583,7 @@ func _setup_dialogue_ui():
 		resp.add_theme_font_size_override("font_size", 18)
 		resp.text = ""
 		resp.visible = false
-		resp.mouse_filter = Control.MOUSE_FILTER_STOP
+		resp.mouse_filter = Control.MOUSE_FILTER_PASS
 		resp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		resp.gui_input.connect(_on_resp_gui_input.bind(resp))
 		resp.mouse_entered.connect(_on_resp_mouse_entered.bind(resp))
@@ -536,11 +631,17 @@ func _unhandled_input(event):
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_W, KEY_UP:
-				if not _dialogue_active:
+				if _dialogue_active and _dialogue_visible_count > 0:
+					_selected_response_idx = max(0, _selected_response_idx - 1)
+					_update_selected_highlight()
+				elif not _dialogue_active:
 					_try_move_forward()
 					_held_cooldown = 0.12
 			KEY_S, KEY_DOWN:
-				if not _dialogue_active:
+				if _dialogue_active and _dialogue_visible_count > 0:
+					_selected_response_idx = min(_dialogue_visible_count - 1, _selected_response_idx + 1)
+					_update_selected_highlight()
+				elif not _dialogue_active:
 					_try_move_backward()
 					_held_cooldown = 0.12
 			KEY_A, KEY_LEFT:
@@ -566,9 +667,7 @@ func _unhandled_input(event):
 					_try_strafe_left()
 					_held_cooldown = 0.12
 			KEY_E:
-				if _dialogue_active:
-					_advance_dialogue()
-				elif not _dialogue_active:
+				if not _dialogue_active:
 					_try_strafe_right()
 					_held_cooldown = 0.12
 			KEY_SPACE, KEY_F:
@@ -639,7 +738,14 @@ func _try_interact():
 				TransitionManager.change_scene("res://scenes/battle/node.tscn")
 				return
 			if ent.type == "npc" and ent.has("dialogue"):
-				_start_dialogue(ent.dialogue as Array, ent.get("name", "Незнакомец"))
+				var dlg: Dictionary = ent.dialogue
+				if dlg.is_empty():
+					_show_tip(ent.get("name", "Незнакомец") + " молчит.")
+				else:
+					var tex: Texture2D = ent.get("texture", null)
+					if tex:
+						_npc_portrait_texture = tex
+					_start_dialogue(dlg, ent.get("name", "Незнакомец"))
 				return
 			if ent.type == "object":
 				_interact_object(ent)
@@ -684,17 +790,89 @@ func _set_dialogue_portrait(portrait_path: String):
 	else:
 		_dialogue_portrait.texture = _npc_portrait_texture
 
-func _start_dialogue(nodes: Array, npc_name: String = "Незнакомец"):
+func _set_dialogue_portrait_by_icon(icon: String):
+	if icon.is_empty():
+		_dialogue_portrait.texture = _npc_portrait_texture
+		return
+	var tex := load("res://sprites/npc/" + icon + ".png") as Texture2D
+	if tex:
+		_dialogue_portrait.texture = tex
+		return
+	# fallback: old format without dialogue/ (kitsu/Neutral -> kitsu/dialogue/Neutral)
+	var parts: Array = icon.rsplit("/", true, 1)
+	if parts.size() == 2:
+		tex = load("res://sprites/npc/" + parts[0] + "/dialogue/" + parts[1] + ".png") as Texture2D
+	if tex:
+		_dialogue_portrait.texture = tex
+	else:
+		_dialogue_portrait.texture = _npc_portrait_texture
+
+func _execute_actions(actions: Array):
+	for a in actions:
+		var parts: Array = a.split(" ", false)
+		if parts.is_empty(): continue
+		match parts[0]:
+			"flag", "set":
+				if parts.size() >= 2:
+					var key: String = parts[1]
+					var val: Variant = true
+					if parts.size() >= 3:
+						if parts[2] == "true": val = true
+						elif parts[2] == "false": val = false
+						elif parts[2].is_valid_int(): val = int(parts[2])
+						else: val = parts[2]
+					PlayerStats.flags[key] = val
+			"give":
+				if parts.size() >= 2:
+					var item_name: String = parts[1]
+					var count: int = int(parts[2]) if parts.size() >= 3 and parts[2].is_valid_int() else 1
+					var item_data := load("res://resources/items/" + item_name + ".tres") as ItemData
+					if item_data:
+						var item: Item = item_data.to_item()
+						item.stack_count = count
+						PlayerStats.inventory.try_add(item)
+			"remove":
+				if parts.size() >= 2:
+					var item_name: String = parts[1]
+					var count: int = int(parts[2]) if parts.size() >= 3 and parts[2].is_valid_int() else 1
+					for _j in count:
+						for idx in range(PlayerStats.inventory.size()):
+							var it: Item = PlayerStats.inventory.get_item(idx)
+							if it and it.name == item_name:
+								it.stack_count -= 1
+								if it.stack_count <= 0:
+									PlayerStats.inventory.remove(idx)
+								break
+			"shake":
+				_shake_hud()
+			"sound", "play_sound":
+				pass
+
+func _start_dialogue(data: Dictionary, npc_name: String = "Незнакомец"):
+	if data.is_empty():
+		_show_tip(npc_name + " молчит.")
+		return
+	if _dialogue_active:
+		return
 	_dialogue_active = true
-	_dialogue_nodes = nodes
-	_dialogue_index = 0
-	_dialogue_name.text = npc_name
+	_dialogue_data = data
+	_dialogue_current_id = "start"
+	if not _dialogue_data.has("start"):
+		for key in _dialogue_data:
+			_dialogue_current_id = key
+			break
+	_dialogue_npc_name = npc_name
+	_dialogue_busy = false
+	_selected_response_idx = 0
+	_dialogue_visible_count = 0
+	_dialogue_page_index = 0
 	_dialogue_portrait_window.visible = true
 	_dialogue_box_window.visible = true
 	_dialogue_responses_root.visible = true
 	var tw := create_tween().set_parallel()
 	tw.tween_property(_dialogue_portrait_window, "position", _dialogue_portrait_on_pos, 0.25).set_ease(Tween.EASE_OUT)
 	tw.tween_property(_dialogue_box_window, "position", _dialogue_box_on_pos, 0.25).set_ease(Tween.EASE_OUT)
+	print("DIALOGUE START: name=", npc_name, " id=", _dialogue_current_id)
 	_show_dialogue_node()
 
 func _show_dialogue_node():
@@ -702,61 +880,200 @@ func _show_dialogue_node():
 		lbl.visible = false
 		lbl.text = ""
 
-	if _dialogue_index < 0 or _dialogue_index >= _dialogue_nodes.size():
+	if _dialogue_current_id == "" or _dialogue_current_id not in _dialogue_data:
+		print("DIALOGUE AUTO-CLOSE: id=", _dialogue_current_id)
 		_close_dialogue()
 		return
 
-	var node: Dictionary = _dialogue_nodes[_dialogue_index]
-	_dialogue_text.text = node.get("text", "")
-	var portrait_path: String = node.get("portrait", "")
-	_set_dialogue_portrait(portrait_path)
-	var responses: Array = node.get("responses", [])
+	var node: Dictionary = _dialogue_data[_dialogue_current_id]
+	_dialogue_name.text = node.get("name", _dialogue_npc_name)
+
+	var portrait_icon: String = node.get("icon", "")
+	_set_dialogue_portrait_by_icon(portrait_icon)
+
+	# Execute actions
+	_execute_actions(node.get("action", []))
+
+	# Set up multi-page text
+	_dialogue_page_texts = node.get("text", [""])
+	if typeof(_dialogue_page_texts) == TYPE_STRING:
+		_dialogue_page_texts = [_dialogue_page_texts]
+	if _dialogue_page_texts.is_empty():
+		_dialogue_page_texts = [""]
+	_dialogue_page_index = 0
+	_show_dialogue_page()
+
+func _show_dialogue_page():
+	var node: Dictionary = _dialogue_data.get(_dialogue_current_id, {})
+	_dialogue_full_text = _dialogue_page_texts[_dialogue_page_index] if _dialogue_page_index < _dialogue_page_texts.size() else ""
+	_dialogue_char_index = 0
+	_dialogue_text_done = false
+	_dialogue_typing_timer = 0.0
+	_dialogue_text.text = ""
+	_dialogue_prompt.text = ""
+
+	# Handle choices (show only on last page)
+	var is_last_page: bool = _dialogue_page_index >= _dialogue_page_texts.size() - 1
+	if is_last_page:
+		_build_choices(node.get("choices", []))
+	else:
+		_dialogue_visible_count = 0
+
+func _build_choices(choices: Array):
+	for lbl in _dialogue_responses:
+		lbl.visible = false
+		lbl.text = ""
 	_passive_cache.clear()
 	var visible_count: int = 0
 
-	for i in responses.size():
+	for i in choices.size():
 		if i >= _dialogue_responses.size():
 			break
-		var opt: Dictionary = responses[i]
-		var show: bool = true
-		var check: Dictionary = opt.get("check", {})
-		if not check.is_empty() and check.get("passive", false):
-			var r := SkillCheck.check(PlayerStats.get_skill(check.get("skill", "composure")), check.get("dc", 10))
-			_passive_cache[i] = r.success
-			show = r.success
+		var opt: Dictionary = choices[i]
+		var show: bool = _check_condition(opt.get("show_only_if", ""))
 		if show:
 			_dialogue_responses[i].set_meta("resp_idx", visible_count)
 			_dialogue_responses[i].text = str(visible_count + 1) + ". " + opt.get("text", "")
-			_dialogue_responses[i].visible = true
+			_dialogue_responses[i].visible = false
 			visible_count += 1
 		else:
 			_dialogue_responses[i].visible = false
 
-	if visible_count == 0:
-		_dialogue_prompt.text = "[E] Закрыть"
+	_dialogue_visible_count = visible_count
+	_dialogue_responses_root.queue_sort()
+
+func _check_condition(cond: String) -> bool:
+	if cond == "":
+		return true
+	var parts: Array = cond.split(" ", false)
+	if parts.is_empty(): return true
+	match parts[0]:
+		"check":
+			if parts.size() < 3: return true
+			var skill: String = parts[1]
+			var dc: int = int(parts[2])
+			var passive: bool = parts.size() >= 4 and parts[3] == "passive"
+			if passive:
+				var r := SkillCheck.check(PlayerStats.get_skill(skill), dc)
+				_passive_cache[cond] = r.success
+				return r.success
+			return true
+		"flag":
+			if parts.size() < 2: return true
+			var key: String = parts[1]
+			var val: Variant = PlayerStats.flags.get(key, null)
+			if parts.size() >= 4 and parts[2] == "not":
+				return val != parts[3]
+			if parts.size() >= 3 and parts[2] == "is":
+				return val == parts[3]
+			return val != null and val != false
+		_:
+			return true
+
+func _update_selected_highlight():
+	for i in _dialogue_responses.size():
+		var vis: bool = _dialogue_responses[i].visible
+		if vis and _dialogue_responses[i].get_meta("resp_idx", -1) == _selected_response_idx:
+			_dialogue_responses[i].add_theme_color_override("font_color", Color(1, 0.95, 0.8))
+			if _dialogue_scroll:
+				_dialogue_scroll.ensure_control_visible(_dialogue_responses[i])
+		elif vis:
+			_dialogue_responses[i].add_theme_color_override("font_color", Color(0.85, 0.8, 0.65))
+
+func _on_typing_done():
+	# Show response labels
+	for lbl in _dialogue_responses:
+		if not lbl.text.is_empty():
+			lbl.visible = true
+	if _dialogue_visible_count == 0:
+		_dialogue_prompt.text = "[Space] Закрыть"
 	else:
-		_dialogue_prompt.text = "[1-" + str(visible_count) + "]"
+		_selected_response_idx = clamp(_selected_response_idx, 0, _dialogue_visible_count - 1)
+		_dialogue_prompt.text = "\u2191" + str(_selected_response_idx + 1) + "/" + str(_dialogue_visible_count) + " [Space]"
+	_dialogue_responses_root.queue_sort()
+	_update_selected_highlight()
 
 func _advance_dialogue():
-	var node: Dictionary = _dialogue_nodes[_dialogue_index]
-	var responses: Array = node.get("responses", [])
-	var visible := _count_visible_responses(responses)
-	if visible == 0:
-		_dialogue_index += 1
-		_show_dialogue_node()
+	if not _dialogue_text_done:
+		_dialogue_typing_timer = 0.0
+		_dialogue_char_index = _dialogue_full_text.length()
+		_dialogue_text.text = _dialogue_full_text
+		_dialogue_text_done = true
+		if _dialogue_blip_player:
+			_dialogue_blip_player.stop()
+		_on_typing_done()
+		return
+	var node: Dictionary = _dialogue_data.get(_dialogue_current_id, {})
+	var choices: Array = node.get("choices", [])
+	var is_last_page: bool = _dialogue_page_index >= _dialogue_page_texts.size() - 1
+	if not is_last_page:
+		_dialogue_page_index += 1
+		_show_dialogue_page()
+		return
+	if _dialogue_visible_count == 0:
+		var node_next: String = node.get("next", "")
+		if node_next != "" and node_next in _dialogue_data:
+			_go_to_node(node_next)
+		elif node_next == "__transition":
+			_go_to_node("__transition")
+		else:
+			_close_dialogue()
 	else:
-		_select_response(0)
+		_select_response(_selected_response_idx)
 
-func _count_visible_responses(responses: Array) -> int:
-	var count: int = 0
-	for i in responses.size():
-		var opt: Dictionary = responses[i]
-		var check: Dictionary = opt.get("check", {})
-		if not check.is_empty() and check.get("passive", false):
-			if not _passive_cache.get(i, false):
-				continue
-		count += 1
-	return count
+func _select_response(idx: int):
+	if _dialogue_busy:
+		return
+	_dialogue_busy = true
+
+	var node: Dictionary = _dialogue_data.get(_dialogue_current_id, {})
+	var choices: Array = node.get("choices", [])
+	var actual_idx: int = -1
+	var seen: int = 0
+	for i in choices.size():
+		var opt: Dictionary = choices[i]
+		if not _check_condition(opt.get("show_only_if", "")):
+			continue
+		if seen == idx:
+			actual_idx = i
+			break
+		seen += 1
+	if actual_idx < 0 or actual_idx >= choices.size():
+		_dialogue_busy = false
+		return
+
+	var chosen: Dictionary = choices[actual_idx]
+	var check_str: String = chosen.get("check", "")
+	if check_str == "":
+		_dialogue_busy = false
+		var target: String = chosen.get("next", "")
+		if target != "" and target in _dialogue_data:
+			_go_to_node(target)
+		else:
+			_close_dialogue()
+		return
+
+	# Active skill check
+	var parts: Array = check_str.split(" ", false)
+	var skill: String = parts[0] if parts.size() >= 1 else "composure"
+	var dc: int = int(parts[1]) if parts.size() >= 2 and parts[1].is_valid_int() else 10
+	_dialogue_prompt.text = "Проверка " + SkillCheck.dc_description(dc) + "..."
+	var result := SkillCheck.check(PlayerStats.get_skill(skill), dc)
+	if result.success:
+		_dialogue_prompt.text = "✓ Успех!  (" + str(result.total) + ")"
+	else:
+		_dialogue_prompt.text = "✗ Провал  (" + str(result.total) + ")"
+	await get_tree().create_timer(0.6).timeout
+
+	_dialogue_busy = false
+	if result.success:
+		var target: String = chosen.get("next_pass", chosen.get("next", ""))
+		if target != "" and target in _dialogue_data: _go_to_node(target)
+		else: _close_dialogue()
+	else:
+		var target: String = chosen.get("next_fail", chosen.get("next", ""))
+		if target != "" and target in _dialogue_data: _go_to_node(target)
+		else: _close_dialogue()
 
 func _on_resp_mouse_entered(label: Label):
 	if not _dialogue_active or _dialogue_busy:
@@ -772,51 +1089,8 @@ func _on_resp_gui_input(event: InputEvent, label: Label):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var vis_idx: int = label.get_meta("resp_idx", -1)
 		if vis_idx >= 0:
+			label.accept_event()
 			_select_response(vis_idx)
-
-func _select_response(idx: int):
-	if _dialogue_busy:
-		return
-	_dialogue_busy = true
-
-	var node: Dictionary = _dialogue_nodes[_dialogue_index]
-	var responses: Array = node.get("responses", [])
-	var actual_idx: int = -1
-	var seen: int = 0
-	for i in responses.size():
-		var opt: Dictionary = responses[i]
-		var check: Dictionary = opt.get("check", {})
-		if not check.is_empty() and check.get("passive", false):
-			if not _passive_cache.get(i, false):
-				continue
-		if seen == idx:
-			actual_idx = i
-			break
-		seen += 1
-	if actual_idx < 0 or actual_idx >= responses.size():
-		_dialogue_busy = false
-		return
-
-	var chosen: Dictionary = responses[actual_idx]
-	var chk: Dictionary = chosen.get("check", {})
-	if chk.is_empty():
-		_dialogue_busy = false
-		_go_to_node(chosen.get("next", -1))
-		return
-
-	_dialogue_prompt.text = "Проверка " + SkillCheck.dc_description(chk.get("dc", 10)) + "..."
-	var result := SkillCheck.check(PlayerStats.get_skill(chk.get("skill", "composure")), chk.get("dc", 10))
-	if result.success:
-		_dialogue_prompt.text = "✓ Успех!  (" + str(result.total) + ")"
-	else:
-		_dialogue_prompt.text = "✗ Провал  (" + str(result.total) + ")"
-	await get_tree().create_timer(0.6).timeout
-
-	_dialogue_busy = false
-	if result.success:
-		_go_to_node(chosen.get("next_pass", chosen.get("next", -1)))
-	else:
-		_go_to_node(chosen.get("next_fail", chosen.get("next", -1)))
 
 func _setup_hud():
 	var hud: Control = $CRT_Root/GameViewport/UI/HUDOverlay
@@ -862,29 +1136,34 @@ func _tick_hud_balls(delta: float):
 
 func _ask_leave_station():
 	PlayerStats.current_station = load("res://resources/stations/shelter.tres")
-	var exit_dialogue := [
-		{ "text": "Выход из станции. Уйти?", "responses": [
-			{ "text": "Да, уйти в убежище.", "next": 1 },
-			{ "text": "Нет, остаться.", "next": -1 },
+	var exit_dialogue := {
+		"start": {"text": ["Выход из станции. Уйти?"], "choices": [
+			{"text": "Да, уйти в убежище.", "next": "leave"},
+			{"text": "Нет, остаться.", "next": ""}
 		]},
-		{ "text": "Вы покидаете станцию и направляетесь в убежище.", "responses": [
-			{ "text": "...", "next": -2 },
-		]},
-	]
+		"leave": {"text": ["Вы покидаете станцию и направляетесь в убежище."], "next": "__transition"},
+	}
 	_start_dialogue(exit_dialogue, "Выход")
 
-func _go_to_node(idx: int):
-	if idx <= -2:
+func _go_to_node(id: String):
+	if id == "__transition":
 		_close_dialogue()
 		TransitionManager.change_scene("res://scenes/dungeon/test_dungeon_mechanics.tscn")
-	elif idx < 0:
+	elif id == "" or id not in _dialogue_data:
 		_close_dialogue()
 	else:
-		_dialogue_index = idx
+		_dialogue_current_id = id
 		_show_dialogue_node()
 
 func _close_dialogue():
+	if not _dialogue_active:
+		return
+	print("DIALOGUE CLOSE")
 	_dialogue_active = false
+	_dialogue_busy = false
+	_dialogue_text_done = true
+	if _dialogue_blip_player:
+		_dialogue_blip_player.stop()
 	var tw := create_tween().set_parallel()
 	tw.tween_property(_dialogue_portrait_window, "position", _dialogue_portrait_off_pos, 0.2).set_ease(Tween.EASE_IN)
 	tw.tween_property(_dialogue_box_window, "position", _dialogue_box_off_pos, 0.2).set_ease(Tween.EASE_IN)
@@ -934,6 +1213,22 @@ func _process(delta):
 
 	_update_enemies(delta)
 	_tick_hud_balls(delta)
+
+	# Dialogue typing effect
+	if _dialogue_active and not _dialogue_text_done:
+		_dialogue_typing_timer += delta
+		while _dialogue_typing_timer >= _dialogue_typing_speed:
+			_dialogue_typing_timer -= _dialogue_typing_speed
+			_dialogue_char_index += 1
+			var ch: String = _dialogue_full_text.left(_dialogue_char_index).right(1) if _dialogue_char_index <= _dialogue_full_text.length() else ""
+			_dialogue_text.text = _dialogue_full_text.left(_dialogue_char_index)
+			if ch != " " and ch != "" and _dialogue_blip and _dialogue_blip_player:
+				_dialogue_blip_player.pitch_scale = 0.85 + randf() * 0.3
+				_dialogue_blip_player.play()
+			if _dialogue_char_index >= _dialogue_full_text.length():
+				_dialogue_text_done = true
+				_on_typing_done()
+				break
 
 	if not _is_animating:
 		_process_held_input(delta)

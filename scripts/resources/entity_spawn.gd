@@ -7,6 +7,7 @@ enum Type { ENEMY, NPC, ITEM, OBJECT }
 @export var type: Type = Type.ENEMY
 @export var subtype: String = ""
 @export var facing: int = 2
+@export var dialogue_file: String = ""
 @export var extra: Dictionary = {}
 
 func get_type_name() -> String:

@@ -1,8 +1,15 @@
-[gd_resource type="Resource" script_class="StationData" format=3 uid="uid://wye2d2fdeubp"]
+[gd_resource type="Resource" script_class="StationData" format=3]
 
-[ext_resource type="Script" uid="uid://csdjjp2doowrq" path="res://scripts/resources/station_data.gd" id="1"]
-[ext_resource type="Script" uid="uid://dfcaawdjgi8lu" path="res://scripts/resources/exit_data.gd" id="2"]
-[ext_resource type="Script" uid="uid://3gcudehlx3nq" path="res://scripts/resources/entity_spawn.gd" id="3_entity"]
+[ext_resource type="Script" path="res://scripts/resources/station_data.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/exit_data.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/resources/entity_spawn.gd" id="3_entity"]
+
+[sub_resource type="Resource" id="Resource_rsrwf"]
+script = ExtResource("3_entity")
+position = Vector2i(7, 9)
+type = 1
+subtype = "kitsu"
+dialogue_file = "res://dialogues/kitsune_first_meet.json"
 
 [sub_resource type="Resource" id="ExitData_1"]
 script = ExtResource("2")
@@ -19,3 +26,4 @@ spawn = Vector2i(3, 3)
 outer_ring = false
 fog_distance = 15.0
 exits = Array[ExtResource("2")]([SubResource("ExitData_1")])
+entity_spawns = Array[ExtResource("3_entity")]([SubResource("Resource_rsrwf")])
