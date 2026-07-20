@@ -4,19 +4,15 @@ extends Control
 const CELL_SIZE: int = 24
 const MAX_UNDO: int = 128
 
-const TOOLS: Array[String] = ["cursor", ".", "#", "E", "D", "L", "S", "R", "I", "!", "$", "%", "+", "i", "d", "t", "@", "B"]
+const TOOLS: Array[String] = ["cursor", ".", "#", "O", "D", "L", "E", "I", "@", "N"]
 const TOOL_NAMES: Dictionary = {
-	"cursor": "Select", ".": "Floor", "#": "Wall", "E": "Exit", "D": "Door", "L": "Locked",
-	"S": "Stairs", "R": "Rail", "I": "Item", "!": "WallSw", "$": "WallTr", "%": "Debris",
-	"+": "Special", "i": "ItemE", "d": "DebrisE", "t": "TermE", "@": "Enemy", "B": "Blocked",
+	"cursor": "Select", ".": "Floor", "#": "Wall", "O": "Window", "D": "Door", "L": "Locked",
+	"E": "Exit", "I": "Item", "@": "Enemy", "N": "NPC",
 }
 const TOOL_COLORS: Dictionary = {
-	".": Color(0.18,0.18,0.18), "#": Color(0.55,0.55,0.55), "E": Color(0.95,0.75,0.05),
-	"D": Color(0.55,0.37,0.18), "L": Color(0.75,0.18,0.18), "S": Color(0.35,0.35,0.75),
-	"R": Color(0.15,0.15,0.25), "I": Color(0.1,0.7,0.1), "!": Color(0.9,0.2,0.1),
-	"$": Color(0.1,0.7,0.3), "%": Color(0.5,0.3,0.15), "+": Color(0.7,0.7,0.2),
-	"i": Color(0.9,0.7,0.2), "d": Color(0.4,0.25,0.1), "t": Color(0.2,0.7,0.3),
-	"@": Color(0.75,0.05,0.05), "B": Color(0.08,0.08,0.08),
+	".": Color(0.18,0.18,0.18), "#": Color(0.45,0.45,0.5), "O": Color(0.3,0.5,0.7),
+	"D": Color(0.55,0.37,0.18), "L": Color(0.75,0.18,0.18), "E": Color(0.95,0.75,0.05),
+	"I": Color(0.1,0.7,0.1), "@": Color(0.75,0.05,0.05), "N": Color(0.05,0.55,0.75),
 }
 
 var _station_data: StationData = null
