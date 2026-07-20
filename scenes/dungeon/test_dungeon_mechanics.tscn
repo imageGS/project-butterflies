@@ -13,7 +13,7 @@
 [ext_resource type="Script" uid="uid://bobjk5jnoroeq" path="res://scripts/ui/minimap_control.gd" id="13_hud"]
 [ext_resource type="Texture2D" uid="uid://c45he1iujo4ea" path="res://assets/UI/DIALOGUE_BOX.png" id="14_dlg"]
 [ext_resource type="Texture2D" uid="uid://bw2dbgvpjdox5" path="res://assets/UI/DIALOGUE_PORTRAIT_WINDOW.png" id="15_dlg"]
-[ext_resource type="Resource" uid="uid://i03cp0og02s4" path="res://resources/stations/akio.tres" id="16_stn"]
+[ext_resource type="Resource" uid="uid://cjpfcli7n6gkp" path="res://resources/stations/test_polygon.tres" id="17_poly"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
 viewport_path = NodePath("CRT_Root/GameViewport")
@@ -34,7 +34,7 @@ shader_parameter/wobble_strength = 0.302000014345
 
 [node name="TestDungeon" type="Node" unique_id=1919637851]
 script = ExtResource("2_r7h3n")
-station_data = ExtResource("16_stn")
+station_data = ExtResource("17_poly")
 
 [node name="CRT_Root" type="Control" parent="." unique_id=640219047]
 layout_mode = 3

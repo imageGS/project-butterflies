@@ -1,0 +1,135 @@
+[gd_scene format=3 uid="uid://c3roomp01"]
+
+[ext_resource type="Script" uid="uid://ccymwioahk2pj" path="res://scripts/dungeon_3d/room_prototype.gd" id="1_room"]
+[ext_resource type="Script" uid="uid://btg8g5dh3h64v" path="res://scripts/dungeon_3d/player_3d.gd" id="2_plyr"]
+
+[sub_resource type="Environment" id="env"]
+background_mode = 1
+background_color = Color(0.02, 0.02, 0.04, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.08, 0.08, 0.09, 1)
+fog_enabled = true
+fog_mode = 1
+fog_light_color = Color(0.02, 0.02, 0.04, 1)
+fog_density = 1.0
+
+[sub_resource type="StandardMaterial3D" id="mat_floor"]
+albedo_color = Color(0.18, 0.17, 0.19, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_ceil"]
+albedo_color = Color(0.08, 0.08, 0.1, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_wall"]
+albedo_color = Color(0.28, 0.28, 0.32, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="mat_pillar"]
+albedo_color = Color(0.32, 0.28, 0.25, 1)
+roughness = 0.85
+
+[sub_resource type="BoxShape3D" id="box_floor_col"]
+size = Vector3(13, 0.1, 9)
+
+[sub_resource type="CapsuleShape3D" id="capsule_player"]
+radius = 0.3
+height = 1.0
+
+[sub_resource type="BoxShape3D" id="box_exit"]
+size = Vector3(2.2, 1.5, 0.4)
+
+[node name="RoomPrototype" type="Node3D" unique_id=1325828729]
+script = ExtResource("1_room")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2031212855]
+environment = SubResource("env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1557617156]
+transform = Transform3D(0.7427814, 0.4982729, 0.44721362, -0.55708605, 0.83045477, -1.8931825e-09, -0.3713907, -0.24913645, 0.89442724, 6.082023, 1.424964, 1.9846346)
+light_energy = 1.5
+
+[node name="LevelGeometry" type="CSGCombiner3D" parent="." unique_id=1586451432]
+
+[node name="Floor" type="CSGBox3D" parent="LevelGeometry" unique_id=629892602]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 4)
+material_override = SubResource("mat_floor")
+use_collision = true
+size = Vector3(12.4, 0.2, 8.4)
+
+[node name="Ceiling" type="CSGBox3D" parent="LevelGeometry" unique_id=763274351]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 3, 4)
+material_override = SubResource("mat_ceil")
+use_collision = true
+size = Vector3(12.4, 0.2, 8.4)
+
+[node name="Wall_North" type="CSGBox3D" parent="LevelGeometry" unique_id=1989177551]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.5, 0)
+material_override = SubResource("mat_wall")
+use_collision = true
+size = Vector3(12, 3, 0.2)
+
+[node name="Wall_South_Left" type="CSGBox3D" parent="LevelGeometry" unique_id=1498687016]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 1.5, 8)
+material_override = SubResource("mat_wall")
+use_collision = true
+size = Vector3(5, 3, 0.2)
+
+[node name="Wall_South_Right" type="CSGBox3D" parent="LevelGeometry" unique_id=132127030]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.5, 1.5, 8)
+material_override = SubResource("mat_wall")
+use_collision = true
+size = Vector3(5, 3, 0.2)
+
+[node name="Wall_East" type="CSGBox3D" parent="LevelGeometry" unique_id=1599143445]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1.5, 4)
+material_override = SubResource("mat_wall")
+use_collision = true
+size = Vector3(0.2, 3, 8)
+
+[node name="Wall_West" type="CSGBox3D" parent="LevelGeometry" unique_id=425958517]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 4)
+material_override = SubResource("mat_wall")
+use_collision = true
+size = Vector3(0.2, 3, 8)
+
+[node name="Pillar_1" type="CSGBox3D" parent="LevelGeometry" unique_id=10526242]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 1.5, 3)
+material_override = SubResource("mat_pillar")
+use_collision = true
+size = Vector3(0.4, 3, 0.4)
+
+[node name="Pillar_2" type="CSGBox3D" parent="LevelGeometry" unique_id=129076025]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 1.5, 5)
+material_override = SubResource("mat_pillar")
+use_collision = true
+size = Vector3(0.4, 3, 0.4)
+
+[node name="FloorBody" type="StaticBody3D" parent="." unique_id=889900112]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FloorBody" unique_id=1938476512]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, -0.1, 4)
+shape = SubResource("box_floor_col")
+
+[node name="Player" type="CharacterBody3D" parent="." unique_id=2132857253]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.9, 4)
+script = ExtResource("2_plyr")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=1491011104]
+shape = SubResource("capsule_player")
+
+[node name="Camera3D" type="Camera3D" parent="Player" unique_id=217945766]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+current = true
+
+[node name="ExitTrigger" type="Area3D" parent="." unique_id=878707163]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.75, 8)
+collision_layer = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ExitTrigger" unique_id=1733530539]
+shape = SubResource("box_exit")
+
+[node name="Label3D" type="Label3D" parent="ExitTrigger" unique_id=1343029707]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+billboard = 1
+modulate = Color(0.9, 0.8, 0.3, 1)
+text = "[Space] Выйти"
+outline_size = 2

@@ -1,0 +1,41 @@
+[gd_scene format=3 uid="uid://dy6bpa6vky74l"]
+
+[ext_resource type="Script" uid="uid://ch5o0ctyue1ju" path="res://scripts/dungeon_3d/dungeon_3d.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://btg8g5dh3h64v" path="res://scripts/dungeon_3d/player_3d.gd" id="2_player"]
+[ext_resource type="Resource" uid="uid://cjpfcli7n6gkp" path="res://resources/stations/test_polygon.tres" id="3_stn"]
+
+[sub_resource type="Environment" id="env"]
+background_mode = 1
+background_color = Color(0.02, 0.02, 0.04, 1)
+ambient_light_source = 1
+ambient_light_color = Color(0.06, 0.06, 0.07, 1)
+fog_enabled = true
+fog_mode = 1
+fog_light_color = Color(0.02, 0.02, 0.04, 1)
+fog_density = 0.015
+
+[sub_resource type="CapsuleShape3D" id="capsule"]
+radius = 0.3
+height = 1.0
+
+[node name="Dungeon3D" type="Node3D" unique_id=1410432727]
+script = ExtResource("1_main")
+station_data = ExtResource("3_stn")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1364132264]
+environment = SubResource("env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1274053919]
+transform = Transform3D(0.8, 0.4, 0.4, -0.6, 0.8, 0, -0.4, -0.2, 0.9, 0, 5, 0)
+
+[node name="World" type="Node3D" parent="." unique_id=1467226050]
+
+[node name="Player" type="CharacterBody3D" parent="." unique_id=1247430526]
+script = ExtResource("2_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=978688510]
+shape = SubResource("capsule")
+
+[node name="Camera3D" type="Camera3D" parent="Player" unique_id=1110407447]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+current = true

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StationData" format=3 uid="uid://cjpfcli7n6gkp"]
+
+[ext_resource type="Script" uid="uid://csdjjp2doowrq" path="res://scripts/resources/station_data.gd" id="1"]
+[ext_resource type="Script" uid="uid://3gcudehlx3nq" path="res://scripts/resources/entity_spawn.gd" id="1_7mafl"]
+[ext_resource type="Script" uid="uid://dfcaawdjgi8lu" path="res://scripts/resources/exit_data.gd" id="2_hun0u"]
+
+[resource]
+script = ExtResource("1")
+station_name = "TestPolygon"
+map_file = "res://resources/stations/maps/test_polygon.txt"
+spawn = Vector2i(2, 1)
+spawn_dir = 1
+outer_ring = false
