@@ -6,7 +6,8 @@
 
 [resource]
 script = ExtResource("3_wu7y4")
-station_name = "New Station"
+station_name = "tutorial_train"
 map_file = "res://resources/stations/maps/new_station.txt"
-spawn = Vector2i(1, 1)
+spawn = Vector2i(3, 3)
+spawn_dir = 1
 outer_ring = false

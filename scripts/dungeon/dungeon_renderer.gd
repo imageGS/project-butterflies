@@ -2,6 +2,7 @@ extends Control
 
 const TILE_WALL: int = 1
 const TILE_BLOCKED: int = 6
+const TILE_WINDOW: int = 10
 
 var cam_x: float = 1.5
 var cam_y: float = 1.5
@@ -18,6 +19,7 @@ var entities_on_map: Array = []
 var _wall_tex: Texture2D = load("res://assets/textures/wall.png")
 var _rail_tex: Texture2D = load("res://assets/textures/rails.png")
 var _floor_tex: Texture2D = load("res://assets/textures/floor.png")
+var _window_tex: Texture2D = load("res://assets/textures/window.png")
 var fog_distance: float = 7.0
 var fog_fade: float = 2.5
 var fog_color: Color = Color(0.08, 0.08, 0.08)
@@ -106,7 +108,7 @@ func _fill_zbuf():
 			if side_x < side_y: side_x += ddx; mx += step_x; s = 0
 			else: side_y += ddy; my += step_y; s = 1
 			if mx < 0 or my < 0 or my >= len(map_data) or mx >= len(map_data[0]): break
-			if map_data[my][mx] == TILE_WALL or map_data[my][mx] == TILE_BLOCKED: hit = true; break
+			if map_data[my][mx] == TILE_WALL or map_data[my][mx] == TILE_BLOCKED or map_data[my][mx] == TILE_WINDOW: hit = true; break
 		_wall_zbuf[i] = (side_x - ddx if s == 0 else side_y - ddy) if hit else 999.0
 
 func _draw():
@@ -144,8 +146,14 @@ func draw_walls(ci: CanvasItem):
 				tex_xx = int(tex_w) - tex_xx - 1
 			var shade: float = clamp(1.0 - perp * 0.04, 0.3, 1.0)
 			if result.side == 1: shade *= 0.7
-			shade = lerp(shade, 0.0, fbl)
-			ci.draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), Rect2(tex_xx, 0, 1, tex_h), Color(shade, shade, shade))
+			var mx: int = result.get("mx", -1); var my: int = result.get("my", -1)
+			if mx >= 0 and my >= 0 and my < map_data.size() and mx < map_data[my].size() and map_data[my][mx] == TILE_WINDOW and _window_tex:
+				var wcol: Color = Color(shade, shade, shade, 1.0)
+				wcol = wcol.lerp(fog_color, fbl)
+				ci.draw_texture_rect_region(_window_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), Rect2(tex_xx, 0, 1, tex_h), wcol)
+			else:
+				shade = lerp(shade, 0.0, fbl)
+				ci.draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), Rect2(tex_xx, 0, 1, tex_h), Color(shade, shade, shade))
 		else:
 			var c: Color = Color(0.4, 0.4, 0.5)
 			if result.side == 0: c = Color(0.3, 0.3, 0.4)
@@ -166,13 +174,13 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 		if side_x < side_y: side_x += delta_x; map_x += step_x; side = 0
 		else: side_y += delta_y; map_y += step_y; side = 1
 		if map_data.is_empty() or map_x < 0 or map_y < 0 or map_y >= len(map_data) or map_x >= len(map_data[0]): break
-		if map_data[map_y][map_x] == TILE_WALL or map_data[map_y][map_x] == TILE_BLOCKED: break
+		if map_data[map_y][map_x] == TILE_WALL or map_data[map_y][map_x] == TILE_BLOCKED or map_data[map_y][map_x] == TILE_WINDOW: break
 	var perp: float = side_x - delta_x if side == 0 else side_y - delta_y
 	if perp < 0.0: perp = 0.0
 	if perp > fog_distance * 1.5: return {"hit":false,"distance":fog_distance*1.5,"fog":true}
 	var wall_x: float = oy + perp * dir.y if side == 0 else ox + perp * dir.x
 	wall_x -= floor(wall_x)
-	return {"hit":true,"distance":perp,"fog":false,"side":side,"wall_x":wall_x,"rdx":dir.x,"rdy":dir.y}
+	return {"hit":true,"distance":perp,"fog":false,"side":side,"wall_x":wall_x,"rdx":dir.x,"rdy":dir.y,"mx":map_x,"my":map_y}
 
 func draw_entities(ci: CanvasItem):
 	if not ci: return

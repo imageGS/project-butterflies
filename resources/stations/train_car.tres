@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StationData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/station_data.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/entity_spawn.gd" id="1_qsq0k"]
+[ext_resource type="Script" path="res://scripts/resources/exit_data.gd" id="2_r8gsk"]
+
+[resource]
+script = ExtResource("1")
+station_name = "Train Car"
+map_file = "res://resources/stations/maps/train_car.txt"
+spawn = Vector2i(2, 8)
+spawn_dir = 1
+outer_ring = false

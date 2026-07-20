@@ -14,6 +14,7 @@ const TILE_FLOOR := 0
 const TILE_WALL := 1
 const TILE_DOOR := 2
 const TILE_LOCKED := 3
+const TILE_WINDOW := 10
 const TILE_STAIRS := 4
 const TILE_SPECIAL := 5
 const TILE_BLOCKED := 6
@@ -984,7 +985,7 @@ func _is_walkable(x: int, y: int) -> bool:
 	if x < 0 or x >= _map_data[0].size() or y < 0 or y >= _map_data.size():
 		return false
 	var tile_val: int = _map_data[y][x]
-	return tile_val != TILE_WALL and tile_val != TILE_BLOCKED
+	return tile_val != TILE_WALL and tile_val != TILE_BLOCKED and tile_val != TILE_WINDOW
 
 func _start_move(tx: int, ty: int):
 	_is_animating = true
@@ -1295,6 +1296,7 @@ func _build_from_station_data():
 				"S": row.append(TILE_STAIRS)
 				"R": row.append(TILE_RAIL)
 				"I": row.append(TILE_ITEM)
+				"O": row.append(TILE_WINDOW)
 				"B": row.append(TILE_BLOCKED)
 				"@", "N", "+", ".": row.append(TILE_FLOOR)
 				" ": row.append(TILE_WALL)
