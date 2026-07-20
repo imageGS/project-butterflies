@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dgkyyw0gv042w"
-path="res://.godot/imported/wall.png-35b80c25b8f7299ed1631f28676b0e6a.ctex"
+uid="uid://ddpq3ov6vnx4s"
+path="res://.godot/imported/Horror_Misc_01-256x256.png-9fd766d1a0f695a02f20a9c0ca49999f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/wall.png"
-dest_files=["res://.godot/imported/wall.png-35b80c25b8f7299ed1631f28676b0e6a.ctex"]
+source_file="res://assets/textures/256x256/Misc/Horror_Misc_01-256x256.png"
+dest_files=["res://.godot/imported/Horror_Misc_01-256x256.png-9fd766d1a0f695a02f20a9c0ca49999f.ctex"]
 
 [params]
 

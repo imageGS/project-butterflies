@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dgkyyw0gv042w"
-path="res://.godot/imported/wall.png-35b80c25b8f7299ed1631f28676b0e6a.ctex"
+uid="uid://lgilt882f1vd"
+path="res://.godot/imported/Horror_Stain_12-256x256.png-5f967fee7ae3ef22d19730caf4267b81.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/wall.png"
-dest_files=["res://.godot/imported/wall.png-35b80c25b8f7299ed1631f28676b0e6a.ctex"]
+source_file="res://assets/textures/256x256/Stains/Horror_Stain_12-256x256.png"
+dest_files=["res://.godot/imported/Horror_Stain_12-256x256.png-5f967fee7ae3ef22d19730caf4267b81.ctex"]
 
 [params]
 

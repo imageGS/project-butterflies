@@ -40,9 +40,8 @@ light_dither = 4.0
 light_pixel_size = 1.0
 light_glow_amount = 0.001
 light_softness = 0.5
-light_curve = 1.5
-player_light_radius = 400.0
-player_light_intensity = 0.6
+light_curve = 0.5
+player_light_intensity = 0.5
 
 [node name="CRT_Root" type="Control" parent="." unique_id=640219047]
 layout_mode = 3
