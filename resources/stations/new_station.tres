@@ -6,7 +6,7 @@
 
 [resource]
 script = ExtResource("3_wu7y4")
-station_name = "NPC TEST"
+station_name = "New Station"
 map_file = "res://resources/stations/maps/new_station.txt"
 spawn = Vector2i(1, 1)
 outer_ring = false

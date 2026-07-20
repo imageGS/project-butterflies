@@ -25,6 +25,10 @@ PlayerStats="*res://scripts/scenes/player_stats.gd"
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/level_block/plugin.cfg", "res://addons/map_editor/plugin.cfg")
+
 [navigation]
 
 2d/canvas_textures/default_texture_filter=1
@@ -37,3 +41,5 @@ window/stretch/aspect="expand"
 
 textures/canvas_textures/default_texture_filter=0
 rendering_device/driver.windows="d3d12"
+shading/overrides/force_vertex_shading=true
+anti_aliasing/screen_space_roughness_limiter/enabled=false

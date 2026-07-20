@@ -15,5 +15,6 @@ target_dir = 2
 script = ExtResource("1")
 station_name = "Акио"
 map_file = "res://resources/stations/maps/akio.txt"
-spawn = Vector2i(10, 1)
+spawn = Vector2i(11, 1)
+fog_distance = 10.0
 exits = Array[ExtResource("2")]([SubResource("ExitData_1")])

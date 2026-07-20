@@ -2,38 +2,26 @@ class_name StationEditor
 extends Control
 
 const CELL_SIZE: int = 24
+const MAX_UNDO: int = 128
 
-const TOOLS: Array[String] = ["cursor", ".", "#", "E", "D", "L", "S", "R", "I", "@", "N", "B"]
+const TOOLS: Array[String] = ["cursor", ".", "#", "E", "D", "L", "S", "R", "I", "!", "$", "%", "+", "i", "d", "t", "@", "B"]
 const TOOL_NAMES: Dictionary = {
-	"cursor": "Cursor",
-	".": "Floor",
-	"#": "Wall",
-	"E": "Exit",
-	"D": "Door",
-	"L": "Locked",
-	"S": "Stairs",
-	"R": "Rail",
-	"I": "Item",
-	"@": "Enemy",
-	"N": "NPC",
-	"B": "Blocked",
+	"cursor": "Select", ".": "Floor", "#": "Wall", "E": "Exit", "D": "Door", "L": "Locked",
+	"S": "Stairs", "R": "Rail", "I": "Item", "!": "WallSw", "$": "WallTr", "%": "Debris",
+	"+": "Special", "i": "ItemE", "d": "DebrisE", "t": "TermE", "@": "Enemy", "B": "Blocked",
 }
 const TOOL_COLORS: Dictionary = {
-	".": Color(0.18, 0.18, 0.18),
-	"#": Color(0.55, 0.55, 0.55),
-	"E": Color(0.95, 0.75, 0.05),
-	"D": Color(0.55, 0.37, 0.18),
-	"L": Color(0.75, 0.18, 0.18),
-	"S": Color(0.35, 0.35, 0.75),
-	"R": Color(0.15, 0.15, 0.25),
-	"I": Color(0.1, 0.7, 0.1),
-	"@": Color(0.75, 0.05, 0.05),
-	"N": Color(0.05, 0.55, 0.75),
-	"B": Color(0.08, 0.08, 0.08),
+	".": Color(0.18,0.18,0.18), "#": Color(0.55,0.55,0.55), "E": Color(0.95,0.75,0.05),
+	"D": Color(0.55,0.37,0.18), "L": Color(0.75,0.18,0.18), "S": Color(0.35,0.35,0.75),
+	"R": Color(0.15,0.15,0.25), "I": Color(0.1,0.7,0.1), "!": Color(0.9,0.2,0.1),
+	"$": Color(0.1,0.7,0.3), "%": Color(0.5,0.3,0.15), "+": Color(0.7,0.7,0.2),
+	"i": Color(0.9,0.7,0.2), "d": Color(0.4,0.25,0.1), "t": Color(0.2,0.7,0.3),
+	"@": Color(0.75,0.05,0.05), "B": Color(0.08,0.08,0.08),
 }
 
 var _station_data: StationData = null
 var _map_grid: Array[Array] = []
+var _map_meta: MapMeta = MapMeta.new()
 var _grid_width: int = 32
 var _grid_height: int = 24
 var _current_tool: String = "cursor"
@@ -42,6 +30,17 @@ var _camera_offset: Vector2 = Vector2.ZERO
 var _is_dragging: bool = false
 var _last_tile_pos: Vector2i = Vector2i(-1, -1)
 var _selected_tile: Vector2i = Vector2i(-1, -1)
+var _show_grid: bool = true
+var _zoom_level: float = 1.0
+
+var _undo_stack: Array = []
+var _redo_stack: Array = []
+var _fill_start: Vector2i = Vector2i(-1, -1)
+var _line_start: Vector2i = Vector2i(-1, -1)
+var _rect_start: Vector2i = Vector2i(-1, -1)
+var _panning: bool = false
+var _pan_start: Vector2 = Vector2.ZERO
+var _pan_offset_start: Vector2 = Vector2.ZERO
 
 var _grid_control: Control
 var _tool_buttons: Dictionary = {}
@@ -162,19 +161,32 @@ func _setup_ui():
 	var left_panel := VBoxContainer.new()
 	left_panel.set_anchors_preset(Control.PRESET_LEFT_WIDE)
 	left_panel.offset_top = 45
-	left_panel.offset_right = 120
+	left_panel.offset_right = 110
 	left_panel.offset_bottom = -10
 	add_child(left_panel)
 
-	var tools_label := Label.new(); tools_label.text = "Tools"; tools_label.add_theme_font_size_override("font_size", 18); left_panel.add_child(tools_label)
+	var tools_label := Label.new(); tools_label.text = "Tools"; left_panel.add_child(tools_label)
+	var tools_grid := GridContainer.new()
+	tools_grid.columns = 2
+	left_panel.add_child(tools_grid)
 	for tool: String in TOOLS:
 		var btn := Button.new()
-		btn.text = tool + " " + TOOL_NAMES[tool]
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.text = tool; btn.tooltip_text = TOOL_NAMES[tool]
+		btn.custom_minimum_size = Vector2(36, 26)
 		btn.pressed.connect(_select_tool.bind(tool))
-		left_panel.add_child(btn)
+		tools_grid.add_child(btn)
 		_tool_buttons[tool] = btn
 	_highlight_tool()
+
+	var help := Label.new(); help.text = "Alt=pick G=grid Z/Y=undo"
+	help.autowrap_mode = 3; help.add_theme_font_size_override("font_size", 10)
+	left_panel.add_child(help)
+	
+	var shape_label := Label.new(); shape_label.text = "Shapes:"; left_panel.add_child(shape_label)
+	var shapes := HBoxContainer.new(); left_panel.add_child(shapes)
+	var f_btn := Button.new(); f_btn.text = "F"; f_btn.tooltip_text = "Flood Fill"; f_btn.pressed.connect(func(): _current_tool = "FILL"); shapes.add_child(f_btn)
+	var l_btn := Button.new(); l_btn.text = "L"; l_btn.tooltip_text = "Line"; l_btn.pressed.connect(func(): _current_tool = "LINE"); shapes.add_child(l_btn)
+	var r_btn := Button.new(); r_btn.text = "R"; r_btn.tooltip_text = "Rect"; r_btn.pressed.connect(func(): _current_tool = "RECT"); shapes.add_child(r_btn)
 
 	# Right metadata panel (scrollable)
 	var right_scroll := ScrollContainer.new()
@@ -273,6 +285,28 @@ func _setup_ui():
 
 	var entity_apply := Button.new(); entity_apply.text = "Apply Entity"; entity_apply.pressed.connect(_apply_entity); right_panel.add_child(entity_apply)
 
+	# Wall texture override
+	var tex_label := Label.new(); tex_label.text = "Wall Override"; tex_label.add_theme_font_size_override("font_size", 16); right_panel.add_child(tex_label)
+	_wall_tex_edit = LineEdit.new(); _wall_tex_edit.placeholder_text = "texture_id (e.g. wall_metal)"; right_panel.add_child(_wall_tex_edit)
+	var tex_hbox := HBoxContainer.new(); right_panel.add_child(tex_hbox)
+	_wall_rot = OptionButton.new()
+	for r: String in ["0°", "90°", "180°", "270°"]: _wall_rot.add_item(r)
+	tex_hbox.add_child(_wall_rot)
+	var tex_apply := Button.new(); tex_apply.text = "Set Texture"; tex_apply.pressed.connect(_apply_wall_texture); tex_hbox.add_child(tex_apply)
+	var tex_clear := Button.new(); tex_clear.text = "Clear"; tex_clear.pressed.connect(_clear_wall_texture); tex_hbox.add_child(tex_clear)
+
+	# Decal list
+	var dec_label := Label.new(); dec_label.text = "Decals"; dec_label.add_theme_font_size_override("font_size", 16); right_panel.add_child(dec_label)
+	_decal_list = ItemList.new(); _decal_list.custom_minimum_size = Vector2(0, 80); right_panel.add_child(_decal_list)
+	var dec_hbox := HBoxContainer.new(); right_panel.add_child(dec_hbox)
+	_decal_id_edit = LineEdit.new(); _decal_id_edit.placeholder_text = "decal_id"; dec_hbox.add_child(_decal_id_edit)
+	_decal_side = OptionButton.new()
+	for s: String in ["N", "E", "S", "W"]: _decal_side.add_item(s)
+	dec_hbox.add_child(_decal_side)
+	_decal_offset = SpinBox.new(); _decal_offset.min_value = 0; _decal_offset.max_value = 1; _decal_offset.step = 0.05; _decal_offset.value = 0.5; dec_hbox.add_child(_decal_offset)
+	var dec_add := Button.new(); dec_add.text = "+"; dec_add.pressed.connect(_add_decal); dec_hbox.add_child(dec_add)
+	var dec_rem := Button.new(); dec_rem.text = "-"; dec_rem.pressed.connect(_remove_decal); dec_hbox.add_child(dec_rem)
+
 	_status_label = Label.new(); _status_label.text = "Ready"; right_panel.add_child(_status_label)
 
 	# Context menu
@@ -323,6 +357,12 @@ var _selected_entity_index: int = -1
 
 var _status_label: Label
 var _context_menu: PopupMenu
+var _wall_tex_edit: LineEdit
+var _wall_rot: OptionButton
+var _decal_list: ItemList
+var _decal_id_edit: LineEdit
+var _decal_side: OptionButton
+var _decal_offset: SpinBox
 
 func _add_labeled_spin(parent: Control, label_text: String, spin: SpinBox):
 	var hbox := HBoxContainer.new(); parent.add_child(hbox)
@@ -376,20 +416,18 @@ func _parse_map_file(path: String):
 	for y in rows.size():
 		var line: String = rows[y]
 		_grid_width = max(_grid_width, line.length())
-		var row: Array[String] = []
-		for x in line.length():
-			row.append(line[x])
+		var row: Array[String] = []; for x in line.length(): row.append(line[x])
 		_map_grid.append(row)
-	# Pad rows
 	for row in _map_grid:
-		while row.size() < _grid_width:
-			row.append(".")
+		while row.size() < _grid_width: row.append(".")
+	_map_meta = MapMeta.new()
+	_map_meta.load_from_json(path.get_basename() + ".meta.json")
 
 func _save_station():
-	if not _station_data:
-		return
+	if not _station_data: return
 	_update_station_from_ui()
 	_write_map_file(_station_data.map_file)
+	_map_meta.save_to_json(_station_data.map_file.get_basename() + ".meta.json")
 	var err := ResourceSaver.save(_station_data, _get_tres_path())
 	if err == OK:
 		_status_label.text = "Saved: " + _get_tres_path()
@@ -469,22 +507,35 @@ func _resize_grid():
 	_grid_control.queue_redraw()
 
 func _draw_grid():
-	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * CELL_SIZE, _grid_height * CELL_SIZE) * 0.5 + _camera_offset
-	for y in _grid_height:
-		for x in _grid_width:
+	var cs: int = int(CELL_SIZE * _zoom_level)
+	if cs < 6: cs = 6
+	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * cs, _grid_height * cs) * 0.5 + _camera_offset
+	
+	var visible_cols: int = int(_grid_control.size.x / cs) + 2
+	var visible_rows: int = int(_grid_control.size.y / cs) + 2
+	var start_x: int = max(0, int((-offset.x) / cs) - 1)
+	var start_y: int = max(0, int((-offset.y) / cs) - 1)
+	var end_x: int = min(_grid_width, start_x + visible_cols)
+	var end_y: int = min(_grid_height, start_y + visible_rows)
+	
+	for y in range(start_y, end_y):
+		for x in range(start_x, end_x):
 			var tile: String = _map_grid[y][x]
 			var color: Color = TOOL_COLORS.get(tile, Color.MAGENTA)
-			var rect := Rect2(offset.x + x * CELL_SIZE, offset.y + y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+			var rect := Rect2(offset.x + x * cs, offset.y + y * cs, cs, cs)
 			_grid_control.draw_rect(rect, color)
-			_grid_control.draw_rect(rect, Color(0.3, 0.3, 0.3), false)
+			if _show_grid: _grid_control.draw_rect(rect, Color(0.3, 0.3, 0.3), false)
 			if tile != ".":
 				var font := _grid_control.get_theme_default_font()
-				if font:
-					_grid_control.draw_string(font, rect.position + Vector2(6, 16), tile, HORIZONTAL_ALIGNMENT_CENTER, -1, 12, Color.WHITE)
+				if font and cs >= 12:
+					var font_size: int = max(8, cs - 4)
+					_grid_control.draw_string(font, rect.position + Vector2(2, font_size + 2), tile, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
+			if _map_meta.has_any(x, y):
+				_grid_control.draw_rect(Rect2(rect.position.x, rect.position.y, 4, 4), Color(0.3, 0.8, 1.0))
 
 	# Draw entity spawns
 	for s: EntitySpawn in _station_data.entity_spawns:
-		var sr := Rect2(offset.x + s.position.x * CELL_SIZE, offset.y + s.position.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+		var sr := Rect2(offset.x + s.position.x * cs, offset.y + s.position.y * cs, cs, cs)
 		var sc: Color
 		match s.type:
 			EntitySpawn.Type.ENEMY: sc = Color(0.9, 0.1, 0.1, 0.5)
@@ -496,35 +547,51 @@ func _draw_grid():
 
 	# Draw exits
 	for e: ExitData in _station_data.exits:
-		var er := Rect2(offset.x + e.position.x * CELL_SIZE, offset.y + e.position.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+		var er := Rect2(offset.x + e.position.x * cs, offset.y + e.position.y * cs, cs, cs)
 		_grid_control.draw_rect(er, Color(1, 0, 1, 0.4))
 		_grid_control.draw_rect(er, Color(1, 0, 1), false)
 
 	# Draw spawn
-	var spawn_rect := Rect2(offset.x + _station_data.spawn.x * CELL_SIZE, offset.y + _station_data.spawn.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+	var spawn_rect := Rect2(offset.x + _station_data.spawn.x * cs, offset.y + _station_data.spawn.y * cs, cs, cs)
 	_grid_control.draw_rect(spawn_rect, Color(0, 1, 0, 0.4))
 	_grid_control.draw_rect(spawn_rect, Color(0, 1, 0), false)
 
 	# Hover highlight
 	if _last_tile_pos.x >= 0 and _last_tile_pos.y >= 0:
-		var hr := Rect2(offset.x + _last_tile_pos.x * CELL_SIZE, offset.y + _last_tile_pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+		var hr := Rect2(offset.x + _last_tile_pos.x * cs, offset.y + _last_tile_pos.y * cs, cs, cs)
 		_grid_control.draw_rect(hr, Color(1, 1, 1, 0.2))
 
 	# Selected tile highlight
 	if _selected_tile.x >= 0 and _selected_tile.y >= 0:
-		var sr := Rect2(offset.x + _selected_tile.x * CELL_SIZE, offset.y + _selected_tile.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+		var sr := Rect2(offset.x + _selected_tile.x * cs, offset.y + _selected_tile.y * cs, cs, cs)
 		_grid_control.draw_rect(sr, Color(1, 1, 1, 0.35))
 		_grid_control.draw_rect(sr, Color(1, 1, 1), false, 2.0)
 
 func _on_grid_input(event: InputEvent):
 	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_zoom_level = min(_zoom_level * 1.15, 4.0); _grid_control.queue_redraw()
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_zoom_level = max(_zoom_level / 1.15, 0.25); _grid_control.queue_redraw()
+		elif event.button_index == MOUSE_BUTTON_MIDDLE:
 			if event.pressed:
-				if Input.is_key_pressed(KEY_SHIFT):
-					_set_spawn_at_mouse(event.position)
+				_panning = true; _pan_start = event.position; _pan_offset_start = _camera_offset
+			else:
+				_panning = false
+		elif event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				if Input.is_key_pressed(KEY_ALT):
+					_pick_at_mouse(event.position)
 				elif _current_tool == "cursor":
 					_select_tile_at_mouse(event.position)
+				elif _current_tool == "FILL":
+					_start_fill(event.position)
+				elif _current_tool == "LINE":
+					_start_line(event.position)
+				elif _current_tool == "RECT":
+					_start_rect(event.position)
 				else:
+					_push_undo()
 					_is_dragging = true
 					_paint_at_mouse(event.position)
 			else:
@@ -534,7 +601,10 @@ func _on_grid_input(event: InputEvent):
 			_open_context_menu(event.position)
 	elif event is InputEventMouseMotion:
 		_update_last_tile(event.position)
-		if _is_dragging:
+		if _panning:
+			_camera_offset = _pan_offset_start + (event.position - _pan_start)
+			_grid_control.queue_redraw()
+		elif _is_dragging:
 			_paint_at_mouse(event.position)
 
 func _select_tile_at_mouse(pos: Vector2):
@@ -558,7 +628,8 @@ func _open_context_menu(pos: Vector2):
 	_context_menu.popup()
 
 func _set_spawn_at_mouse(pos: Vector2):
-	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * CELL_SIZE, _grid_height * CELL_SIZE) * 0.5 + _camera_offset
+	var cs: int = int(CELL_SIZE * _zoom_level); if cs < 6: cs = 6
+	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * cs, _grid_height * cs) * 0.5 + _camera_offset
 	var gx: int = int((pos.x - offset.x) / CELL_SIZE)
 	var gy: int = int((pos.y - offset.y) / CELL_SIZE)
 	if gx < 0 or gy < 0 or gy >= _grid_height or gx >= _grid_width:
@@ -569,9 +640,10 @@ func _set_spawn_at_mouse(pos: Vector2):
 	_grid_control.queue_redraw()
 
 func _update_last_tile(pos: Vector2):
-	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * CELL_SIZE, _grid_height * CELL_SIZE) * 0.5 + _camera_offset
-	var gx: int = int((pos.x - offset.x) / CELL_SIZE)
-	var gy: int = int((pos.y - offset.y) / CELL_SIZE)
+	var cs: int = int(CELL_SIZE * _zoom_level); if cs < 6: cs = 6
+	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * cs, _grid_height * cs) * 0.5 + _camera_offset
+	var gx: int = int((pos.x - offset.x) / cs)
+	var gy: int = int((pos.y - offset.y) / cs)
 	if gx < 0 or gy < 0 or gy >= _grid_height or gx >= _grid_width:
 		return
 	_last_tile_pos = Vector2i(gx, gy)
@@ -580,11 +652,95 @@ func _paint_at_mouse(pos: Vector2):
 	_update_last_tile(pos)
 	var gx: int = _last_tile_pos.x
 	var gy: int = _last_tile_pos.y
-	if gx < 0 or gy < 0 or gy >= _grid_height or gx >= _grid_width:
-		return
+	if gx < 0 or gy < 0 or gy >= _grid_height or gx >= _grid_width: return
 	if _map_grid[gy][gx] != _current_tool:
 		_map_grid[gy][gx] = _current_tool
 		_grid_control.queue_redraw()
+
+func _pick_at_mouse(pos: Vector2):
+	_update_last_tile(pos)
+	var gx: int = _last_tile_pos.x; var gy: int = _last_tile_pos.y
+	if gx < 0 or gy < 0 or gy >= _grid_height or gx >= _grid_width: return
+	_current_tool = _map_grid[gy][gx]
+	_highlight_tool()
+	_status_label.text = "Picked: '%s'" % _current_tool
+
+func _start_fill(pos: Vector2):
+	_update_last_tile(pos)
+	_fill_start = Vector2i(_last_tile_pos.x, _last_tile_pos.y)
+	_push_undo()
+	var old_ch: String = _map_grid[_fill_start.y][_fill_start.x]
+	_flood_fill(_fill_start.x, _fill_start.y, old_ch, _current_tool)
+
+func _start_line(pos: Vector2):
+	_update_last_tile(pos)
+	if _line_start.x < 0:
+		_line_start = Vector2i(_last_tile_pos.x, _last_tile_pos.y); _push_undo()
+	else:
+		_draw_line(_line_start, Vector2i(_last_tile_pos.x, _last_tile_pos.y), _current_tool)
+		_line_start = Vector2i(-1, -1)
+
+func _start_rect(pos: Vector2):
+	_update_last_tile(pos)
+	if _rect_start.x < 0:
+		_rect_start = Vector2i(_last_tile_pos.x, _last_tile_pos.y); _push_undo()
+	else:
+		_draw_rect(_rect_start, Vector2i(_last_tile_pos.x, _last_tile_pos.y), _current_tool)
+		_rect_start = Vector2i(-1, -1)
+
+func _flood_fill(x: int, y: int, old_ch: String, new_ch: String):
+	if x < 0 or y < 0 or y >= _grid_height or x >= _grid_width: return
+	if _map_grid[y][x] != old_ch: return
+	_map_grid[y][x] = new_ch
+	_flood_fill(x+1, y, old_ch, new_ch); _flood_fill(x-1, y, old_ch, new_ch)
+	_flood_fill(x, y+1, old_ch, new_ch); _flood_fill(x, y-1, old_ch, new_ch)
+	_grid_control.queue_redraw()
+
+func _draw_line(a: Vector2i, b: Vector2i, ch: String):
+	var dx: int = abs(b.x-a.x); var dy: int = -abs(b.y-a.y)
+	var sx: int = 1 if a.x < b.x else -1; var sy_v: int = 1 if a.y < b.y else -1
+	var err: int = dx+dy; var cx: int = a.x; var cy: int = a.y
+	while true:
+		_paint_cell(cx, cy, ch)
+		if cx == b.x and cy == b.y: break
+		var e2: int = err*2
+		if e2 >= dy: err += dy; cx += sx
+		if e2 <= dx: err += dx; cy += sy_v
+
+func _draw_rect(a: Vector2i, b: Vector2i, ch: String):
+	var x1: int = min(a.x,b.x); var x2: int = max(a.x,b.x)
+	var y1: int = min(a.y,b.y); var y2: int = max(a.y,b.y)
+	for x: int in range(x1, x2+1): _paint_cell(x, y1, ch); _paint_cell(x, y2, ch)
+	for y: int in range(y1, y2+1): _paint_cell(x1, y, ch); _paint_cell(x2, y, ch)
+
+func _paint_cell(x: int, y: int, ch: String):
+	if x < 0 or y < 0 or y >= _grid_height or x >= _grid_width: return
+	_map_grid[y][x] = ch
+
+func _push_undo():
+	var snap: Array = []
+	for row: Array in _map_grid: snap.append(row.duplicate())
+	_undo_stack.append(snap)
+	if _undo_stack.size() > MAX_UNDO: _undo_stack.pop_front()
+	_redo_stack.clear()
+
+func _undo():
+	if _undo_stack.size() <= 1: return
+	_redo_stack.append(_undo_stack.pop_back())
+	var snap: Array = _undo_stack.back()
+	_map_grid = [] as Array[Array]
+	for row: Array in snap: _map_grid.append(row)
+	_grid_control.queue_redraw()
+	_status_label.text = "Undo"
+
+func _redo():
+	if _redo_stack.is_empty(): return
+	var snap: Array = _redo_stack.pop_back()
+	_undo_stack.append(snap)
+	_map_grid = [] as Array[Array]
+	for row: Array in snap: _map_grid.append(row)
+	_grid_control.queue_redraw()
+	_status_label.text = "Redo"
 
 func _add_exit_at_selection():
 	var pos: Vector2i
@@ -731,15 +887,15 @@ func _remove_selected_entity():
 	_grid_control.queue_redraw()
 
 func _refresh_selected_tile_info():
-	if not _station_data:
-		return
+	if not _station_data: return
 	var info: String = "Tile (%d,%d): %s" % [_selected_tile.x, _selected_tile.y, _map_grid[_selected_tile.y][_selected_tile.x]]
+	_wall_tex_edit.text = _map_meta.get_texture(_selected_tile.x, _selected_tile.y)
+	_wall_rot.selected = _map_meta.get_rotation(_selected_tile.x, _selected_tile.y) / 90
+	_refresh_decal_list()
 	var ent: EntitySpawn = _station_data.get_entity_spawn_at(_selected_tile)
-	if ent:
-		info += " | %s" % ent.display_name()
+	if ent: info += " | %s" % ent.display_name()
 	var ex: ExitData = _station_data.get_exit_at(_selected_tile)
-	if ex:
-		info += " | exit"
+	if ex: info += " | exit"
 	_status_label.text = info
 
 func _on_context_menu(id: int):
@@ -783,6 +939,47 @@ func _clear_tile(pos: Vector2i):
 	_grid_control.queue_redraw()
 	_status_label.text = "Tile cleared at (%d, %d)" % [pos.x, pos.y]
 
+func _apply_wall_texture():
+	if _selected_tile.x < 0: return
+	var tex: String = _wall_tex_edit.text.strip_edges()
+	var rot: int = _wall_rot.selected * 90
+	_map_meta.set_texture(_selected_tile.x, _selected_tile.y, tex, rot)
+	_grid_control.queue_redraw()
+	_status_label.text = "Texture set: %s rot=%d" % [tex, rot]
+
+func _clear_wall_texture():
+	if _selected_tile.x < 0: return
+	_map_meta.clear_cell(_selected_tile.x, _selected_tile.y)
+	_grid_control.queue_redraw()
+	_status_label.text = "Override cleared"
+
+func _add_decal():
+	if _selected_tile.x < 0: return
+	var did: String = _decal_id_edit.text.strip_edges()
+	if did.is_empty(): return
+	_map_meta.add_decal(_selected_tile.x, _selected_tile.y, _decal_side.selected, did, float(_decal_offset.value))
+	_refresh_decal_list()
+	_grid_control.queue_redraw()
+	_status_label.text = "Decal added: %s" % did
+
+func _remove_decal():
+	if _selected_tile.x < 0: return
+	var items: PackedInt32Array = _decal_list.get_selected_items()
+	if items.is_empty(): return
+	_map_meta.remove_decal(_selected_tile.x, _selected_tile.y, items[0])
+	_refresh_decal_list()
+	_grid_control.queue_redraw()
+	_status_label.text = "Decal removed"
+
+func _refresh_decal_list():
+	_decal_list.clear()
+	if _selected_tile.x < 0: return
+	var decals: Array = _map_meta.get_decals(_selected_tile.x, _selected_tile.y)
+	for i in decals.size():
+		var d: Dictionary = decals[i]
+		var side_names: Array = ["N", "E", "S", "W"]
+		_decal_list.add_item("%d: %s id=%s off=%.2f" % [i, side_names[d.get("side", 0)], d.get("id", "?"), d.get("offset", 0.5)])
+
 func _input(event: InputEvent):
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
@@ -798,6 +995,11 @@ func _input(event: InputEvent):
 			KEY_0: _select_tool("@")
 			KEY_MINUS: _select_tool("N")
 			KEY_EQUAL: _select_tool("B")
+			KEY_G: _show_grid = not _show_grid; _grid_control.queue_redraw()
+			KEY_Z:
+				if event.ctrl_pressed or event.meta_pressed: _undo()
+			KEY_Y:
+				if event.ctrl_pressed or event.meta_pressed: _redo()
 			KEY_S:
 				if event.ctrl_pressed:
 					_save_station()

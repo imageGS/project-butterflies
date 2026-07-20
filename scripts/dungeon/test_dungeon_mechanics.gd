@@ -100,6 +100,44 @@ var _dl_off_pos: Vector2
 
 @export var shelter_mode: bool = false  # deprecated, station_data defines the level
 @export var station_data: StationData
+@export_group("Lighting")
+@export var light_ambient: float = 0.10:
+	set(v): light_ambient = v; _apply_light_settings()
+@export var light_dither: float = 6.0:
+	set(v): light_dither = v; _apply_light_settings()
+@export var light_pixel_size: float = 2.0:
+	set(v): light_pixel_size = v; _apply_light_settings()
+@export var light_glow_amount: float = 0.1:
+	set(v): light_glow_amount = v; _apply_light_settings()
+@export var light_softness: float = 0.3:
+	set(v): light_softness = v; _apply_light_settings()
+@export var light_curve: float = 1.6:
+	set(v): light_curve = v; _apply_light_settings()
+@export var player_light_radius: float = 300.0:
+	set(v): player_light_radius = v; _apply_player_light()
+@export var player_light_intensity: float = 1.2:
+	set(v): player_light_intensity = v; _apply_player_light()
+@export var player_light_color: Color = Color(1.0, 0.95, 0.8):
+	set(v): player_light_color = v; _apply_player_light()
+
+var _light_mat: ShaderMaterial
+var _player_light_node: Node2D
+var _flashlight_on: bool = true
+
+func _apply_light_settings():
+	if not _light_mat: return
+	_light_mat.set_shader_parameter("ambient", light_ambient)
+	_light_mat.set_shader_parameter("dither_levels", light_dither)
+	_light_mat.set_shader_parameter("dither_pixel_size", light_pixel_size)
+	_light_mat.set_shader_parameter("light_glow", light_glow_amount)
+	_light_mat.set_shader_parameter("softness", light_softness)
+	_light_mat.set_shader_parameter("light_curve", light_curve)
+
+func _apply_player_light():
+	if not _player_light_node: return
+	_player_light_node.radius = player_light_radius
+	_player_light_node.intensity = player_light_intensity
+	_player_light_node.color = player_light_color
 
 func _ready():
 	_load_station()
@@ -108,6 +146,7 @@ func _ready():
 	_setup_dialogue_ui()
 	_setup_audio()
 	_setup_hud()
+	_setup_lighting()
 	_refresh()
 	if station_data and station_data.station_name == "Убежище":
 		return
@@ -576,6 +615,9 @@ func _unhandled_input(event):
 					_advance_dialogue()
 				else:
 					_try_interact()
+			KEY_L:
+				if not _dialogue_active:
+					_flashlight_on = not _flashlight_on
 			KEY_M:
 				if not _dialogue_active and _ul_window:
 					_ul_open = _toggle_window(_ul_window, _ul_open, _ul_on_pos, _ul_off_pos)
@@ -840,6 +882,51 @@ func _setup_hud():
 		_stats_panel.position = Vector2(10, 10)
 		_dl_window.add_child(_stats_panel)
 
+func _setup_lighting():
+	var shader := load("res://shaders/light_fog.gdshader") as Shader
+	if not shader: return
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("occlusion_enabled", false)
+	_light_mat = mat
+	_apply_light_settings()
+	
+	var cr := ColorRect.new()
+	cr.name = "LightOverlay"
+	cr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cr.material = mat
+	cr.z_index = 4
+	$CRT_Root/GameViewport.add_child(cr)
+	$CRT_Root/GameViewport.move_child(cr, 0)
+	
+	var pl: Node2D = load("res://scripts/player_light.gd").new() as Node2D
+	pl.name = "PlayerLight"
+	_player_light_node = pl
+	_apply_player_light()
+	$CRT_Root/GameViewport.add_child(pl)
+
+func _update_lighting():
+	if not _light_mat or not _player_light_node: return
+	var vp := $CRT_Root/GameViewport
+	if not vp: return
+	var pos_arr := PackedVector2Array()
+	var rad_arr := PackedFloat32Array()
+	var col_arr := PackedVector3Array()
+	var int_arr := PackedFloat32Array()
+	var n: Node2D = _player_light_node
+	pos_arr.append(n.position)
+	rad_arr.append(n.radius)
+	col_arr.append(Vector3(n.color.r, n.color.g, n.color.b))
+	var intensity: float = player_light_intensity if _flashlight_on else 0.01
+	int_arr.append(intensity)
+	_light_mat.set_shader_parameter("light_count", 1)
+	_light_mat.set_shader_parameter("light_positions", pos_arr)
+	_light_mat.set_shader_parameter("light_radii", rad_arr)
+	_light_mat.set_shader_parameter("light_colors", col_arr)
+	_light_mat.set_shader_parameter("light_intensities", int_arr)
+	_light_mat.set_shader_parameter("obstructor_count", 0)
+
 func _toggle_window(win: TextureRect, open_ref: bool, on_pos: Vector2, off_pos: Vector2) -> bool:
 	var tw := create_tween()
 	if open_ref:
@@ -927,6 +1014,7 @@ func _start_rotate(old_dir: int):
 	_shake_hud()
 
 func _process(delta):
+	_update_lighting()
 	_awareness_timer -= delta
 	if _awareness_timer <= 0.0:
 		_awareness_timer = _awareness_interval + randf_range(-2.0, 2.0)

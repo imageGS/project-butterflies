@@ -116,6 +116,7 @@ func draw_walls(ci: CanvasItem):
 	if not ci: return
 	var half_h: float = _view_h / 2.0
 	var num_strips: int = int(float(_view_w) / _strip_w)
+	if _wall_zbuf.size() != num_strips: _wall_zbuf.resize(num_strips)
 	var fov: float = deg_to_rad(90.0)
 	for i in range(num_strips):
 		var ray_angle: float = player_angle - fov * 0.5 + (i / float(num_strips)) * fov
@@ -247,6 +248,7 @@ func _get_ent_texture(ent: Dictionary) -> Texture2D:
 func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array):
 	cam_x = cx; cam_y = cy; player_angle = angle
 	map_data = map; entities_on_map = entities
+	if map_data.is_empty(): return
 	_update_floor_shader()
 	if _map_w != map_data[0].size() or _map_h != map_data.size() or not _map_tex:
 		_fill_map_tex()

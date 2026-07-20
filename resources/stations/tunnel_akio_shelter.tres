@@ -1,17 +1,17 @@
-[gd_resource type="Resource" script_class="StationData" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="StationData" format=3 uid="uid://dnajwiq7f3ves"]
 
-[ext_resource type="Script" path="res://scripts/resources/station_data.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/resources/exit_data.gd" id="2"]
+[ext_resource type="Script" uid="uid://csdjjp2doowrq" path="res://scripts/resources/station_data.gd" id="1"]
+[ext_resource type="Script" uid="uid://dfcaawdjgi8lu" path="res://scripts/resources/exit_data.gd" id="2"]
 [ext_resource type="Script" uid="uid://3gcudehlx3nq" path="res://scripts/resources/entity_spawn.gd" id="3_entity"]
 
-[sub_resource type="Resource" script_class="ExitData" id="ExitData_1"]
+[sub_resource type="Resource" id="ExitData_1"]
 script = ExtResource("2")
 position = Vector2i(1, 1)
 target_station_path = "res://resources/stations/akio.tres"
 target_spawn = Vector2i(10, 1)
 target_dir = 2
 
-[sub_resource type="Resource" script_class="ExitData" id="ExitData_2"]
+[sub_resource type="Resource" id="ExitData_2"]
 script = ExtResource("2")
 position = Vector2i(10, 11)
 target_station_path = "res://resources/stations/shelter.tres"
@@ -22,9 +22,7 @@ target_dir = 0
 script = ExtResource("1")
 station_name = "Тоннель Акио — Убежище"
 map_file = "res://resources/stations/maps/tunnel_akio_shelter.txt"
-spawn = Vector2i(1, 1)
-spawn_dir = 2
+spawn = Vector2i(2, 1)
 outer_ring = false
 fog_distance = 10.0
 exits = Array[ExtResource("2")]([SubResource("ExitData_1"), SubResource("ExitData_2")])
-entity_spawns = Array[ExtResource("3_entity")]([])
