@@ -1013,20 +1013,20 @@ func _on_tileset_selected(idx: int):
 	if ResourceLoader.exists(path):
 		_station_data.tileset = load(path)
 		_status_label.text = "Tileset: " + name
+
+func _input(event: InputEvent):
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_1: _select_tool("cursor")
 			KEY_2: _select_tool(".")
 			KEY_3: _select_tool("#")
-			KEY_4: _select_tool("E")
+			KEY_4: _select_tool("O")
 			KEY_5: _select_tool("D")
 			KEY_6: _select_tool("L")
-			KEY_7: _select_tool("S")
-			KEY_8: _select_tool("R")
-			KEY_9: _select_tool("I")
-			KEY_0: _select_tool("@")
-			KEY_MINUS: _select_tool("N")
-			KEY_EQUAL: _select_tool("B")
+			KEY_7: _select_tool("E")
+			KEY_8: _select_tool("I")
+			KEY_9: _select_tool("@")
+			KEY_0: _select_tool("N")
 			KEY_G: _show_grid = not _show_grid; _grid_control.queue_redraw()
 			KEY_Z:
 				if event.ctrl_pressed or event.meta_pressed: _undo()
