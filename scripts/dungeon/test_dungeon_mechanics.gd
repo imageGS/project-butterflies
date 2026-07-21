@@ -171,6 +171,8 @@ func _load_station():
 		PlayerStats.flags.erase("_transition_dir")
 
 	_build_from_station_data()
+	if station_data.tileset and _renderer:
+		_renderer.apply_tileset(station_data.tileset)
 	_player_x = float(spawn.x)
 	_player_y = float(spawn.y)
 	_player_dir = dir
