@@ -1,9 +1,9 @@
-[gd_resource type="Resource" script_class="StationData" format=3]
+[gd_resource type="Resource" script_class="StationData" format=3 uid="uid://cdkg4hmaeqt07"]
 
-[ext_resource type="Script" path="res://scripts/resources/station_data.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/resources/exit_data.gd" id="2"]
-[ext_resource type="Script" path="res://scripts/resources/entity_spawn.gd" id="3_entity"]
-[ext_resource type="Resource" path="res://resources/stations/tilesets/train.tres" id="4_7p7cb"]
+[ext_resource type="Script" uid="uid://csdjjp2doowrq" path="res://scripts/resources/station_data.gd" id="1"]
+[ext_resource type="Script" uid="uid://dfcaawdjgi8lu" path="res://scripts/resources/exit_data.gd" id="2"]
+[ext_resource type="Script" uid="uid://3gcudehlx3nq" path="res://scripts/resources/entity_spawn.gd" id="3_entity"]
+[ext_resource type="Resource" uid="uid://q08k12gag6r4" path="res://resources/stations/tilesets/train.tres" id="4_7p7cb"]
 
 [sub_resource type="Resource" id="ExitData_1"]
 script = ExtResource("2")

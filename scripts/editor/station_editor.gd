@@ -674,9 +674,7 @@ func _on_grid_input(event: InputEvent):
 		if _panning:
 			_camera_offset = _pan_offset_start + (event.position - _pan_start)
 		_grid_control.queue_redraw()
-	if _preview_dirty:
-		_update_3d_preview()
-		elif _is_dragging:
+		if _is_dragging:
 			_paint_at_mouse(event.position)
 
 func _select_tile_at_mouse(pos: Vector2):
