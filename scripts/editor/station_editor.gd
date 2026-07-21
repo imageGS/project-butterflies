@@ -360,6 +360,23 @@ var _tileset_select: OptionButton
 var _tools_grid: GridContainer
 var _tool_tex_cache: Dictionary = {}
 var _editor_tileset: StationTileset
+var _all_tilesets: Array[StationTileset] = []
+
+func _load_all_tilesets():
+	_all_tilesets.clear()
+	var dir := DirAccess.open("res://resources/stations/tilesets")
+	if not dir: return
+	dir.list_dir_begin()
+	var file := dir.get_next()
+	while file != "":
+		if file.ends_with(".tres"):
+			var ts := load("res://resources/stations/tilesets/" + file) as StationTileset
+			if ts: _all_tilesets.append(ts)
+		file = dir.get_next()
+	dir.list_dir_end()
+	if _all_tilesets.is_empty():
+		var ts := StationTileset.new()
+		_all_tilesets.append(ts)
 var _wall_tex_edit: LineEdit
 var _wall_rot: OptionButton
 var _decal_list: ItemList
@@ -478,8 +495,6 @@ func _refresh_ui():
 	_refresh_exit_list()
 	_refresh_entity_list()
 	_refresh_tileset_dropdown()
-	if _station_data.tileset:
-		_editor_tileset = _station_data.tileset
 	_refresh_tool_palette()
 
 func _refresh_exit_list():
@@ -513,7 +528,15 @@ func _resize_grid():
 	_map_grid = new_grid
 	_grid_control.queue_redraw()
 
-func _draw_grid():
+func _get_tile_tex(ch: String) -> Texture2D:
+	for ts in _all_tilesets:
+		match ch:
+			".": if ts.floor_tex: return ts.floor_tex
+			"#": if ts.wall_tex: return ts.wall_tex
+			"O": if ts.window_tex: return ts.window_tex
+			"D": if ts.wall_tex: return ts.wall_tex
+			_: return null
+	return null
 	var cs: int = int(CELL_SIZE * _zoom_level)
 	if cs < 6: cs = 6
 	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * cs, _grid_height * cs) * 0.5 + _camera_offset
@@ -530,7 +553,11 @@ func _draw_grid():
 			var tile: String = _map_grid[y][x]
 			var color: Color = TOOL_COLORS.get(tile, Color.MAGENTA)
 			var rect := Rect2(offset.x + x * cs, offset.y + y * cs, cs, cs)
-			_grid_control.draw_rect(rect, color)
+			var tex := _get_tile_tex(tile)
+			if tex and cs >= 12:
+				_grid_control.draw_texture_rect(tex, rect, false)
+			else:
+				_grid_control.draw_rect(rect, color)
 			if _show_grid: _grid_control.draw_rect(rect, Color(0.3, 0.3, 0.3), false)
 			if tile != ".":
 				var font := _grid_control.get_theme_default_font()
@@ -1009,58 +1036,76 @@ func _refresh_tileset_dropdown():
 
 func _on_tileset_selected(idx: int):
 	if idx <= 0:
-		_editor_tileset = null
 		_station_data.tileset = null
 		_refresh_tool_palette()
 		return
 	var name := _tileset_select.get_item_text(idx)
 	var path := "res://resources/stations/tilesets/" + name
 	if ResourceLoader.exists(path):
-		_editor_tileset = load(path)
-		_station_data.tileset = _editor_tileset
-		_status_label.text = "Tileset: " + name
-		_refresh_tool_palette()
+		_station_data.tileset = load(path)
+		_status_label.text = "Default: " + name
+	_refresh_tool_palette()
 
 func _refresh_tool_palette():
 	for c in _tools_grid.get_children(): c.queue_free()
 	_tool_buttons.clear()
-	_tool_tex_cache.clear()
-	var tileset := _editor_tileset
-	for tool: String in TOOLS:
-		var tex: Texture2D
-		match tool:
-			".": tex = tileset.floor_tex if tileset else null
-			"#": tex = tileset.wall_tex if tileset else null
-			"O": tex = tileset.window_tex if tileset else null
-			"D": tex = tileset.wall_tex if tileset else null
-			"L": tex = tileset.wall_tex if tileset else null
-			_: tex = null
+	_load_all_tilesets()
+	
+	var types := [["Floor", "."], ["Wall", "#"], ["Window", "O"], ["Door", "D"]]
+	for tp in types:
+		var cat_label := Label.new()
+		cat_label.text = tp[0]
+		cat_label.add_theme_font_size_override("font_size", 10)
+		_tools_grid.add_child(cat_label)
+		var dummy := Control.new(); dummy.custom_minimum_size = Vector2(0, 0)
+		_tools_grid.add_child(dummy)
+		
+		for ts in _all_tilesets:
+			var tex: Texture2D
+			match tp[1]:
+				".": tex = ts.floor_tex if ts.floor_tex else null
+				"#": tex = ts.wall_tex if ts.wall_tex else null
+				"O": tex = ts.window_tex if ts.window_tex else null
+				"D": tex = ts.wall_tex if ts.wall_tex else null
+			if not tex: continue
+			var key := tp[1] + "/" + ts.resource_path.get_file()
+			if _tool_tex_cache.has(key): continue
+			_tool_tex_cache[key] = tex
+			
+			var btn := Button.new()
+			btn.tooltip_text = ts.resource_path.get_file()
+			btn.custom_minimum_size = Vector2(56, 56)
+			btn.pressed.connect(_select_texture.bind(tp[1], ts))
+			var img := TextureRect.new()
+			img.texture = tex
+			img.stretch_mode = TextureRect.STRETCH_SCALE
+			img.custom_minimum_size = Vector2(48, 48)
+			img.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			btn.add_child(img)
+			_tools_grid.add_child(btn)
+			_tool_buttons[key] = btn
+	
+	var lbl2 := Label.new(); lbl2.text = "Other:"; _tools_grid.add_child(lbl2)
+	var dummy2 := Control.new(); _tools_grid.add_child(dummy2)
+	for tool in ["E", "I", "@", "N"]:
 		var btn := Button.new()
-		btn.tooltip_text = TOOL_NAMES[tool]
-		btn.custom_minimum_size = Vector2(56, 56)
+		btn.text = tool + " " + TOOL_NAMES[tool]
+		btn.custom_minimum_size = Vector2(56, 28)
 		btn.pressed.connect(_select_tool.bind(tool))
-		if tex:
-			var img_rect := TextureRect.new()
-			img_rect.texture = tex
-			img_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			img_rect.stretch_mode = TextureRect.STRETCH_SCALE
-			img_rect.custom_minimum_size = Vector2(48, 48)
-			img_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			btn.add_child(img_rect)
-		else:
-			var cr := ColorRect.new()
-			cr.color = TOOL_COLORS.get(tool, Color.GRAY)
-			cr.custom_minimum_size = Vector2(48, 48)
-			cr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			btn.add_child(cr)
-		var lbl := Label.new()
-		lbl.text = TOOL_NAMES[tool]
-		lbl.add_theme_font_size_override("font_size", 9)
-		lbl.add_theme_color_override("font_color", Color.BLACK)
-		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		btn.add_child(lbl)
 		_tools_grid.add_child(btn)
+		var space := Control.new(); _tools_grid.add_child(space)
 		_tool_buttons[tool] = btn
+
+var _current_ts: StationTileset
+
+func _select_texture(ch: String, ts: StationTileset):
+	_current_tool = ch
+	_current_ts = ts
+	_highlight_tool()
+
+func _select_tool(tool: String):
+	_current_tool = tool
+	_current_ts = null
 	_highlight_tool()
 
 func _input(event: InputEvent):

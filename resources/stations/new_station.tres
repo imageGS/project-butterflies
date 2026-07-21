@@ -3,12 +3,10 @@
 [ext_resource type="Script" path="res://scripts/resources/entity_spawn.gd" id="1_q50cg"]
 [ext_resource type="Script" path="res://scripts/resources/exit_data.gd" id="2_w0t4c"]
 [ext_resource type="Script" path="res://scripts/resources/station_data.gd" id="3_wu7y4"]
-[ext_resource type="Resource" path="res://resources/stations/tilesets/train.tres" id="4_w0t4c"]
 
 [resource]
 script = ExtResource("3_wu7y4")
-station_name = "train"
+station_name = "New Station"
 map_file = "res://resources/stations/maps/new_station.txt"
-spawn = Vector2i(3, 4)
+spawn = Vector2i(1, 1)
 outer_ring = false
-tileset = ExtResource("4_w0t4c")
