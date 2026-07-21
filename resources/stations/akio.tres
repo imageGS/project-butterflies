@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="StationData" format=3 uid="uid://cdkg4hmaeqt07"]
+[gd_resource type="Resource" script_class="StationData" format=3 uid="uid://bvb3igm0wil2y"]
 
 [ext_resource type="Script" uid="uid://csdjjp2doowrq" path="res://scripts/resources/station_data.gd" id="1"]
 [ext_resource type="Script" uid="uid://dfcaawdjgi8lu" path="res://scripts/resources/exit_data.gd" id="2"]

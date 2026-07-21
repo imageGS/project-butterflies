@@ -2,20 +2,20 @@ extends Control
 
 const TILE_WALL: int = 1
 const TILE_BLOCKED: int = 6
-const TILE_WINDOW: int = 10
 
 var wall_decors: Dictionary = {}
 var _decal_cache: Dictionary = {}
 
+func _texture_has_alpha(tex: Texture2D) -> bool:
+	if not tex: return false
+	var img := tex.get_image()
+	if not img or img.is_empty(): return false
+	for x in img.get_width():
+		if img.get_pixel(x, 0).a < 0.99: return true
+	return false
+
 func _get_decal_tex(id: String) -> Texture2D:
-	if _decal_cache.has(id): return _decal_cache[id]
-	var folders: Array[String] = ["res://assets/decals/", "res://assets/textures/"]
-	for folder: String in folders:
-		var path: String = folder + id + ".png"
-		if FileAccess.file_exists(path):
-			var tex := load(path) as Texture2D
-			if tex: _decal_cache[id] = tex; return tex
-	return null
+	return _load_tex("decal/" + id)
 
 var cam_x: float = 1.5
 var cam_y: float = 1.5
@@ -29,11 +29,38 @@ var _strip_w: int = 4
 var _wall_zbuf: Array[float] = []
 
 var entities_on_map: Array = []
-var _wall_tex: Texture2D = load("res://assets/textures/wall.png")
-var _rail_tex: Texture2D = load("res://assets/textures/rails.png")
-var _floor_tex: Texture2D = load("res://assets/textures/floor.png")
-var _window_tex: Texture2D = load("res://assets/textures/window.png")
+var _wall_tex: Texture2D = load("res://assets/textures/wall/default.png")
+var _floor_tex: Texture2D = load("res://assets/textures/floor/default.png")
 var fog_distance: float = 7.0
+var fog_fade: float = 2.5
+var fog_color: Color = Color(0.08, 0.08, 0.08)
+var wall_decors: Dictionary = {}
+var _tex_cache: Dictionary = {}
+
+func _cell_tex(x: int, y: int, is_wall: bool) -> Texture2D:
+	var key := "%d,%d" % [x, y]
+	if wall_decors.has(key):
+		var cell: Dictionary = wall_decors[key]
+		var tid: String = cell.get("texture", "")
+		if not tid.is_empty():
+			return _load_tex(tid)
+	return _wall_tex if is_wall else _floor_tex
+
+func _load_tex(tid: String) -> Texture2D:
+	if _tex_cache.has(tid): return _tex_cache[tid]
+	for folder in ["res://assets/textures/", "res://assets/textures/wall/", "res://assets/textures/floor/"]:
+		var p := folder + tid
+		if not tid.ends_with(".png"): p += ".png"
+		if FileAccess.file_exists(p):
+			var t := load(p) as Texture2D
+			if t: _tex_cache[tid] = t; return t
+	return null
+
+func set_floor_texture(tid: String):
+	var t := _load_tex(tid)
+	if t:
+		_floor_tex = t
+		if _floor_mat: _floor_mat.set_shader_parameter("floor_tex", _floor_tex)
 var fog_fade: float = 2.5
 var fog_color: Color = Color(0.08, 0.08, 0.08)
 
@@ -131,7 +158,7 @@ func _fill_zbuf():
 			if side_x < side_y: side_x += ddx; mx += step_x; s = 0
 			else: side_y += ddy; my += step_y; s = 1
 			if mx < 0 or my < 0 or my >= len(map_data) or mx >= len(map_data[0]): break
-			if map_data[my][mx] == TILE_WALL or map_data[my][mx] == TILE_BLOCKED or map_data[my][mx] == TILE_WINDOW: hit = true; break
+			if map_data[my][mx] == TILE_WALL or map_data[my][mx] == TILE_BLOCKED: hit = true; break
 		_wall_zbuf[i] = (side_x - ddx if s == 0 else side_y - ddy) if hit else 999.0
 
 func _draw():
@@ -161,22 +188,20 @@ func draw_walls(ci: CanvasItem):
 		var wall_top: float = half_h - wall_h * 0.5
 		if perp > fog_distance - fog_fade:
 			fbl = clamp((perp - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
-		if _wall_tex:
+		var mx: int = result.get("mx", -1); var my: int = result.get("my", -1)
+		var cell_tex := _cell_tex(mx, my, true)
+		if cell_tex:
 			var wall_x: float = result.get("wall_x", 0.0)
-			var tex_w: float = _wall_tex.get_width(); var tex_h: float = _wall_tex.get_height()
+			var tex_w: float = cell_tex.get_width(); var tex_h: float = cell_tex.get_height()
 			var tex_xx: int = int(wall_x * tex_w)
 			if (result.side == 0 and result.get("rdx", 0.0) > 0) or (result.side == 1 and result.get("rdy", 0.0) < 0):
 				tex_xx = int(tex_w) - tex_xx - 1
 			var shade: float = clamp(1.0 - perp * 0.04, 0.3, 1.0)
 			if result.side == 1: shade *= 0.7
-			var mx: int = result.get("mx", -1); var my: int = result.get("my", -1)
-			if mx >= 0 and my >= 0 and my < map_data.size() and mx < map_data[my].size() and map_data[my][mx] == TILE_WINDOW and _window_tex:
-				var wcol: Color = Color(shade, shade, shade, 1.0)
-				wcol = wcol.lerp(fog_color, fbl)
-				ci.draw_texture_rect_region(_window_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), Rect2(tex_xx, 0, 1, tex_h), wcol)
-			else:
-				shade = lerp(shade, 0.0, fbl)
-				ci.draw_texture_rect_region(_wall_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), Rect2(tex_xx, 0, 1, tex_h), Color(shade, shade, shade))
+			var has_alpha := _texture_has_alpha(cell_tex)
+			var wcol: Color = Color(shade, shade, shade, 0.5 if has_alpha else 1.0)
+			wcol = wcol.lerp(fog_color, fbl)
+			ci.draw_texture_rect_region(cell_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), Rect2(tex_xx, 0, 1, tex_h), wcol)
 		else:
 			var c: Color = Color(0.4, 0.4, 0.5)
 			if result.side == 0: c = Color(0.3, 0.3, 0.4)
@@ -186,7 +211,9 @@ func draw_walls(ci: CanvasItem):
 		
 		var dkey := "%d,%d" % [result.get("mx", -1), result.get("my", -1)]
 		if wall_decors.has(dkey):
-			var decals: Array = wall_decors[dkey]
+			var raw: Variant = wall_decors[dkey]
+			if not raw is Array: continue
+			var decals: Array = raw
 			for dec in decals:
 				var did: String = dec.get("id", "")
 				if did.is_empty(): continue
@@ -217,7 +244,7 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 		if side_x < side_y: side_x += delta_x; map_x += step_x; side = 0
 		else: side_y += delta_y; map_y += step_y; side = 1
 		if map_data.is_empty() or map_x < 0 or map_y < 0 or map_y >= len(map_data) or map_x >= len(map_data[0]): break
-		if map_data[map_y][map_x] == TILE_WALL or map_data[map_y][map_x] == TILE_BLOCKED or map_data[map_y][map_x] == TILE_WINDOW: break
+		if map_data[map_y][map_x] == TILE_WALL or map_data[map_y][map_x] == TILE_BLOCKED: break
 	var perp: float = side_x - delta_x if side == 0 else side_y - delta_y
 	if perp < 0.0: perp = 0.0
 	if perp > fog_distance * 1.5: return {"hit":false,"distance":fog_distance*1.5,"fog":true}

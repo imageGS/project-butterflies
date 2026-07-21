@@ -4,13 +4,13 @@ extends Control
 const CELL_SIZE: int = 24
 const MAX_UNDO: int = 128
 
-const TOOLS: Array[String] = ["cursor", ".", "#", "O", "D", "L", "E", "I", "@", "N"]
+const TOOLS: Array[String] = ["cursor", ".", "#", "D", "L", "E", "I", "@", "N"]
 const TOOL_NAMES: Dictionary = {
-	"cursor": "Select", ".": "Floor", "#": "Wall", "O": "Window", "D": "Door", "L": "Locked",
+	"cursor": "Select", ".": "Floor", "#": "Wall", "D": "Door", "L": "Locked",
 	"E": "Exit", "I": "Item", "@": "Enemy", "N": "NPC",
 }
 const TOOL_COLORS: Dictionary = {
-	".": Color(0.18,0.18,0.18), "#": Color(0.45,0.45,0.5), "O": Color(0.3,0.5,0.7),
+	".": Color(0.18,0.18,0.18), "#": Color(0.45,0.45,0.5),
 	"D": Color(0.55,0.37,0.18), "L": Color(0.75,0.18,0.18), "E": Color(0.95,0.75,0.05),
 	"I": Color(0.1,0.7,0.1), "@": Color(0.75,0.05,0.05), "N": Color(0.05,0.55,0.75),
 }
@@ -284,15 +284,13 @@ func _setup_ui():
 
 	var entity_apply := Button.new(); entity_apply.text = "Apply Entity"; entity_apply.pressed.connect(_apply_entity); right_panel.add_child(entity_apply)
 
-	# Wall texture override
-	var tex_label := Label.new(); tex_label.text = "Wall Override"; tex_label.add_theme_font_size_override("font_size", 16); right_panel.add_child(tex_label)
-	_wall_tex_edit = LineEdit.new(); _wall_tex_edit.placeholder_text = "texture_id (e.g. wall_metal)"; right_panel.add_child(_wall_tex_edit)
-	var tex_hbox := HBoxContainer.new(); right_panel.add_child(tex_hbox)
-	_wall_rot = OptionButton.new()
-	for r: String in ["0°", "90°", "180°", "270°"]: _wall_rot.add_item(r)
-	tex_hbox.add_child(_wall_rot)
-	var tex_apply := Button.new(); tex_apply.text = "Set Texture"; tex_apply.pressed.connect(_apply_wall_texture); tex_hbox.add_child(tex_apply)
-	var tex_clear := Button.new(); tex_clear.text = "Clear"; tex_clear.pressed.connect(_clear_wall_texture); tex_hbox.add_child(tex_clear)
+	# Texture browser
+	var tex_label := Label.new(); tex_label.text = "Textures"; tex_label.add_theme_font_size_override("font_size", 16); right_panel.add_child(tex_label)
+	_tex_browser = GridContainer.new()
+	_tex_browser.columns = 3
+	right_panel.add_child(_tex_browser)
+	_current_tex_label = Label.new(); right_panel.add_child(_current_tex_label)
+	_refresh_texture_browser()
 
 	# Decal list
 	var dec_label := Label.new(); dec_label.text = "Decals"; dec_label.add_theme_font_size_override("font_size", 16); right_panel.add_child(dec_label)

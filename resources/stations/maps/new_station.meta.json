@@ -1,4 +1,41 @@
 {
-	"cells": {},
+	"cells": {
+		"2,2": {
+			"decals": [
+				{
+					"id": "bench_front",
+					"offset": 0.5,
+					"rotation": 0.0,
+					"scale": 1.0,
+					"side": 0.0,
+					"z": 0.0
+				},
+				{
+					"id": "bench_front",
+					"offset": 0.5,
+					"rotation": 0.0,
+					"scale": 1.0,
+					"side": 1.0,
+					"z": 1.0
+				},
+				{
+					"id": "bench_front",
+					"offset": 0.5,
+					"rotation": 0.0,
+					"scale": 1.0,
+					"side": 2.0,
+					"z": 2.0
+				},
+				{
+					"id": "bench_front",
+					"offset": 0.5,
+					"rotation": 0.0,
+					"scale": 1.0,
+					"side": 3.0,
+					"z": 3.0
+				}
+			]
+		}
+	},
 	"version": 1
 }
