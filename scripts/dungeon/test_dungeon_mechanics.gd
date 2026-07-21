@@ -173,6 +173,10 @@ func _load_station():
 	_build_from_station_data()
 	if station_data.tileset and _renderer:
 		_renderer.apply_tileset(station_data.tileset)
+	if _renderer:
+		var meta := MapMeta.new()
+		meta.load_from_json(station_data.map_file.get_basename() + ".meta.json")
+		_renderer.wall_decors = meta.cells
 	_player_x = float(spawn.x)
 	_player_y = float(spawn.y)
 	_player_dir = dir

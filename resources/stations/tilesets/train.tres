@@ -1,10 +1,11 @@
-[gd_resource type="Resource" script_class="StationTileset" format=3]
+[gd_resource type="Resource" script_class="StationTileset" format=3 uid="uid://q08k12gag6r4"]
 
-[ext_resource type="Script" path="res://scripts/resources/station_tileset.gd" id="1"]
+[ext_resource type="Script" uid="uid://c8m8t2yxfki37" path="res://scripts/resources/station_tileset.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://cfty6redrttxc" path="res://assets/textures/train/train_floor.png" id="1_ixl73"]
+[ext_resource type="Texture2D" uid="uid://cinpkcdrlwq8v" path="res://assets/textures/window.png" id="2_gplx8"]
 
 [resource]
 script = ExtResource("1")
-wall_tex = null
-floor_tex = null
-rail_tex = null
-window_tex = null
+wall_tex = ExtResource("2_gplx8")
+floor_tex = ExtResource("1_ixl73")
+window_tex = ExtResource("2_gplx8")

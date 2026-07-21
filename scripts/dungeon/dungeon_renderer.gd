@@ -4,6 +4,17 @@ const TILE_WALL: int = 1
 const TILE_BLOCKED: int = 6
 const TILE_WINDOW: int = 10
 
+var wall_decors: Dictionary = {}
+var _decal_cache: Dictionary = {}
+
+func _get_decal_tex(id: String) -> Texture2D:
+	if _decal_cache.has(id): return _decal_cache[id]
+	var path := "res://assets/decals/" + id + ".png"
+	if FileAccess.file_exists(path):
+		var tex := load(path) as Texture2D
+		if tex: _decal_cache[id] = tex; return tex
+	return null
+
 var cam_x: float = 1.5
 var cam_y: float = 1.5
 var player_angle: float = 0.0
@@ -167,6 +178,26 @@ func draw_walls(ci: CanvasItem):
 			var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
 			shade = lerp(shade, 0.0, fbl); c *= shade
 			ci.draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
+		
+		var dkey := "%d,%d" % [result.get("mx", -1), result.get("my", -1)]
+		if wall_decors.has(dkey):
+			var decals: Array = wall_decors[dkey]
+			for dec in decals:
+				var did: String = dec.get("id", "")
+				if did.is_empty(): continue
+				var tex := _get_decal_tex(did)
+				if not tex: continue
+				var d_offset: float = dec.get("offset", 0.5)
+				var d_height: float = dec.get("height", 0.2)
+				var d_scale: float = dec.get("scale", 1.0)
+				var wx: float = result.get("wall_x", 0.0)
+				var dx: float = i * _strip_w + (wx - d_offset) * _strip_w * 2.0
+				if dx < -100 or dx > _view_w + 100: continue
+				var ds: float = wall_h * d_scale * 0.8
+				var dy: float = wall_top + wall_h * (1.0 - d_height) - ds * 0.5
+				var dcol: Color = Color(1, 1, 1, 1)
+				dcol = dcol.lerp(fog_color, fbl)
+				ci.draw_texture_rect(tex, Rect2(dx, dy, ds, ds), false, dcol)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var dir: Vector2 = Vector2(cos(angle), sin(angle))
