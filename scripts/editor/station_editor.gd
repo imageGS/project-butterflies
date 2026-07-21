@@ -4,13 +4,13 @@ extends Control
 const CELL_SIZE: int = 24
 const MAX_UNDO: int = 128
 
-const TOOLS: Array[String] = ["cursor", ".", "#", "O", "D", "L", "E", "I", "@", "N"]
+const TOOLS: Array[String] = ["cursor", ".", "#", "D", "L", "E", "I", "@", "N"]
 const TOOL_NAMES: Dictionary = {
-	"cursor": "Select", ".": "Floor", "#": "Wall", "O": "Window", "D": "Door", "L": "Locked",
+	"cursor": "Select", ".": "Floor", "#": "Wall", "D": "Door", "L": "Locked",
 	"E": "Exit", "I": "Item", "@": "Enemy", "N": "NPC",
 }
 const TOOL_COLORS: Dictionary = {
-	".": Color(0.18,0.18,0.18), "#": Color(0.45,0.45,0.5), "O": Color(0.3,0.5,0.7),
+	".": Color(0.18,0.18,0.18), "#": Color(0.45,0.45,0.5),
 	"D": Color(0.55,0.37,0.18), "L": Color(0.75,0.18,0.18), "E": Color(0.95,0.75,0.05),
 	"I": Color(0.1,0.7,0.1), "@": Color(0.75,0.05,0.05), "N": Color(0.05,0.55,0.75),
 }
@@ -284,15 +284,13 @@ func _setup_ui():
 
 	var entity_apply := Button.new(); entity_apply.text = "Apply Entity"; entity_apply.pressed.connect(_apply_entity); right_panel.add_child(entity_apply)
 
-	# Wall texture override
-	var tex_label := Label.new(); tex_label.text = "Wall Override"; tex_label.add_theme_font_size_override("font_size", 16); right_panel.add_child(tex_label)
-	_wall_tex_edit = LineEdit.new(); _wall_tex_edit.placeholder_text = "texture_id (e.g. wall_metal)"; right_panel.add_child(_wall_tex_edit)
-	var tex_hbox := HBoxContainer.new(); right_panel.add_child(tex_hbox)
-	_wall_rot = OptionButton.new()
-	for r: String in ["0°", "90°", "180°", "270°"]: _wall_rot.add_item(r)
-	tex_hbox.add_child(_wall_rot)
-	var tex_apply := Button.new(); tex_apply.text = "Set Texture"; tex_apply.pressed.connect(_apply_wall_texture); tex_hbox.add_child(tex_apply)
-	var tex_clear := Button.new(); tex_clear.text = "Clear"; tex_clear.pressed.connect(_clear_wall_texture); tex_hbox.add_child(tex_clear)
+	# Texture browser
+	var tex_label := Label.new(); tex_label.text = "Textures"; tex_label.add_theme_font_size_override("font_size", 16); right_panel.add_child(tex_label)
+	_tex_browser = GridContainer.new()
+	_tex_browser.columns = 2
+	right_panel.add_child(_tex_browser)
+	_current_tex_label = Label.new(); _current_tex_label.text = "None selected"; right_panel.add_child(_current_tex_label)
+	_refresh_texture_browser()
 
 	# Decal list
 	var dec_label := Label.new(); dec_label.text = "Decals"; dec_label.add_theme_font_size_override("font_size", 16); right_panel.add_child(dec_label)
@@ -366,6 +364,9 @@ var _decal_list: ItemList
 var _decal_id_edit: LineEdit
 var _decal_side: OptionButton
 var _decal_offset: SpinBox
+var _tex_browser: GridContainer
+var _current_tex_label: Label
+var _selected_tex: String = ""
 
 func _add_labeled_spin(parent: Control, label_text: String, spin: SpinBox):
 	var hbox := HBoxContainer.new(); parent.add_child(hbox)
@@ -489,8 +490,43 @@ func _refresh_exit_list():
 		var e: ExitData = _station_data.exits[i]
 		_exit_list.add_item("%d: (%d,%d) -> %s" % [i, e.position.x, e.position.y, e.target_station_path])
 
+func _refresh_texture_browser():
+	for c in _tex_browser.get_children(): c.queue_free()
+	var folder: String = "wall"
+	match _current_tool:
+		".": folder = "floor"
+		"#": folder = "wall"
+		"D", "L": folder = "door"
+		_: return
+	var dir := DirAccess.open("res://assets/textures/" + folder)
+	if not dir: return
+	var textures: Array[String] = []
+	dir.list_dir_begin()
+	var f := dir.get_next()
+	while f != "":
+		if f.ends_with(".png") and not f.ends_with(".import"):
+			textures.append(f)
+		f = dir.get_next()
+	dir.list_dir_end()
+	for tn in textures:
+		var btn := Button.new()
+		btn.tooltip_text = tn
+		btn.custom_minimum_size = Vector2(56, 56)
+		var tex := load("res://assets/textures/" + folder + "/" + tn) as Texture2D
+		var img := TextureRect.new()
+		if tex: img.texture = tex
+		img.stretch_mode = TextureRect.STRETCH_SCALE
+		img.custom_minimum_size = Vector2(48, 48)
+		img.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.add_child(img)
+		var sel_path := folder + "/" + tn
+		btn.pressed.connect(func(): _selected_tex = sel_path; _current_tex_label.text = sel_path)
+		_tex_browser.add_child(btn)
+
 func _select_tool(tool: String):
 	_current_tool = tool
+	_current_ts = null
+	_refresh_texture_browser()
 	_highlight_tool()
 
 func _highlight_tool():
@@ -528,9 +564,13 @@ func _draw_grid():
 	for y in range(start_y, end_y):
 		for x in range(start_x, end_x):
 			var tile: String = _map_grid[y][x]
-			var color: Color = TOOL_COLORS.get(tile, Color.MAGENTA)
 			var rect := Rect2(offset.x + x * cs, offset.y + y * cs, cs, cs)
-			_grid_control.draw_rect(rect, color)
+			var tex := _get_cell_texture(x, y, tile)
+			if tex and cs >= 12:
+				_grid_control.draw_texture_rect(tex, rect, false)
+			else:
+				var color: Color = TOOL_COLORS.get(tile, Color.MAGENTA)
+				_grid_control.draw_rect(rect, color)
 			if _show_grid: _grid_control.draw_rect(rect, Color(0.3, 0.3, 0.3), false)
 			if tile != ".":
 				var font := _grid_control.get_theme_default_font()
@@ -573,6 +613,17 @@ func _draw_grid():
 		var sr := Rect2(offset.x + _selected_tile.x * cs, offset.y + _selected_tile.y * cs, cs, cs)
 		_grid_control.draw_rect(sr, Color(1, 1, 1, 0.35))
 		_grid_control.draw_rect(sr, Color(1, 1, 1), false, 2.0)
+
+func _get_cell_texture(x: int, y: int, tile: String) -> Texture2D:
+	var tid: String = _map_meta.get_texture(x, y)
+	if not tid.is_empty():
+		var p := "res://assets/textures/" + tid
+		if not tid.ends_with(".png"): p += ".png"
+		if FileAccess.file_exists(p): return load(p) as Texture2D
+	match tile:
+		"#": if FileAccess.file_exists("res://assets/textures/wall/default.png"): return load("res://assets/textures/wall/default.png")
+		".": if FileAccess.file_exists("res://assets/textures/floor/default.png"): return load("res://assets/textures/floor/default.png")
+	return null
 
 func _on_grid_input(event: InputEvent):
 	if event is InputEventMouseButton:
@@ -663,6 +714,8 @@ func _paint_at_mouse(pos: Vector2):
 	if _map_grid[gy][gx] != _current_tool:
 		_map_grid[gy][gx] = _current_tool
 		_grid_control.queue_redraw()
+	if not _selected_tex.is_empty() and _current_tool in ["#", ".", "D", "L"]:
+		_map_meta.set_texture(gx, gy, _selected_tex, 0)
 
 func _pick_at_mouse(pos: Vector2):
 	_update_last_tile(pos)

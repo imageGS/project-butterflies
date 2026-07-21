@@ -48,12 +48,18 @@ func _cell_tex(x: int, y: int, is_wall: bool) -> Texture2D:
 
 func _load_tex(tid: String) -> Texture2D:
 	if _tex_cache.has(tid): return _tex_cache[tid]
-	for folder in ["res://assets/textures/", "res://assets/textures/wall/", "res://assets/textures/floor/"]:
-		var p := folder + tid
-		if not tid.ends_with(".png"): p += ".png"
-		if FileAccess.file_exists(p):
-			var t := load(p) as Texture2D
-			if t: _tex_cache[tid] = t; return t
+	var p := "res://assets/textures/" + tid
+	if not tid.ends_with(".png"): p += ".png"
+	if FileAccess.file_exists(p):
+		var t := load(p) as Texture2D
+		if t: _tex_cache[tid] = t; return t
+	if not "/" in tid:
+		for folder in ["wall", "floor", "door"]:
+			p = "res://assets/textures/" + folder + "/" + tid
+			if not tid.ends_with(".png"): p += ".png"
+			if FileAccess.file_exists(p):
+				var t := load(p) as Texture2D
+				if t: _tex_cache[tid] = t; return t
 	return null
 
 func set_floor_texture(tid: String):
