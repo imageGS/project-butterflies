@@ -3,20 +3,6 @@ extends Control
 const TILE_WALL: int = 1
 const TILE_BLOCKED: int = 6
 
-var wall_decors: Dictionary = {}
-var _decal_cache: Dictionary = {}
-
-func _texture_has_alpha(tex: Texture2D) -> bool:
-	if not tex: return false
-	var img := tex.get_image()
-	if not img or img.is_empty(): return false
-	for x in img.get_width():
-		if img.get_pixel(x, 0).a < 0.99: return true
-	return false
-
-func _get_decal_tex(id: String) -> Texture2D:
-	return _load_tex("decal/" + id)
-
 var cam_x: float = 1.5
 var cam_y: float = 1.5
 var player_angle: float = 0.0
@@ -67,8 +53,6 @@ func set_floor_texture(tid: String):
 	if t:
 		_floor_tex = t
 		if _floor_mat: _floor_mat.set_shader_parameter("floor_tex", _floor_tex)
-var fog_fade: float = 2.5
-var fog_color: Color = Color(0.08, 0.08, 0.08)
 
 func apply_tileset(ts: Resource):
 	if not ts: return

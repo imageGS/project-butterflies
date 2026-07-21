@@ -1,40 +1,96 @@
 {
 	"cells": {
-		"2,2": {
-			"decals": [
-				{
-					"id": "bench_front",
-					"offset": 0.5,
-					"rotation": 0.0,
-					"scale": 1.0,
-					"side": 0.0,
-					"z": 0.0
-				},
-				{
-					"id": "bench_front",
-					"offset": 0.5,
-					"rotation": 0.0,
-					"scale": 1.0,
-					"side": 1.0,
-					"z": 1.0
-				},
-				{
-					"id": "bench_front",
-					"offset": 0.5,
-					"rotation": 0.0,
-					"scale": 1.0,
-					"side": 2.0,
-					"z": 2.0
-				},
-				{
-					"id": "bench_front",
-					"offset": 0.5,
-					"rotation": 0.0,
-					"scale": 1.0,
-					"side": 3.0,
-					"z": 3.0
-				}
-			]
+		"10,3": {
+			"rotation": 0,
+			"texture": "wall/window.png"
+		},
+		"10,4": {
+			"rotation": 0,
+			"texture": "wall/default.png"
+		},
+		"10,5": {
+			"rotation": 0,
+			"texture": "floor/train.png"
+		},
+		"11,3": {
+			"rotation": 0,
+			"texture": "wall/window.png"
+		},
+		"11,4": {
+			"rotation": 0,
+			"texture": "wall/default.png"
+		},
+		"11,6": {
+			"rotation": 0,
+			"texture": "floor/train.png"
+		},
+		"12,3": {
+			"rotation": 0,
+			"texture": "wall/window.png"
+		},
+		"12,4": {
+			"rotation": 0,
+			"texture": "wall/default.png"
+		},
+		"12,5": {
+			"rotation": 0,
+			"texture": "wall/default.png"
+		},
+		"12,6": {
+			"rotation": 0,
+			"texture": "floor/train.png"
+		},
+		"13,3": {
+			"rotation": 0,
+			"texture": "wall/window.png"
+		},
+		"13,4": {
+			"rotation": 0,
+			"texture": "wall/default.png"
+		},
+		"13,5": {
+			"rotation": 0,
+			"texture": "wall/default.png"
+		},
+		"13,6": {
+			"rotation": 0,
+			"texture": "floor/train.png"
+		},
+		"14,3": {
+			"rotation": 0,
+			"texture": "wall/window.png"
+		},
+		"14,4": {
+			"rotation": 0,
+			"texture": "wall/window.png"
+		},
+		"14,5": {
+			"rotation": 0,
+			"texture": "wall/window.png"
+		},
+		"14,6": {
+			"rotation": 0,
+			"texture": "floor/train.png"
+		},
+		"8,3": {
+			"rotation": 0,
+			"texture": "floor/default.png"
+		},
+		"8,5": {
+			"rotation": 0,
+			"texture": "floor/train.png"
+		},
+		"9,3": {
+			"rotation": 0,
+			"texture": "wall/window.png"
+		},
+		"9,4": {
+			"rotation": 0,
+			"texture": "wall/default.png"
+		},
+		"9,5": {
+			"rotation": 0,
+			"texture": "floor/train.png"
 		}
 	},
 	"version": 1
