@@ -320,16 +320,29 @@ func _setup_ui():
 	add_child(_context_menu)
 
 	# Grid control
+	var center_split := HSplitContainer.new()
+	center_split.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center_split.offset_left = 165
+	center_split.offset_top = 45
+	center_split.offset_right = -280
+	center_split.offset_bottom = 0
+	add_child(center_split)
+
+	# 2D Grid
 	_grid_control = Control.new()
-	_grid_control.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_grid_control.offset_left = 125
-	_grid_control.offset_top = 45
-	_grid_control.offset_right = -280
-	_grid_control.offset_bottom = 0
+	_grid_control.custom_minimum_size = Vector2(300, 200)
 	_grid_control.mouse_filter = Control.MOUSE_FILTER_PASS
-	add_child(_grid_control)
+	center_split.add_child(_grid_control)
 	_grid_control.draw.connect(_draw_grid)
 	_grid_control.gui_input.connect(_on_grid_input)
+
+	# 3D Preview
+	_preview_vp = SubViewport.new()
+	_preview_vp.size = Vector2i(320, 200)
+	var preview_container := Control.new()
+	preview_container.custom_minimum_size = Vector2(200, 200)
+	center_split.add_child(preview_container)
+	preview_container.add_child(_preview_vp)
 
 var _name_edit: LineEdit
 var _map_file_edit: LineEdit
@@ -359,8 +372,31 @@ var _context_menu: PopupMenu
 var _tileset_select: OptionButton
 var _tools_grid: GridContainer
 var _tool_tex_cache: Dictionary = {}
-var _editor_tileset: StationTileset
 var _all_tilesets: Array[StationTileset] = []
+var _preview_vp: SubViewport
+var _preview_renderer: Control
+var _preview_dirty: bool = true
+
+func _setup_3d_preview():
+	if not _preview_vp: return
+	for c in _preview_vp.get_children(): c.queue_free()
+	var renderer := load("res://scripts/dungeon/dungeon_renderer.gd").new()
+	renderer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_preview_vp.add_child(renderer)
+	_preview_renderer = renderer
+	_preview_renderer.size = _preview_vp.size
+	_update_3d_preview()
+
+func _update_3d_preview():
+	if not _preview_renderer or _map_grid.is_empty(): return
+	var r := _preview_renderer
+	r.map_data = _map_grid
+	r.height_data = []
+	for _y in _grid_height:
+		var row: Array = []; row.resize(_grid_width); row.fill(0.0)
+		r.height_data.append(row)
+	r.update_view(float(_grid_width)*0.5+0.5, float(_grid_height)*0.5+0.5, PI*0.5, _map_grid, [])
+	_preview_dirty = false
 
 func _load_all_tilesets():
 	_all_tilesets.clear()
@@ -405,6 +441,7 @@ func _new_station():
 		_map_grid.append(row)
 	_refresh_ui()
 	_grid_control.queue_redraw()
+	_setup_3d_preview()
 
 func _load_station_dialog():
 	# Dev-only: use FileDialog via code
@@ -425,6 +462,7 @@ func _load_station(path: String):
 	_parse_map_file(_station_data.map_file)
 	_refresh_ui()
 	_grid_control.queue_redraw()
+	_setup_3d_preview()
 	_status_label.text = "Loaded: " + path
 
 func _parse_map_file(path: String):
@@ -533,6 +571,8 @@ func _get_tile_tex(ch: String) -> Texture2D:
 			"D": if ts.wall_tex: return ts.wall_tex
 			_: return null
 	return null
+
+func _draw_grid():
 	var cs: int = int(CELL_SIZE * _zoom_level)
 	if cs < 6: cs = 6
 	var offset: Vector2 = _grid_control.size * 0.5 - Vector2(_grid_width * cs, _grid_height * cs) * 0.5 + _camera_offset
@@ -633,7 +673,9 @@ func _on_grid_input(event: InputEvent):
 		_update_last_tile(event.position)
 		if _panning:
 			_camera_offset = _pan_offset_start + (event.position - _pan_start)
-			_grid_control.queue_redraw()
+		_grid_control.queue_redraw()
+	if _preview_dirty:
+		_update_3d_preview()
 		elif _is_dragging:
 			_paint_at_mouse(event.position)
 
@@ -686,6 +728,7 @@ func _paint_at_mouse(pos: Vector2):
 	if _map_grid[gy][gx] != _current_tool:
 		_map_grid[gy][gx] = _current_tool
 		_grid_control.queue_redraw()
+		_preview_dirty = true
 
 func _pick_at_mouse(pos: Vector2):
 	_update_last_tile(pos)
@@ -1064,7 +1107,7 @@ func _refresh_tool_palette():
 				"O": tex = ts.window_tex if ts.window_tex else null
 				"D": tex = ts.wall_tex if ts.wall_tex else null
 			if not tex: continue
-			var key := tp[1] + "/" + ts.resource_path.get_file()
+			var key: String = tp[1] + "/" + ts.resource_path.get_file()
 			if _tool_tex_cache.has(key): continue
 			_tool_tex_cache[key] = tex
 			
