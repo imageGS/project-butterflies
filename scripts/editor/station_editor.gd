@@ -504,10 +504,6 @@ func _refresh_exit_list():
 		var e: ExitData = _station_data.exits[i]
 		_exit_list.add_item("%d: (%d,%d) -> %s" % [i, e.position.x, e.position.y, e.target_station_path])
 
-func _select_tool(tool: String):
-	_current_tool = tool
-	_highlight_tool()
-
 func _highlight_tool():
 	for tool: String in _tool_buttons:
 		_tool_buttons[tool].modulate = Color(1.3, 1.3, 0.6) if tool == _current_tool else Color.WHITE
