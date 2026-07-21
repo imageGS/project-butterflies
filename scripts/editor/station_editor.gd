@@ -320,29 +320,16 @@ func _setup_ui():
 	add_child(_context_menu)
 
 	# Grid control
-	var center_split := HSplitContainer.new()
-	center_split.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center_split.offset_left = 165
-	center_split.offset_top = 45
-	center_split.offset_right = -280
-	center_split.offset_bottom = 0
-	add_child(center_split)
-
-	# 2D Grid
 	_grid_control = Control.new()
-	_grid_control.custom_minimum_size = Vector2(300, 200)
+	_grid_control.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_grid_control.offset_left = 125
+	_grid_control.offset_top = 45
+	_grid_control.offset_right = -280
+	_grid_control.offset_bottom = 0
 	_grid_control.mouse_filter = Control.MOUSE_FILTER_PASS
-	center_split.add_child(_grid_control)
+	add_child(_grid_control)
 	_grid_control.draw.connect(_draw_grid)
 	_grid_control.gui_input.connect(_on_grid_input)
-
-	# 3D Preview
-	_preview_vp = SubViewport.new()
-	_preview_vp.size = Vector2i(320, 200)
-	var preview_container := Control.new()
-	preview_container.custom_minimum_size = Vector2(200, 200)
-	center_split.add_child(preview_container)
-	preview_container.add_child(_preview_vp)
 
 var _name_edit: LineEdit
 var _map_file_edit: LineEdit
@@ -372,47 +359,7 @@ var _context_menu: PopupMenu
 var _tileset_select: OptionButton
 var _tools_grid: GridContainer
 var _tool_tex_cache: Dictionary = {}
-var _all_tilesets: Array[StationTileset] = []
-var _preview_vp: SubViewport
-var _preview_renderer: Control
-var _preview_dirty: bool = true
-
-func _setup_3d_preview():
-	if not _preview_vp: return
-	for c in _preview_vp.get_children(): c.queue_free()
-	var renderer := load("res://scripts/dungeon/dungeon_renderer.gd").new()
-	renderer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_preview_vp.add_child(renderer)
-	_preview_renderer = renderer
-	_preview_renderer.size = _preview_vp.size
-	_update_3d_preview()
-
-func _update_3d_preview():
-	if not _preview_renderer or _map_grid.is_empty(): return
-	var r := _preview_renderer
-	r.map_data = _map_grid
-	r.height_data = []
-	for _y in _grid_height:
-		var row: Array = []; row.resize(_grid_width); row.fill(0.0)
-		r.height_data.append(row)
-	r.update_view(float(_grid_width)*0.5+0.5, float(_grid_height)*0.5+0.5, PI*0.5, _map_grid, [])
-	_preview_dirty = false
-
-func _load_all_tilesets():
-	_all_tilesets.clear()
-	var dir := DirAccess.open("res://resources/stations/tilesets")
-	if not dir: return
-	dir.list_dir_begin()
-	var file := dir.get_next()
-	while file != "":
-		if file.ends_with(".tres"):
-			var ts := load("res://resources/stations/tilesets/" + file) as StationTileset
-			if ts: _all_tilesets.append(ts)
-		file = dir.get_next()
-	dir.list_dir_end()
-	if _all_tilesets.is_empty():
-		var ts := StationTileset.new()
-		_all_tilesets.append(ts)
+var _editor_tileset: StationTileset
 var _wall_tex_edit: LineEdit
 var _wall_rot: OptionButton
 var _decal_list: ItemList
@@ -441,7 +388,6 @@ func _new_station():
 		_map_grid.append(row)
 	_refresh_ui()
 	_grid_control.queue_redraw()
-	_setup_3d_preview()
 
 func _load_station_dialog():
 	# Dev-only: use FileDialog via code
@@ -462,7 +408,6 @@ func _load_station(path: String):
 	_parse_map_file(_station_data.map_file)
 	_refresh_ui()
 	_grid_control.queue_redraw()
-	_setup_3d_preview()
 	_status_label.text = "Loaded: " + path
 
 func _parse_map_file(path: String):
@@ -533,6 +478,8 @@ func _refresh_ui():
 	_refresh_exit_list()
 	_refresh_entity_list()
 	_refresh_tileset_dropdown()
+	if _station_data.tileset:
+		_editor_tileset = _station_data.tileset
 	_refresh_tool_palette()
 
 func _refresh_exit_list():
@@ -541,6 +488,10 @@ func _refresh_exit_list():
 	for i in _station_data.exits.size():
 		var e: ExitData = _station_data.exits[i]
 		_exit_list.add_item("%d: (%d,%d) -> %s" % [i, e.position.x, e.position.y, e.target_station_path])
+
+func _select_tool(tool: String):
+	_current_tool = tool
+	_highlight_tool()
 
 func _highlight_tool():
 	for tool: String in _tool_buttons:
@@ -562,16 +513,6 @@ func _resize_grid():
 	_map_grid = new_grid
 	_grid_control.queue_redraw()
 
-func _get_tile_tex(ch: String) -> Texture2D:
-	for ts in _all_tilesets:
-		match ch:
-			".": if ts.floor_tex: return ts.floor_tex
-			"#": if ts.wall_tex: return ts.wall_tex
-			"O": if ts.window_tex: return ts.window_tex
-			"D": if ts.wall_tex: return ts.wall_tex
-			_: return null
-	return null
-
 func _draw_grid():
 	var cs: int = int(CELL_SIZE * _zoom_level)
 	if cs < 6: cs = 6
@@ -589,11 +530,7 @@ func _draw_grid():
 			var tile: String = _map_grid[y][x]
 			var color: Color = TOOL_COLORS.get(tile, Color.MAGENTA)
 			var rect := Rect2(offset.x + x * cs, offset.y + y * cs, cs, cs)
-			var tex := _get_tile_tex(tile)
-			if tex and cs >= 12:
-				_grid_control.draw_texture_rect(tex, rect, false)
-			else:
-				_grid_control.draw_rect(rect, color)
+			_grid_control.draw_rect(rect, color)
 			if _show_grid: _grid_control.draw_rect(rect, Color(0.3, 0.3, 0.3), false)
 			if tile != ".":
 				var font := _grid_control.get_theme_default_font()
@@ -673,8 +610,8 @@ func _on_grid_input(event: InputEvent):
 		_update_last_tile(event.position)
 		if _panning:
 			_camera_offset = _pan_offset_start + (event.position - _pan_start)
-		_grid_control.queue_redraw()
-		if _is_dragging:
+			_grid_control.queue_redraw()
+		elif _is_dragging:
 			_paint_at_mouse(event.position)
 
 func _select_tile_at_mouse(pos: Vector2):
@@ -726,7 +663,6 @@ func _paint_at_mouse(pos: Vector2):
 	if _map_grid[gy][gx] != _current_tool:
 		_map_grid[gy][gx] = _current_tool
 		_grid_control.queue_redraw()
-		_preview_dirty = true
 
 func _pick_at_mouse(pos: Vector2):
 	_update_last_tile(pos)
@@ -1073,76 +1009,58 @@ func _refresh_tileset_dropdown():
 
 func _on_tileset_selected(idx: int):
 	if idx <= 0:
+		_editor_tileset = null
 		_station_data.tileset = null
 		_refresh_tool_palette()
 		return
 	var name := _tileset_select.get_item_text(idx)
 	var path := "res://resources/stations/tilesets/" + name
 	if ResourceLoader.exists(path):
-		_station_data.tileset = load(path)
-		_status_label.text = "Default: " + name
-	_refresh_tool_palette()
+		_editor_tileset = load(path)
+		_station_data.tileset = _editor_tileset
+		_status_label.text = "Tileset: " + name
+		_refresh_tool_palette()
 
 func _refresh_tool_palette():
 	for c in _tools_grid.get_children(): c.queue_free()
 	_tool_buttons.clear()
-	_load_all_tilesets()
-	
-	var types := [["Floor", "."], ["Wall", "#"], ["Window", "O"], ["Door", "D"]]
-	for tp in types:
-		var cat_label := Label.new()
-		cat_label.text = tp[0]
-		cat_label.add_theme_font_size_override("font_size", 10)
-		_tools_grid.add_child(cat_label)
-		var dummy := Control.new(); dummy.custom_minimum_size = Vector2(0, 0)
-		_tools_grid.add_child(dummy)
-		
-		for ts in _all_tilesets:
-			var tex: Texture2D
-			match tp[1]:
-				".": tex = ts.floor_tex if ts.floor_tex else null
-				"#": tex = ts.wall_tex if ts.wall_tex else null
-				"O": tex = ts.window_tex if ts.window_tex else null
-				"D": tex = ts.wall_tex if ts.wall_tex else null
-			if not tex: continue
-			var key: String = tp[1] + "/" + ts.resource_path.get_file()
-			if _tool_tex_cache.has(key): continue
-			_tool_tex_cache[key] = tex
-			
-			var btn := Button.new()
-			btn.tooltip_text = ts.resource_path.get_file()
-			btn.custom_minimum_size = Vector2(56, 56)
-			btn.pressed.connect(_select_texture.bind(tp[1], ts))
-			var img := TextureRect.new()
-			img.texture = tex
-			img.stretch_mode = TextureRect.STRETCH_SCALE
-			img.custom_minimum_size = Vector2(48, 48)
-			img.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			btn.add_child(img)
-			_tools_grid.add_child(btn)
-			_tool_buttons[key] = btn
-	
-	var lbl2 := Label.new(); lbl2.text = "Other:"; _tools_grid.add_child(lbl2)
-	var dummy2 := Control.new(); _tools_grid.add_child(dummy2)
-	for tool in ["E", "I", "@", "N"]:
+	_tool_tex_cache.clear()
+	var tileset := _editor_tileset
+	for tool: String in TOOLS:
+		var tex: Texture2D
+		match tool:
+			".": tex = tileset.floor_tex if tileset else null
+			"#": tex = tileset.wall_tex if tileset else null
+			"O": tex = tileset.window_tex if tileset else null
+			"D": tex = tileset.wall_tex if tileset else null
+			"L": tex = tileset.wall_tex if tileset else null
+			_: tex = null
 		var btn := Button.new()
-		btn.text = tool + " " + TOOL_NAMES[tool]
-		btn.custom_minimum_size = Vector2(56, 28)
+		btn.tooltip_text = TOOL_NAMES[tool]
+		btn.custom_minimum_size = Vector2(56, 56)
 		btn.pressed.connect(_select_tool.bind(tool))
+		if tex:
+			var img_rect := TextureRect.new()
+			img_rect.texture = tex
+			img_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			img_rect.stretch_mode = TextureRect.STRETCH_SCALE
+			img_rect.custom_minimum_size = Vector2(48, 48)
+			img_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			btn.add_child(img_rect)
+		else:
+			var cr := ColorRect.new()
+			cr.color = TOOL_COLORS.get(tool, Color.GRAY)
+			cr.custom_minimum_size = Vector2(48, 48)
+			cr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			btn.add_child(cr)
+		var lbl := Label.new()
+		lbl.text = TOOL_NAMES[tool]
+		lbl.add_theme_font_size_override("font_size", 9)
+		lbl.add_theme_color_override("font_color", Color.BLACK)
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.add_child(lbl)
 		_tools_grid.add_child(btn)
-		var space := Control.new(); _tools_grid.add_child(space)
 		_tool_buttons[tool] = btn
-
-var _current_ts: StationTileset
-
-func _select_texture(ch: String, ts: StationTileset):
-	_current_tool = ch
-	_current_ts = ts
-	_highlight_tool()
-
-func _select_tool(tool: String):
-	_current_tool = tool
-	_current_ts = null
 	_highlight_tool()
 
 func _input(event: InputEvent):
