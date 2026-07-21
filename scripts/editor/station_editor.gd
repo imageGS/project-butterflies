@@ -525,7 +525,6 @@ func _refresh_texture_browser():
 
 func _select_tool(tool: String):
 	_current_tool = tool
-	_current_ts = null
 	_refresh_texture_browser()
 	_highlight_tool()
 
@@ -564,13 +563,9 @@ func _draw_grid():
 	for y in range(start_y, end_y):
 		for x in range(start_x, end_x):
 			var tile: String = _map_grid[y][x]
+			var color: Color = TOOL_COLORS.get(tile, Color.MAGENTA)
 			var rect := Rect2(offset.x + x * cs, offset.y + y * cs, cs, cs)
-			var tex := _get_cell_texture(x, y, tile)
-			if tex and cs >= 12:
-				_grid_control.draw_texture_rect(tex, rect, false)
-			else:
-				var color: Color = TOOL_COLORS.get(tile, Color.MAGENTA)
-				_grid_control.draw_rect(rect, color)
+			_grid_control.draw_rect(rect, color)
 			if _show_grid: _grid_control.draw_rect(rect, Color(0.3, 0.3, 0.3), false)
 			if tile != ".":
 				var font := _grid_control.get_theme_default_font()
