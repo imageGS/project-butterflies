@@ -1003,11 +1003,13 @@ func _start_move(tx: int, ty: int):
 	_anim_from_angle = _current_angle
 	_anim_to_angle = _current_angle
 	if station_data and station_data.tileset:
-		var tile := _map_data[ty][tx] as String if ty < _map_data.size() and tx < _map_data[ty].size() else "."
-		var snd := station_data.tileset.get_step_sound(tile)
-		if snd:
-			_footstep_player.stream = snd
-			_footstep_player.play()
+		var tile_val: int = _map_data[ty][tx] if ty < _map_data.size() and tx < _map_data[ty].size() else 0
+		var ts := station_data.tileset as StationTileset
+		if ts:
+			var snd := ts.get_step_sound_for_tile(tile_val) as AudioStream
+			if snd:
+				_footstep_player.stream = snd
+				_footstep_player.play()
 	_shake_hud()
 	set_process(true)
 

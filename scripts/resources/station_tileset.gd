@@ -11,9 +11,12 @@ extends Resource
 @export var floor_sounds: Array[AudioStream] = []
 @export var metal_sounds: Array[AudioStream] = []
 
-func get_step_sound(tile_char: String) -> AudioStream:
+const TILE_RAIL := 9
+const TILE_STAIRS := 4
+
+func get_step_sound_for_tile(tile: int) -> AudioStream:
 	var arr: Array[AudioStream] = floor_sounds
-	if tile_char in ["R", "S"]:
+	if tile in [TILE_RAIL, TILE_STAIRS]:
 		arr = metal_sounds
 	if arr.is_empty(): return null
 	return arr[randi() % arr.size()]

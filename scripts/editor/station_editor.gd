@@ -154,35 +154,32 @@ func _setup_ui():
 	var resize_btn := Button.new(); resize_btn.text = "Resize"; resize_btn.pressed.connect(_resize_grid); toolbar.add_child(resize_btn)
 
 	# Left tool palette
-	var left_panel := VBoxContainer.new()
-	left_panel.set_anchors_preset(Control.PRESET_LEFT_WIDE)
-	left_panel.offset_top = 45
-	left_panel.offset_right = 110
-	left_panel.offset_bottom = -10
-	add_child(left_panel)
+	var left_scroll := ScrollContainer.new()
+	left_scroll.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	left_scroll.offset_top = 45
+	left_scroll.offset_right = 160
+	left_scroll.offset_bottom = -10
+	add_child(left_scroll)
 
-	var tools_label := Label.new(); tools_label.text = "Tools"; left_panel.add_child(tools_label)
-	var tools_grid := GridContainer.new()
-	tools_grid.columns = 2
-	left_panel.add_child(tools_grid)
-	for tool: String in TOOLS:
-		var btn := Button.new()
-		btn.text = tool; btn.tooltip_text = TOOL_NAMES[tool]
-		btn.custom_minimum_size = Vector2(36, 26)
-		btn.pressed.connect(_select_tool.bind(tool))
-		tools_grid.add_child(btn)
-		_tool_buttons[tool] = btn
-	_highlight_tool()
+	var left_panel := VBoxContainer.new()
+	left_panel.custom_minimum_size = Vector2(140, 0)
+	left_scroll.add_child(left_panel)
+
+	var tools_label := Label.new(); tools_label.text = "Palette"; left_panel.add_child(tools_label)
+	_tools_grid = GridContainer.new()
+	_tools_grid.columns = 2
+	left_panel.add_child(_tools_grid)
+	_refresh_tool_palette()
+
+	var shape_label := Label.new(); shape_label.text = "Shapes:"; left_panel.add_child(shape_label)
+	var shapes := HBoxContainer.new(); left_panel.add_child(shapes)
+	var f_btn := Button.new(); f_btn.text = "Fill"; f_btn.tooltip_text = "Flood Fill"; f_btn.pressed.connect(func(): _current_tool = "FILL"); shapes.add_child(f_btn)
+	var l_btn := Button.new(); l_btn.text = "Line"; l_btn.tooltip_text = "Line"; l_btn.pressed.connect(func(): _current_tool = "LINE"); shapes.add_child(l_btn)
+	var r_btn := Button.new(); r_btn.text = "Rect"; r_btn.tooltip_text = "Rect"; r_btn.pressed.connect(func(): _current_tool = "RECT"); shapes.add_child(r_btn)
 
 	var help := Label.new(); help.text = "Alt=pick G=grid Z/Y=undo"
 	help.autowrap_mode = 3; help.add_theme_font_size_override("font_size", 10)
 	left_panel.add_child(help)
-	
-	var shape_label := Label.new(); shape_label.text = "Shapes:"; left_panel.add_child(shape_label)
-	var shapes := HBoxContainer.new(); left_panel.add_child(shapes)
-	var f_btn := Button.new(); f_btn.text = "F"; f_btn.tooltip_text = "Flood Fill"; f_btn.pressed.connect(func(): _current_tool = "FILL"); shapes.add_child(f_btn)
-	var l_btn := Button.new(); l_btn.text = "L"; l_btn.tooltip_text = "Line"; l_btn.pressed.connect(func(): _current_tool = "LINE"); shapes.add_child(l_btn)
-	var r_btn := Button.new(); r_btn.text = "R"; r_btn.tooltip_text = "Rect"; r_btn.pressed.connect(func(): _current_tool = "RECT"); shapes.add_child(r_btn)
 
 	# Right metadata panel (scrollable)
 	var right_scroll := ScrollContainer.new()
@@ -360,6 +357,9 @@ var _selected_entity_index: int = -1
 var _status_label: Label
 var _context_menu: PopupMenu
 var _tileset_select: OptionButton
+var _tools_grid: GridContainer
+var _tool_tex_cache: Dictionary = {}
+var _editor_tileset: StationTileset
 var _wall_tex_edit: LineEdit
 var _wall_rot: OptionButton
 var _decal_list: ItemList
@@ -478,6 +478,9 @@ func _refresh_ui():
 	_refresh_exit_list()
 	_refresh_entity_list()
 	_refresh_tileset_dropdown()
+	if _station_data.tileset:
+		_editor_tileset = _station_data.tileset
+	_refresh_tool_palette()
 
 func _refresh_exit_list():
 	_exit_list.clear()
@@ -1006,13 +1009,59 @@ func _refresh_tileset_dropdown():
 
 func _on_tileset_selected(idx: int):
 	if idx <= 0:
+		_editor_tileset = null
 		_station_data.tileset = null
+		_refresh_tool_palette()
 		return
 	var name := _tileset_select.get_item_text(idx)
 	var path := "res://resources/stations/tilesets/" + name
 	if ResourceLoader.exists(path):
-		_station_data.tileset = load(path)
+		_editor_tileset = load(path)
+		_station_data.tileset = _editor_tileset
 		_status_label.text = "Tileset: " + name
+		_refresh_tool_palette()
+
+func _refresh_tool_palette():
+	for c in _tools_grid.get_children(): c.queue_free()
+	_tool_buttons.clear()
+	_tool_tex_cache.clear()
+	var tileset := _editor_tileset
+	for tool: String in TOOLS:
+		var tex: Texture2D
+		match tool:
+			".": tex = tileset.floor_tex if tileset else null
+			"#": tex = tileset.wall_tex if tileset else null
+			"O": tex = tileset.window_tex if tileset else null
+			"D": tex = tileset.wall_tex if tileset else null
+			"L": tex = tileset.wall_tex if tileset else null
+			_: tex = null
+		var btn := Button.new()
+		btn.tooltip_text = TOOL_NAMES[tool]
+		btn.custom_minimum_size = Vector2(56, 56)
+		btn.pressed.connect(_select_tool.bind(tool))
+		if tex:
+			var img_rect := TextureRect.new()
+			img_rect.texture = tex
+			img_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			img_rect.stretch_mode = TextureRect.STRETCH_SCALE
+			img_rect.custom_minimum_size = Vector2(48, 48)
+			img_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			btn.add_child(img_rect)
+		else:
+			var cr := ColorRect.new()
+			cr.color = TOOL_COLORS.get(tool, Color.GRAY)
+			cr.custom_minimum_size = Vector2(48, 48)
+			cr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			btn.add_child(cr)
+		var lbl := Label.new()
+		lbl.text = TOOL_NAMES[tool]
+		lbl.add_theme_font_size_override("font_size", 9)
+		lbl.add_theme_color_override("font_color", Color.BLACK)
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.add_child(lbl)
+		_tools_grid.add_child(btn)
+		_tool_buttons[tool] = btn
+	_highlight_tool()
 
 func _input(event: InputEvent):
 	if event is InputEventKey and event.pressed and not event.echo:
