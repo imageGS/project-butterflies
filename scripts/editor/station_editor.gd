@@ -214,6 +214,12 @@ func _setup_ui():
 	_outer_ring_check = CheckBox.new(); _outer_ring_check.text = "Outer Ring"
 	right_panel.add_child(_outer_ring_check)
 
+	var tset_label := Label.new(); tset_label.text = "Tileset:"; right_panel.add_child(tset_label)
+	_tileset_select = OptionButton.new()
+	_tileset_select.item_selected.connect(_on_tileset_selected)
+	right_panel.add_child(_tileset_select)
+	_refresh_tileset_dropdown()
+
 	_spawn_x = SpinBox.new(); _spawn_x.min_value = 0; _spawn_x.max_value = 127; _spawn_x.value = 1
 	_spawn_y = SpinBox.new(); _spawn_y.min_value = 0; _spawn_y.max_value = 127; _spawn_y.value = 1
 	_add_labeled_spin(right_panel, "Spawn X", _spawn_x)
@@ -353,6 +359,7 @@ var _selected_entity_index: int = -1
 
 var _status_label: Label
 var _context_menu: PopupMenu
+var _tileset_select: OptionButton
 var _wall_tex_edit: LineEdit
 var _wall_rot: OptionButton
 var _decal_list: ItemList
@@ -470,6 +477,7 @@ func _refresh_ui():
 	_spawn_dir.selected = _station_data.spawn_dir
 	_refresh_exit_list()
 	_refresh_entity_list()
+	_refresh_tileset_dropdown()
 
 func _refresh_exit_list():
 	_exit_list.clear()
@@ -976,7 +984,35 @@ func _refresh_decal_list():
 		var side_names: Array = ["N", "E", "S", "W"]
 		_decal_list.add_item("%d: %s id=%s off=%.2f" % [i, side_names[d.get("side", 0)], d.get("id", "?"), d.get("offset", 0.5)])
 
-func _input(event: InputEvent):
+func _refresh_tileset_dropdown():
+	_tileset_select.clear()
+	_tileset_select.add_item("(none)")
+	var dir := DirAccess.open("res://resources/stations/tilesets")
+	if dir:
+		dir.list_dir_begin()
+		var file := dir.get_next()
+		while file != "":
+			if file.ends_with(".tres"):
+				_tileset_select.add_item(file)
+			file = dir.get_next()
+		dir.list_dir_end()
+	if _station_data and _station_data.tileset:
+		var path := _station_data.tileset.resource_path
+		var fname := path.get_file()
+		for i in _tileset_select.item_count:
+			if _tileset_select.get_item_text(i) == fname:
+				_tileset_select.selected = i
+				break
+
+func _on_tileset_selected(idx: int):
+	if idx <= 0:
+		_station_data.tileset = null
+		return
+	var name := _tileset_select.get_item_text(idx)
+	var path := "res://resources/stations/tilesets/" + name
+	if ResourceLoader.exists(path):
+		_station_data.tileset = load(path)
+		_status_label.text = "Tileset: " + name
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_1: _select_tool("cursor")

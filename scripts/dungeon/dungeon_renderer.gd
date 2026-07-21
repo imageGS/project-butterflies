@@ -24,12 +24,12 @@ var fog_distance: float = 7.0
 var fog_fade: float = 2.5
 var fog_color: Color = Color(0.08, 0.08, 0.08)
 
-func apply_tileset(ts: StationTileset):
+func apply_tileset(ts: Resource):
 	if not ts: return
-	if ts.wall_tex: _wall_tex = ts.wall_tex
-	if ts.floor_tex: _floor_tex = ts.floor_tex
-	if ts.rail_tex: _rail_tex = ts.rail_tex
-	if ts.window_tex: _window_tex = ts.window_tex
+	_wall_tex = ts.get("wall_tex") if ts.get("wall_tex") else _wall_tex
+	_floor_tex = ts.get("floor_tex") if ts.get("floor_tex") else _floor_tex
+	_rail_tex = ts.get("rail_tex") if ts.get("rail_tex") else _rail_tex
+	_window_tex = ts.get("window_tex") if ts.get("window_tex") else _window_tex
 
 var _floor_ctrl: Control
 var _floor_mat: ShaderMaterial
