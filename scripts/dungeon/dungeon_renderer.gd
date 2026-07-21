@@ -9,10 +9,12 @@ var _decal_cache: Dictionary = {}
 
 func _get_decal_tex(id: String) -> Texture2D:
 	if _decal_cache.has(id): return _decal_cache[id]
-	var path := "res://assets/decals/" + id + ".png"
-	if FileAccess.file_exists(path):
-		var tex := load(path) as Texture2D
-		if tex: _decal_cache[id] = tex; return tex
+	var folders: Array[String] = ["res://assets/decals/", "res://assets/textures/"]
+	for folder: String in folders:
+		var path: String = folder + id + ".png"
+		if FileAccess.file_exists(path):
+			var tex := load(path) as Texture2D
+			if tex: _decal_cache[id] = tex; return tex
 	return null
 
 var cam_x: float = 1.5
