@@ -101,7 +101,7 @@ var _dl_off_pos: Vector2
 @export var shelter_mode: bool = false  # deprecated, station_data defines the level
 @export var station_data: StationData
 @export_group("Lighting")
-@export var light_ambient: float = 0.10:
+@export var light_ambient: float = 0.15:
 	set(v): light_ambient = v; _apply_light_settings()
 @export var light_dither: float = 6.0:
 	set(v): light_dither = v; _apply_light_settings()
@@ -910,7 +910,7 @@ func _setup_lighting():
 	cr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cr.material = mat
 	$CRT_Root/GameViewport.add_child(cr)
-	$CRT_Root/GameViewport.move_child(cr, 1)
+	$CRT_Root/GameViewport.move_child(cr, $CRT_Root/GameViewport.get_child_count() - 1)
 	
 	var pl: Node2D = load("res://scripts/player_light.gd").new() as Node2D
 	pl.name = "PlayerLight"
