@@ -1,13 +1,5 @@
 {
 	"cells": {
-		"2,1": {
-			"rotation": 0,
-			"texture": "wall/default.png"
-		},
-		"2,2": {
-			"rotation": 0,
-			"texture": "wall/window.png"
-		},
 		"3,1": {
 			"rotation": 0,
 			"texture": "wall/default.png"
@@ -21,6 +13,14 @@
 			"texture": "wall/default.png"
 		},
 		"4,2": {
+			"rotation": 0,
+			"texture": "wall/window.png"
+		},
+		"5,1": {
+			"rotation": 0,
+			"texture": "wall/default.png"
+		},
+		"5,2": {
 			"rotation": 0,
 			"texture": "wall/window.png"
 		}

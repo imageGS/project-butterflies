@@ -284,8 +284,15 @@ func _setup_ui():
 
 	var entity_apply := Button.new(); entity_apply.text = "Apply Entity"; entity_apply.pressed.connect(_apply_entity); right_panel.add_child(entity_apply)
 
+	# Floor texture selector
+	var fl_label := Label.new(); fl_label.text = "Floor Texture:"; right_panel.add_child(fl_label)
+	_floor_tex_select = OptionButton.new()
+	_floor_tex_select.item_selected.connect(_on_floor_tex_selected)
+	right_panel.add_child(_floor_tex_select)
+	_refresh_floor_textures()
+
 	# Texture browser
-	var tex_label := Label.new(); tex_label.text = "Textures"; tex_label.add_theme_font_size_override("font_size", 16); right_panel.add_child(tex_label)
+	var tex_label := Label.new(); tex_label.text = "Wall Textures"; tex_label.add_theme_font_size_override("font_size", 13); right_panel.add_child(tex_label)
 	_tex_browser = GridContainer.new()
 	_tex_browser.columns = 2
 	right_panel.add_child(_tex_browser)
@@ -367,6 +374,7 @@ var _decal_offset: SpinBox
 var _tex_browser: GridContainer
 var _current_tex_label: Label
 var _selected_tex: String = ""
+var _floor_tex_select: OptionButton
 
 func _add_labeled_spin(parent: Control, label_text: String, spin: SpinBox):
 	var hbox := HBoxContainer.new(); parent.add_child(hbox)
@@ -489,6 +497,27 @@ func _refresh_exit_list():
 	for i in _station_data.exits.size():
 		var e: ExitData = _station_data.exits[i]
 		_exit_list.add_item("%d: (%d,%d) -> %s" % [i, e.position.x, e.position.y, e.target_station_path])
+
+func _refresh_floor_textures():
+	_floor_tex_select.clear()
+	_floor_tex_select.add_item("(default)")
+	var dir := DirAccess.open("res://assets/textures/floor")
+	if not dir: return
+	dir.list_dir_begin()
+	var f := dir.get_next()
+	while f != "":
+		if f.ends_with(".png") and not f.ends_with(".import"):
+			_floor_tex_select.add_item(f)
+		f = dir.get_next()
+	dir.list_dir_end()
+
+func _on_floor_tex_selected(idx: int):
+	if idx <= 0:
+		_map_meta.cells.erase("_floor_")
+		return
+	var name := _floor_tex_select.get_item_text(idx)
+	_map_meta.cells["_floor_"] = {"texture": "floor/" + name}
+	_status_label.text = "Floor: " + name
 
 func _refresh_texture_browser():
 	for c in _tex_browser.get_children(): c.queue_free()
