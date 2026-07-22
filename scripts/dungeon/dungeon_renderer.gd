@@ -58,11 +58,8 @@ func apply_tileset(ts: Resource):
 	if not ts: return
 	_wall_tex = ts.get("wall_tex") if ts.get("wall_tex") else _wall_tex
 	_floor_tex = ts.get("floor_tex") if ts.get("floor_tex") else _floor_tex
-	_rail_tex = ts.get("rail_tex") if ts.get("rail_tex") else _rail_tex
-	_window_tex = ts.get("window_tex") if ts.get("window_tex") else _window_tex
 	if _floor_mat:
 		_floor_mat.set_shader_parameter("floor_tex", _floor_tex)
-		_floor_mat.set_shader_parameter("rail_tex", _rail_tex)
 
 var _floor_ctrl: Control
 var _floor_mat: ShaderMaterial
@@ -95,7 +92,7 @@ func _setup_floor():
 	_floor_mat.shader = shader
 	_floor_ctrl.material = _floor_mat
 	_floor_mat.set_shader_parameter("floor_tex", _floor_tex)
-	_floor_mat.set_shader_parameter("rail_tex", _rail_tex)
+	_floor_mat.set_shader_parameter("rail_tex", _floor_tex)
 
 func _setup_walls():
 	_wall_ctrl = Control.new()
@@ -128,6 +125,17 @@ func _update_floor_shader():
 	_floor_mat.set_shader_parameter("fog_dist", fog_distance)
 	_floor_mat.set_shader_parameter("fog_fade", fog_fade)
 	_floor_mat.set_shader_parameter("fog_color", fog_color)
+
+func _texture_has_alpha(tex: Texture2D) -> bool:
+	if not tex: return false
+	var img := tex.get_image()
+	if not img or img.is_empty(): return false
+	for x in img.get_width():
+		if img.get_pixel(x, 0).a < 0.99: return true
+	return false
+
+func _get_decal_tex(id: String) -> Texture2D:
+	return _load_tex("decal/" + id)
 
 func _fill_zbuf():
 	var fov: float = deg_to_rad(90.0)
