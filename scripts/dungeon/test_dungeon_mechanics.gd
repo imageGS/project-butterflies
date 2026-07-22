@@ -937,7 +937,28 @@ func _update_lighting():
 	_light_mat.set_shader_parameter("light_radii", rad_arr)
 	_light_mat.set_shader_parameter("light_colors", col_arr)
 	_light_mat.set_shader_parameter("light_intensities", int_arr)
-	_light_mat.set_shader_parameter("obstructor_count", 0)
+	
+	# Wall obstructors from z-buffer
+	if _renderer:
+		var zbuf: Array = _renderer.get("_wall_zbuf")
+		var strip_w: int = _renderer.get("_strip_w")
+		if zbuf and zbuf.size() > 0:
+			var o_pos := PackedVector2Array()
+			var o_rad := PackedFloat32Array()
+			var view_w: float = 1152.0
+			var half_h: float = 648.0 * 0.5
+			for i in range(0, zbuf.size(), 2):
+				var perp: float = zbuf[i]
+				if perp >= _renderer.fog_distance: continue
+				var sx: float = float(i) * strip_w + strip_w * 0.5
+				var sr: float = half_h / max(perp, 0.5) * 0.3
+				if o_pos.size() < 24:
+					o_pos.append(Vector2(sx, half_h))
+					o_rad.append(sr)
+			_light_mat.set_shader_parameter("obstructor_count", o_pos.size())
+			_light_mat.set_shader_parameter("obstructor_positions", o_pos)
+			_light_mat.set_shader_parameter("obstructor_radii", o_rad)
+			_light_mat.set_shader_parameter("occlusion_enabled", true)
 
 func _toggle_window(win: TextureRect, open_ref: bool, on_pos: Vector2, off_pos: Vector2) -> bool:
 	var tw := create_tween()
