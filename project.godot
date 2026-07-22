@@ -27,7 +27,7 @@ window/stretch/aspect="expand"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/level_block/plugin.cfg", "res://addons/map_editor/plugin.cfg")
+enabled=PackedStringArray()
 
 [navigation]
 
