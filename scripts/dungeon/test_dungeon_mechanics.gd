@@ -927,7 +927,7 @@ func _update_lighting():
 	var col_arr := PackedVector3Array()
 	var int_arr := PackedFloat32Array()
 	var n: Node2D = _player_light_node
-	pos_arr.append(n.position)
+	pos_arr.append(Vector2(576, 324))
 	rad_arr.append(n.radius)
 	col_arr.append(Vector3(n.color.r, n.color.g, n.color.b))
 	var intensity: float = player_light_intensity if _flashlight_on else 0.01
@@ -937,26 +937,8 @@ func _update_lighting():
 	_light_mat.set_shader_parameter("light_radii", rad_arr)
 	_light_mat.set_shader_parameter("light_colors", col_arr)
 	_light_mat.set_shader_parameter("light_intensities", int_arr)
-	
-	# Wall obstructors from z-buffer
-	if _renderer:
-		var zbuf: Array = _renderer.get("_wall_zbuf")
-		var strip_w: int = _renderer.get("_strip_w")
-		if zbuf and zbuf.size() > 0:
-			var o_pos := PackedVector2Array()
-			var o_rad := PackedFloat32Array()
-			for i in range(0, zbuf.size(), 1):
-				var perp: float = zbuf[i]
-				if perp >= _renderer.fog_distance: continue
-				var sx: float = float(i) * strip_w + strip_w * 0.5
-				var sr: float = 648.0 / max(perp, 0.1) * 0.5
-				if o_pos.size() < 48:
-					o_pos.append(Vector2(sx, 324))
-					o_rad.append(sr)
-			_light_mat.set_shader_parameter("obstructor_count", o_pos.size())
-			_light_mat.set_shader_parameter("obstructor_positions", o_pos)
-			_light_mat.set_shader_parameter("obstructor_radii", o_rad)
-			_light_mat.set_shader_parameter("occlusion_enabled", true)
+	_light_mat.set_shader_parameter("obstructor_count", 0)
+	_light_mat.set_shader_parameter("occlusion_enabled", false)
 
 func _toggle_window(win: TextureRect, open_ref: bool, on_pos: Vector2, off_pos: Vector2) -> bool:
 	var tw := create_tween()
