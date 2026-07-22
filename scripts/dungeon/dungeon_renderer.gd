@@ -17,6 +17,8 @@ var _wall_zbuf: Array[float] = []
 var entities_on_map: Array = []
 var _wall_tex: Texture2D = load("res://assets/textures/wall/default.png")
 var _floor_tex: Texture2D = load("res://assets/textures/floor/default.png")
+var _ceiling_enabled: bool = false
+var _ceiling_tex: Texture2D
 var fog_distance: float = 7.0
 var fog_fade: float = 2.5
 var fog_color: Color = Color(0.08, 0.08, 0.08)
@@ -54,6 +56,11 @@ func set_floor_texture(tid: String):
 	if t:
 		_floor_tex = t
 		if _floor_mat: _floor_mat.set_shader_parameter("floor_tex", _floor_tex)
+
+func set_ceiling(tid: String):
+	_ceiling_enabled = not tid.is_empty()
+	if _ceiling_enabled:
+		_ceiling_tex = _load_tex(tid)
 
 func apply_tileset(ts: Resource):
 	if not ts: return

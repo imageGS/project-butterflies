@@ -7,6 +7,8 @@ extends Resource
 @export var spawn_dir: int = 2
 @export var outer_ring: bool = true
 @export var fog_distance: float = 7.0
+@export var ceiling_enabled: bool = false
+@export var ceiling_texture: String = ""
 @export var tileset: StationTileset
 @export var exits: Array[ExitData] = []
 @export var entity_spawns: Array[EntitySpawn] = []

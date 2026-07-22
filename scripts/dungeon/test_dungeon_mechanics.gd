@@ -171,6 +171,8 @@ func _load_station():
 
 	_build_from_station_data()
 	if _renderer:
+		if station_data.ceiling_enabled and not station_data.ceiling_texture.is_empty():
+			_renderer.set_ceiling(station_data.ceiling_texture)
 		var meta := MapMeta.new()
 		meta.load_from_json(station_data.map_file.get_basename() + ".meta.json")
 		_renderer.wall_decors = meta.cells
