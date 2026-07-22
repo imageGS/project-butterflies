@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="StationData" format=3 uid="uid://bvb3igm0wil2y"]
+[gd_resource type="Resource" script_class="StationData" format=3 uid="uid://bc68wmstianrp"]
 
 [ext_resource type="Script" uid="uid://csdjjp2doowrq" path="res://scripts/resources/station_data.gd" id="1"]
 [ext_resource type="Script" uid="uid://dfcaawdjgi8lu" path="res://scripts/resources/exit_data.gd" id="2"]
@@ -18,5 +18,6 @@ station_name = "Акио"
 map_file = "res://resources/stations/maps/akio.txt"
 spawn = Vector2i(11, 1)
 fog_distance = 10.0
+ceiling_enabled = true
 tileset = ExtResource("4_7p7cb")
 exits = Array[ExtResource("2")]([SubResource("ExitData_1")])

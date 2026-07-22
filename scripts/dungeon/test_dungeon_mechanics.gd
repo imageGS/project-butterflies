@@ -107,7 +107,7 @@ var _dl_off_pos: Vector2
 	set(v): light_dither = v; _apply_light_settings()
 @export var light_pixel_size: float = 2.0:
 	set(v): light_pixel_size = v; _apply_light_settings()
-@export var light_glow_amount: float = 0.1:
+@export var light_glow_amount: float = 0.0:
 	set(v): light_glow_amount = v; _apply_light_settings()
 @export var light_softness: float = 0.3:
 	set(v): light_softness = v; _apply_light_settings()
@@ -909,9 +909,8 @@ func _setup_lighting():
 	cr.set_anchors_preset(Control.PRESET_FULL_RECT)
 	cr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cr.material = mat
-	cr.z_index = 4
 	$CRT_Root/GameViewport.add_child(cr)
-	$CRT_Root/GameViewport.move_child(cr, 0)
+	$CRT_Root/GameViewport.move_child(cr, 1)
 	
 	var pl: Node2D = load("res://scripts/player_light.gd").new() as Node2D
 	pl.name = "PlayerLight"

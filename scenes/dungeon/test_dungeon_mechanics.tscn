@@ -13,7 +13,7 @@
 [ext_resource type="Script" uid="uid://bobjk5jnoroeq" path="res://scripts/ui/minimap_control.gd" id="13_hud"]
 [ext_resource type="Texture2D" uid="uid://c45he1iujo4ea" path="res://assets/UI/DIALOGUE_BOX.png" id="14_dlg"]
 [ext_resource type="Texture2D" uid="uid://bw2dbgvpjdox5" path="res://assets/UI/DIALOGUE_PORTRAIT_WINDOW.png" id="15_dlg"]
-[ext_resource type="Resource" uid="uid://be16asidt2g26" path="res://resources/stations/akio.tres" id="16_stn"]
+[ext_resource type="Resource" uid="uid://bvb3igm0wil2y" path="res://resources/stations/akio.tres" id="16_stn"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
 viewport_path = NodePath("CRT_Root/GameViewport")
