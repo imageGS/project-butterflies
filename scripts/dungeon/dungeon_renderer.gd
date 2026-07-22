@@ -51,6 +51,17 @@ func _load_tex(tid: String) -> Texture2D:
 				if t: _tex_cache[tid] = t; return t
 	return null
 
+func get_wall_cell_at_strip(strip: int) -> Vector2i:
+	if strip < 0 or strip >= _wall_zbuf.size(): return Vector2i(-1, -1)
+	var perp: float = _wall_zbuf[strip]
+	if perp >= fog_distance: return Vector2i(-1, -1)
+	# Recast to get cell position
+	var fov: float = deg_to_rad(90.0)
+	var num_strips: int = _wall_zbuf.size()
+	var angle: float = player_angle - fov * 0.5 + (strip / float(num_strips)) * fov
+	var result: Dictionary = _cast_ray(cam_x, cam_y, angle)
+	return Vector2i(result.get("mx", -1), result.get("my", -1))
+
 func set_floor_texture(tid: String):
 	var t := _load_tex(tid)
 	if t:

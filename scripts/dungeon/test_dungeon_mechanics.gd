@@ -123,6 +123,9 @@ var _dl_off_pos: Vector2
 var _light_mat: ShaderMaterial
 var _player_light_node: Node2D
 var _flashlight_on: bool = true
+var _mouse_pos: Vector2 = Vector2.ZERO
+var _hovered_entity: Dictionary = {}
+var _hovered_wall: Vector2i = Vector2i(-1, -1)
 
 func _apply_light_settings():
 	if not _light_mat: return
@@ -140,6 +143,7 @@ func _apply_player_light():
 	_player_light_node.color = player_light_color
 
 func _ready():
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	_load_station()
 	_setup_entities()
 	_current_angle = DIR_ANGLES[_player_dir]
@@ -940,6 +944,44 @@ func _update_lighting():
 	_light_mat.set_shader_parameter("obstructor_count", 0)
 	_light_mat.set_shader_parameter("occlusion_enabled", false)
 
+func _update_mouse_hover():
+	if not _renderer: return
+	_hovered_entity = {}
+	_hovered_wall = Vector2i(-1, -1)
+	
+	var vp := $CRT_Root/GameViewport
+	if not vp: return
+	var mp := vp.get_mouse_position()
+	if mp.x < 0 or mp.y < 0: return
+	
+	var strip_w: int = _renderer.get("_strip_w")
+	var i: int = int(mp.x / strip_w)
+	var zbuf: Array = _renderer.get("_wall_zbuf")
+	if zbuf and i >= 0 and i < zbuf.size():
+		var perp: float = zbuf[i]
+		if perp < _renderer.fog_distance:
+			if _renderer.has_method("get_wall_cell_at_strip"):
+				_hovered_wall = _renderer.get_wall_cell_at_strip(i)
+
+func _input(event: InputEvent):
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if _hovered_wall.x >= 0:
+				_try_interact_wall(_hovered_wall.x, _hovered_wall.y)
+				return
+			for ent: Dictionary in _entities:
+				var fx: int = roundi(_player_x)
+				var fy: int = roundi(_player_y)
+				var vec: Vector2i = DIR_VECTORS[_player_dir]
+				if ent.grid_x == fx + vec.x and ent.grid_y == fy + vec.y:
+					if ent.type == "npc" and ent.has("dialogue"):
+						_start_dialogue(ent.dialogue as Array, ent.get("name", "Незнакомец"))
+					elif ent.type == "object":
+						_interact_object(ent)
+					elif ent.type == "enemy":
+						TransitionManager.change_scene("res://scenes/battle/node.tscn")
+					return
+
 func _toggle_window(win: TextureRect, open_ref: bool, on_pos: Vector2, off_pos: Vector2) -> bool:
 	var tw := create_tween()
 	if open_ref:
@@ -1033,6 +1075,7 @@ func _start_rotate(old_dir: int):
 
 func _process(delta):
 	_update_lighting()
+	_update_mouse_hover()
 	_awareness_timer -= delta
 	if _awareness_timer <= 0.0:
 		_awareness_timer = _awareness_interval + randf_range(-2.0, 2.0)
