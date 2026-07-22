@@ -1,96 +1,28 @@
 {
 	"cells": {
-		"10,3": {
-			"rotation": 0,
-			"texture": "wall/window.png"
-		},
-		"10,4": {
+		"2,1": {
 			"rotation": 0,
 			"texture": "wall/default.png"
 		},
-		"10,5": {
-			"rotation": 0,
-			"texture": "floor/train.png"
-		},
-		"11,3": {
+		"2,2": {
 			"rotation": 0,
 			"texture": "wall/window.png"
 		},
-		"11,4": {
+		"3,1": {
 			"rotation": 0,
 			"texture": "wall/default.png"
 		},
-		"11,6": {
-			"rotation": 0,
-			"texture": "floor/train.png"
-		},
-		"12,3": {
+		"3,2": {
 			"rotation": 0,
 			"texture": "wall/window.png"
 		},
-		"12,4": {
+		"4,1": {
 			"rotation": 0,
 			"texture": "wall/default.png"
 		},
-		"12,5": {
-			"rotation": 0,
-			"texture": "wall/default.png"
-		},
-		"12,6": {
-			"rotation": 0,
-			"texture": "floor/train.png"
-		},
-		"13,3": {
+		"4,2": {
 			"rotation": 0,
 			"texture": "wall/window.png"
-		},
-		"13,4": {
-			"rotation": 0,
-			"texture": "wall/default.png"
-		},
-		"13,5": {
-			"rotation": 0,
-			"texture": "wall/default.png"
-		},
-		"13,6": {
-			"rotation": 0,
-			"texture": "floor/train.png"
-		},
-		"14,3": {
-			"rotation": 0,
-			"texture": "wall/window.png"
-		},
-		"14,4": {
-			"rotation": 0,
-			"texture": "wall/window.png"
-		},
-		"14,5": {
-			"rotation": 0,
-			"texture": "wall/window.png"
-		},
-		"14,6": {
-			"rotation": 0,
-			"texture": "floor/train.png"
-		},
-		"8,3": {
-			"rotation": 0,
-			"texture": "floor/default.png"
-		},
-		"8,5": {
-			"rotation": 0,
-			"texture": "floor/train.png"
-		},
-		"9,3": {
-			"rotation": 0,
-			"texture": "wall/window.png"
-		},
-		"9,4": {
-			"rotation": 0,
-			"texture": "wall/default.png"
-		},
-		"9,5": {
-			"rotation": 0,
-			"texture": "floor/train.png"
 		}
 	},
 	"version": 1

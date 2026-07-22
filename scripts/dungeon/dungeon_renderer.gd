@@ -22,6 +22,7 @@ var fog_fade: float = 2.5
 var fog_color: Color = Color(0.08, 0.08, 0.08)
 var wall_decors: Dictionary = {}
 var _tex_cache: Dictionary = {}
+var _alpha_cache: Dictionary = {}
 
 func _cell_tex(x: int, y: int, is_wall: bool) -> Texture2D:
 	var key := "%d,%d" % [x, y]
@@ -128,11 +129,15 @@ func _update_floor_shader():
 
 func _texture_has_alpha(tex: Texture2D) -> bool:
 	if not tex: return false
+	var rid := tex.get_rid().get_id()
+	if _alpha_cache.has(rid): return _alpha_cache[rid]
 	var img := tex.get_image()
-	if not img or img.is_empty(): return false
+	if not img or img.is_empty():
+		_alpha_cache[rid] = false; return false
 	for x in img.get_width():
-		if img.get_pixel(x, 0).a < 0.99: return true
-	return false
+		if img.get_pixel(x, 0).a < 0.99:
+			_alpha_cache[rid] = true; return true
+	_alpha_cache[rid] = false; return false
 
 func _get_decal_tex(id: String) -> Texture2D:
 	return _load_tex("decal/" + id)
