@@ -1,28 +1,31 @@
 {
 	"cells": {
-		"3,1": {
-			"rotation": 0,
-			"texture": "wall/default.png"
-		},
-		"3,2": {
-			"rotation": 0,
-			"texture": "wall/window.png"
-		},
-		"4,1": {
-			"rotation": 0,
-			"texture": "wall/default.png"
-		},
-		"4,2": {
-			"rotation": 0,
-			"texture": "wall/window.png"
-		},
 		"5,1": {
 			"rotation": 0,
-			"texture": "wall/default.png"
+			"texture": "floor/default.png"
 		},
 		"5,2": {
 			"rotation": 0,
 			"texture": "wall/window.png"
+		},
+		"6,1": {
+			"rotation": 0,
+			"texture": "floor/default.png"
+		},
+		"6,2": {
+			"rotation": 0,
+			"texture": "wall/window.png"
+		},
+		"7,1": {
+			"rotation": 0,
+			"texture": "floor/default.png"
+		},
+		"7,2": {
+			"rotation": 0,
+			"texture": "wall/window.png"
+		},
+		"_floor_": {
+			"texture": "floor/train.png"
 		}
 	},
 	"version": 1

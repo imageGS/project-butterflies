@@ -293,9 +293,12 @@ func _setup_ui():
 
 	# Texture browser
 	var tex_label := Label.new(); tex_label.text = "Wall Textures"; tex_label.add_theme_font_size_override("font_size", 13); right_panel.add_child(tex_label)
+	var tex_scroll := ScrollContainer.new()
+	tex_scroll.custom_minimum_size = Vector2(0, 120)
+	right_panel.add_child(tex_scroll)
 	_tex_browser = GridContainer.new()
-	_tex_browser.columns = 2
-	right_panel.add_child(_tex_browser)
+	_tex_browser.columns = 3
+	tex_scroll.add_child(_tex_browser)
 	_current_tex_label = Label.new(); _current_tex_label.text = "None selected"; right_panel.add_child(_current_tex_label)
 	_refresh_texture_browser()
 
@@ -540,12 +543,12 @@ func _refresh_texture_browser():
 	for tn in textures:
 		var btn := Button.new()
 		btn.tooltip_text = tn
-		btn.custom_minimum_size = Vector2(56, 56)
+		btn.custom_minimum_size = Vector2(36, 36)
 		var tex := load("res://assets/textures/" + folder + "/" + tn) as Texture2D
 		var img := TextureRect.new()
 		if tex: img.texture = tex
 		img.stretch_mode = TextureRect.STRETCH_SCALE
-		img.custom_minimum_size = Vector2(48, 48)
+		img.custom_minimum_size = Vector2(30, 30)
 		img.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		btn.add_child(img)
 		var sel_path := folder + "/" + tn
