@@ -951,7 +951,7 @@ func _update_mouse_hover():
 	
 	var vp := $CRT_Root/GameViewport
 	if not vp: return
-	var mp := vp.get_mouse_position()
+	var mp: Vector2 = vp.get_mouse_position()
 	if mp.x < 0 or mp.y < 0: return
 	
 	var strip_w: int = _renderer.get("_strip_w")
@@ -1050,14 +1050,6 @@ func _start_move(tx: int, ty: int):
 	_anim_to_y = float(ty)
 	_anim_from_angle = _current_angle
 	_anim_to_angle = _current_angle
-	if station_data and station_data.tileset:
-		var tile_val: int = _map_data[ty][tx] if ty < _map_data.size() and tx < _map_data[ty].size() else 0
-		var ts := station_data.tileset as StationTileset
-		if ts:
-			var snd := ts.get_step_sound_for_tile(tile_val) as AudioStream
-			if snd:
-				_footstep_player.stream = snd
-				_footstep_player.play()
 	_shake_hud()
 	set_process(true)
 
@@ -1292,6 +1284,21 @@ func _enemy_step_to(ent: Dictionary, nx: int, ny: int, facing: int):
 	ent.facing = facing
 	ent.move_progress = 0.0
 	_play_enemy_step(ent)
+
+func _try_interact_wall(tx: int, ty: int):
+	if not _renderer: return
+	var wd: Dictionary = _renderer.wall_decors
+	var key := "%d,%d" % [tx, ty]
+	if wd.has(key):
+		var cell: Dictionary = wd[key]
+		var tid: String = cell.get("texture", "")
+		var msg := "Стена"
+		if not tid.is_empty(): msg += ": " + tid
+		var decals: Array = cell.get("decals", [])
+		if not decals.is_empty(): msg += ", декалей: %d" % decals.size()
+		_show_tip(msg)
+	else:
+		_show_tip("Глухая стена.")
 
 func _show_tip(msg: String):
 	if not _dialogue_active and _awareness_label:
