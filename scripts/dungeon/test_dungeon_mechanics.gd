@@ -945,15 +945,13 @@ func _update_lighting():
 		if zbuf and zbuf.size() > 0:
 			var o_pos := PackedVector2Array()
 			var o_rad := PackedFloat32Array()
-			var view_w: float = 1152.0
-			var half_h: float = 648.0 * 0.5
-			for i in range(0, zbuf.size(), 2):
+			for i in range(0, zbuf.size(), 1):
 				var perp: float = zbuf[i]
 				if perp >= _renderer.fog_distance: continue
 				var sx: float = float(i) * strip_w + strip_w * 0.5
-				var sr: float = half_h / max(perp, 0.5) * 0.3
-				if o_pos.size() < 24:
-					o_pos.append(Vector2(sx, half_h))
+				var sr: float = 648.0 / max(perp, 0.1) * 0.5
+				if o_pos.size() < 48:
+					o_pos.append(Vector2(sx, 324))
 					o_rad.append(sr)
 			_light_mat.set_shader_parameter("obstructor_count", o_pos.size())
 			_light_mat.set_shader_parameter("obstructor_positions", o_pos)
