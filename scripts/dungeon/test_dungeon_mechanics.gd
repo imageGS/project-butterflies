@@ -376,6 +376,56 @@ func _setup_entities():
 	if station_data:
 		for exit: ExitData in station_data.exits:
 			_entities.append({ "grid_x": exit.position.x, "grid_y": exit.position.y, "color": Color(1, 0.9, 0.2, 0.9), "type": "exit_marker" })
+	
+	_spawn_floor_clutter()
+
+func _spawn_floor_clutter():
+	var decals: Array[String] = ["garbage.png", "puddles.png", "crack.png"]
+	var weights: Array[float] = [0.25, 0.15, 0.60]
+	var sizes: Array[float] = [0.3, 0.4, 0.25]
+	var cache: Dictionary = {}
+	for dn in decals:
+		var t := load("res://assets/textures/decal/" + dn) as Texture2D
+		if t: cache[dn] = t
+	if cache.is_empty(): return
+	
+	var occupied: Dictionary = {}
+	for ent in _entities:
+		if ent.has("grid_x") and ent.has("grid_y"):
+			occupied["%d,%d" % [ent.grid_x, ent.grid_y]] = true
+	
+	var total := _map_data.size() * _map_data[0].size()
+	for _i in range(int(total * 0.1)):
+		var gx: int = randi() % _map_data[0].size()
+		var gy: int = randi() % _map_data.size()
+		if not _is_walkable(gx, gy): continue
+		if occupied.has("%d,%d" % [gx, gy]): continue
+		if _has_wall_neighbor(gx, gy): continue
+		
+		var r: float = randf()
+		var sum: float = 0.0
+		var idx: int = 0
+		for w in weights.size():
+			sum += weights[w]
+			if r <= sum: idx = w; break
+		
+		var tex: Texture2D = cache.get(decals[idx], null)
+		if not tex: continue
+		occupied["%d,%d" % [gx, gy]] = true
+		_entities.append({
+			"grid_x": gx, "grid_y": gy,
+			"texture": tex,
+			"type": "object", "object_type": "floor_decal",
+			"size": sizes[idx],
+		})
+
+func _has_wall_neighbor(gx: int, gy: int) -> bool:
+	for dy in [-1, 0, 1]:
+		for dx in [-1, 0, 1]:
+			var nx: int = gx + dx; var ny: int = gy + dy
+			if nx < 0 or ny < 0 or ny >= _map_data.size() or nx >= _map_data[0].size(): continue
+			if not _is_walkable(nx, ny): return true
+	return false
 
 func _create_entity_from_spawn(spawn: EntitySpawn) -> Dictionary:
 	match spawn.type:

@@ -34,7 +34,6 @@ shader_parameter/wobble_strength = 0.302000014345
 
 [node name="TestDungeon" type="Node" unique_id=1919637851]
 script = ExtResource("2_r7h3n")
-move_duration = 0.3
 station_data = ExtResource("16_stn")
 light_ambient = 0.0
 light_dither = 4.0
