@@ -394,7 +394,7 @@ func _spawn_floor_clutter():
 		if ent.has("grid_x") and ent.has("grid_y"):
 			occupied["%d,%d" % [ent.grid_x, ent.grid_y]] = true
 	
-	var total := _map_data.size() * _map_data[0].size()
+	var total: int = _map_data.size() * _map_data[0].size()
 	for _i in range(int(total * 0.1)):
 		var gx: int = randi() % _map_data[0].size()
 		var gy: int = randi() % _map_data.size()

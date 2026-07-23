@@ -291,11 +291,16 @@ func draw_entities(ci: CanvasItem):
 		var scx: int = int((_view_w / 2.0) * (1.0 + tx / ty))
 		if scx < -_view_w or scx >= _view_w * 2: continue
 		var scale_h: float = _view_h / (ty * 1.2)
+		var is_floor: bool = ent.get("object_type", "") == "floor_decal"
+		if is_floor:
+			var sz: float = ent.get("size", 0.3)
+			scale_h *= sz
 		var tex: Texture2D = _get_ent_texture(ent)
 		var spw: float = scale_h; var texw: float = 1.0; var texh: float = 1.0
 		if tex: texw = tex.get_width(); texh = tex.get_height(); spw = scale_h * texw / texh
 		var dx1: int = max(0, int(scx - spw * 0.5)); var dx2: int = min(_view_w, int(scx + spw * 0.5))
-		var feety: float = half_h + half_h / ty; var spy: float = feety - scale_h
+		var feety: float = half_h + half_h / ty
+		var spy: float = feety - (scale_h * 0.5 if is_floor else scale_h)
 		visible_entities.append({"depth":ty,"dist":dist,"dx1":dx1,"dx2":dx2,"spy":spy,"spw":spw,"sph":scale_h,"scx":scx,"tex":tex,"texw":texw,"texh":texh,"col":ent.get("color",Color.WHITE)})
 
 	var sorter: Callable = func(a: Dictionary, b: Dictionary): return a.depth > b.depth
