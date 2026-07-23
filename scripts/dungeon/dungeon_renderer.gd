@@ -278,15 +278,13 @@ var _visible_entities: Array = []
 func get_visible_entities() -> Array:
 	return _visible_entities
 
-func draw_entities(ci: CanvasItem):
-	if not ci: return
+func _project_entities():
+	_visible_entities.clear()
+	if entities_on_map.is_empty(): return
 	var half_h: float = _view_h / 2.0
-	var num_strips: int = int(float(_view_w) / _strip_w)
 	var dir_x: float = cos(player_angle); var dir_y: float = sin(player_angle)
 	var plane_x: float = -dir_y; var plane_y: float = dir_x
 	var inv_det: float = 1.0 / (plane_x * dir_y - dir_x * plane_y)
-
-	var visible_positions: Array = []
 	for ent: Dictionary in entities_on_map:
 		var sx2: float = ent.grid_x + 0.5 - cam_x; var sy2: float = ent.grid_y + 0.5 - cam_y
 		var dist: float = sqrt(sx2 * sx2 + sy2 * sy2)
@@ -298,21 +296,23 @@ func draw_entities(ci: CanvasItem):
 		var scale_h: float = _view_h / (ty * 1.2)
 		var is_floor: bool = ent.get("object_type", "") == "floor_decal"
 		if is_floor:
-			var sz: float = ent.get("size", 0.15)
-			scale_h *= sz
+			scale_h *= ent.get("size", 0.15)
+		elif ent.has("size"):
+			scale_h *= ent.get("size", 1.0)
 		var tex: Texture2D = _get_ent_texture(ent)
 		var spw: float = scale_h; var texw: float = 1.0; var texh: float = 1.0
 		if tex: texw = tex.get_width(); texh = tex.get_height(); spw = scale_h * texw / texh
 		var dx1: int = max(0, int(scx - spw * 0.5)); var dx2: int = min(_view_w, int(scx + spw * 0.5))
 		var feety: float = half_h + half_h / ty
 		var spy: float = feety - (scale_h * 0.5 if is_floor else scale_h)
-		visible_positions.append({"ent":ent,"depth":ty,"dist":dist,"dx1":dx1,"dx2":dx2,"spy":spy,"spw":spw,"sph":scale_h,"scx":scx,"tex":tex,"texw":texw,"texh":texh,"col":ent.get("color",Color.WHITE)})
-
+		_visible_entities.append({"ent":ent,"depth":ty,"dist":dist,"dx1":dx1,"dx2":dx2,"spy":spy,"spw":spw,"sph":scale_h,"scx":scx,"tex":tex,"texw":texw,"texh":texh,"col":ent.get("color",Color.WHITE)})
 	var sorter: Callable = func(a: Dictionary, b: Dictionary): return a.depth > b.depth
-	visible_positions.sort_custom(sorter)
-	_visible_entities = visible_positions
+	_visible_entities.sort_custom(sorter)
 
-	for ve in visible_positions:
+func draw_entities(ci: CanvasItem):
+	if not ci: return
+	var num_strips: int = int(float(_view_w) / _strip_w)
+	for ve in _visible_entities:
 		var ss: int = int(ve.dx1 / _strip_w); var se: int = int((ve.dx2 + _strip_w - 1) / _strip_w)
 		var fog_blend: float = clamp((ve.dist - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
 		var fog_mod: Color = Color.WHITE.lerp(fog_color, fog_blend); fog_mod.a = 1.0
@@ -362,6 +362,7 @@ func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array
 	_update_floor_shader()
 	if _map_w != map_data[0].size() or _map_h != map_data.size() or not _map_tex:
 		_fill_map_tex()
+	_project_entities()
 	_fill_zbuf()
 	if _wall_ctrl:
 		_wall_ctrl.queue_redraw()

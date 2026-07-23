@@ -373,7 +373,7 @@ func _setup_entities():
 			"data": { "name": "ТВ", "description": "Работает. Помехи, потом голос: «...проход открыт в западном крыле». И снова помехи." }})
 		var medkit_tex := load("res://sprites/entity/medkit.png") as Texture2D
 		_entities.append({ "grid_x": 7, "grid_y": 10, "texture": medkit_tex, "type": "object", "object_type": "container",
-			"data": { "name": "Аптечка", "loot": ["Медикаменты"] }})
+			"data": { "name": "Аптечка", "loot": ["Медикаменты"] }, "size": 0.2})
 	else:
 		_setup_fallback_entities()
 
@@ -1178,8 +1178,6 @@ func _start_rotate(old_dir: int):
 
 func _process(delta):
 	_update_lighting()
-	_update_mouse_hover()
-	_update_tooltip()
 	_awareness_timer -= delta
 	if _awareness_timer <= 0.0:
 		_awareness_timer = _awareness_interval + randf_range(-2.0, 2.0)
@@ -1190,6 +1188,8 @@ func _process(delta):
 
 	if not _is_animating:
 		_process_held_input(delta)
+		_update_mouse_hover()
+		_update_tooltip()
 		return
 	_anim_timer += delta
 	var dur: float = turn_duration if _anim_from_angle != _anim_to_angle and _anim_from_x == _anim_to_x else move_duration
@@ -1199,6 +1199,10 @@ func _process(delta):
 	_player_y = lerp(_anim_from_y, _anim_to_y, t)
 	_current_angle = lerp_angle(_anim_from_angle, _anim_to_angle, t)
 	_refresh()
+	_update_mouse_hover()
+	_update_tooltip()
+	if _anim_timer >= dur:
+		_on_move_complete()
 	if t >= 1.0:
 		_is_animating = false
 		_check_entity()
