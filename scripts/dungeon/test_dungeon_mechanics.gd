@@ -1004,29 +1004,14 @@ func _update_mouse_hover():
 	_hovered_entity = {}
 	_hovered_wall = Vector2i(-1, -1)
 	
-	var vp := $CRT_Root/GameViewport
-	if not vp: return
-	var mp: Vector2 = vp.get_mouse_position()
-	if mp.x < 0 or mp.y < 0: return
-	
-	# Check visible entities
-	var vis: Array = _renderer.get_visible_entities()
-	for ve: Dictionary in vis:
-		var ex1: float = ve.get("dx1", 0)
-		var ex2: float = ve.get("dx2", 0)
-		var ey1: float = ve.get("spy", 0)
-		var ey2: float = ey1 + ve.get("sph", 0)
-		if mp.x >= ex1 and mp.x <= ex2 and mp.y >= ey1 and mp.y <= ey2:
-			_hovered_entity = ve
-	
-	# Check wall cells via z-buffer
-	var strip_w: int = _renderer.get("_strip_w")
-	var i: int = int(mp.x / strip_w)
-	var zbuf: Array = _renderer.get("_wall_zbuf")
-	if zbuf and i >= 0 and i < zbuf.size():
-		var perp: float = zbuf[i]
-		if perp < _renderer.fog_distance:
-			_hovered_wall = _renderer.get_wall_cell_at_strip(i)
+	# Check front-facing entity (keyboard-style, always works)
+	var vec: Vector2i = DIR_VECTORS[_player_dir]
+	var fx: int = roundi(_player_x) + vec.x
+	var fy: int = roundi(_player_y) + vec.y
+	for ent: Dictionary in _entities:
+		if ent.grid_x == fx and ent.grid_y == fy:
+			_hovered_entity = {"ent": ent}
+			return
 
 func _setup_tooltip():
 	_tooltip_label = Label.new()
@@ -1036,27 +1021,11 @@ func _setup_tooltip():
 	$CRT_Root/GameViewport.add_child(_tooltip_label)
 
 func _update_tooltip():
-	var vp := $CRT_Root/GameViewport
-	if not vp: return
-	var mp: Vector2 = vp.get_mouse_position()
-	
+	if not _tooltip_label: return
 	if not _hovered_entity.is_empty():
 		var ent: Dictionary = _hovered_entity.get("ent", {})
-		var ent_type: String = ent.get("type", "")
-		var name: String = ""
-		match ent_type:
-			"enemy": name = ent.get("name", "Враг")
-			"npc": name = ent.get("name", "Незнакомец")
-			"object":
-				var data: Dictionary = ent.get("data", {})
-				name = data.get("name", "Объект")
-			"exit_marker": name = "Выход"
-		_tooltip_label.text = name
-		_tooltip_label.position = mp + Vector2(16, -20)
-		_tooltip_label.visible = true
-	elif _hovered_wall.x >= 0:
-		_tooltip_label.text = "Стена"
-		_tooltip_label.position = mp + Vector2(16, -20)
+		var data: Dictionary = ent.get("data", {})
+		_tooltip_label.text = data.get("name", "???")
 		_tooltip_label.visible = true
 	else:
 		_tooltip_label.visible = false
@@ -1201,8 +1170,6 @@ func _process(delta):
 	_refresh()
 	_update_mouse_hover()
 	_update_tooltip()
-	if _anim_timer >= dur:
-		_on_move_complete()
 	if t >= 1.0:
 		_is_animating = false
 		_check_entity()
