@@ -273,6 +273,11 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	wall_x -= floor(wall_x)
 	return {"hit":true,"distance":perp,"fog":false,"side":side,"wall_x":wall_x,"rdx":dir.x,"rdy":dir.y,"mx":map_x,"my":map_y}
 
+var _visible_entities: Array = []
+
+func get_visible_entities() -> Array:
+	return _visible_entities
+
 func draw_entities(ci: CanvasItem):
 	if not ci: return
 	var half_h: float = _view_h / 2.0
@@ -281,7 +286,7 @@ func draw_entities(ci: CanvasItem):
 	var plane_x: float = -dir_y; var plane_y: float = dir_x
 	var inv_det: float = 1.0 / (plane_x * dir_y - dir_x * plane_y)
 
-	var visible_entities: Array[Dictionary] = []
+	var visible_positions: Array = []
 	for ent: Dictionary in entities_on_map:
 		var sx2: float = ent.grid_x + 0.5 - cam_x; var sy2: float = ent.grid_y + 0.5 - cam_y
 		var dist: float = sqrt(sx2 * sx2 + sy2 * sy2)
@@ -301,12 +306,13 @@ func draw_entities(ci: CanvasItem):
 		var dx1: int = max(0, int(scx - spw * 0.5)); var dx2: int = min(_view_w, int(scx + spw * 0.5))
 		var feety: float = half_h + half_h / ty
 		var spy: float = feety - (scale_h * 0.5 if is_floor else scale_h)
-		visible_entities.append({"depth":ty,"dist":dist,"dx1":dx1,"dx2":dx2,"spy":spy,"spw":spw,"sph":scale_h,"scx":scx,"tex":tex,"texw":texw,"texh":texh,"col":ent.get("color",Color.WHITE)})
+		visible_positions.append({"ent":ent,"depth":ty,"dist":dist,"dx1":dx1,"dx2":dx2,"spy":spy,"spw":spw,"sph":scale_h,"scx":scx,"tex":tex,"texw":texw,"texh":texh,"col":ent.get("color",Color.WHITE)})
 
 	var sorter: Callable = func(a: Dictionary, b: Dictionary): return a.depth > b.depth
-	visible_entities.sort_custom(sorter)
+	visible_positions.sort_custom(sorter)
+	_visible_entities = visible_positions
 
-	for ve in visible_entities:
+	for ve in visible_positions:
 		var ss: int = int(ve.dx1 / _strip_w); var se: int = int((ve.dx2 + _strip_w - 1) / _strip_w)
 		var fog_blend: float = clamp((ve.dist - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
 		var fog_mod: Color = Color.WHITE.lerp(fog_color, fog_blend); fog_mod.a = 1.0

@@ -126,6 +126,7 @@ var _flashlight_on: bool = true
 var _mouse_pos: Vector2 = Vector2.ZERO
 var _hovered_entity: Dictionary = {}
 var _hovered_wall: Vector2i = Vector2i(-1, -1)
+var _tooltip_label: Label
 
 func _apply_light_settings():
 	if not _light_mat: return
@@ -144,6 +145,7 @@ func _apply_player_light():
 
 func _ready():
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	_setup_tooltip()
 	_load_station()
 	_setup_entities()
 	_current_angle = DIR_ANGLES[_player_dir]
@@ -369,6 +371,9 @@ func _setup_entities():
 			"data": { "name": "кровать", "description": "Старая кровать." }})
 		_entities.append({ "grid_x": 10, "grid_y": 10, "color": Color(0.4, 0.8, 0.4), "type": "object", "object_type": "lore",
 			"data": { "name": "ТВ", "description": "Работает. Помехи, потом голос: «...проход открыт в западном крыле». И снова помехи." }})
+		var medkit_tex := load("res://sprites/entity/medkit.png") as Texture2D
+		_entities.append({ "grid_x": 7, "grid_y": 10, "texture": medkit_tex, "type": "object", "object_type": "container",
+			"data": { "name": "Аптечка", "loot": ["Медикаменты"] }})
 	else:
 		_setup_fallback_entities()
 
@@ -1004,18 +1009,71 @@ func _update_mouse_hover():
 	var mp: Vector2 = vp.get_mouse_position()
 	if mp.x < 0 or mp.y < 0: return
 	
+	# Check visible entities
+	var vis: Array = _renderer.get_visible_entities()
+	for ve: Dictionary in vis:
+		var ex1: float = ve.get("dx1", 0)
+		var ex2: float = ve.get("dx2", 0)
+		var ey1: float = ve.get("spy", 0)
+		var ey2: float = ey1 + ve.get("sph", 0)
+		if mp.x >= ex1 and mp.x <= ex2 and mp.y >= ey1 and mp.y <= ey2:
+			_hovered_entity = ve
+	
+	# Check wall cells via z-buffer
 	var strip_w: int = _renderer.get("_strip_w")
 	var i: int = int(mp.x / strip_w)
 	var zbuf: Array = _renderer.get("_wall_zbuf")
 	if zbuf and i >= 0 and i < zbuf.size():
 		var perp: float = zbuf[i]
 		if perp < _renderer.fog_distance:
-			if _renderer.has_method("get_wall_cell_at_strip"):
-				_hovered_wall = _renderer.get_wall_cell_at_strip(i)
+			_hovered_wall = _renderer.get_wall_cell_at_strip(i)
+
+func _setup_tooltip():
+	_tooltip_label = Label.new()
+	_tooltip_label.add_theme_color_override("font_color", Color(1, 0.95, 0.7))
+	_tooltip_label.add_theme_font_size_override("font_size", 14)
+	_tooltip_label.visible = false
+	$CRT_Root/GameViewport.add_child(_tooltip_label)
+
+func _update_tooltip():
+	var vp := $CRT_Root/GameViewport
+	if not vp: return
+	var mp: Vector2 = vp.get_mouse_position()
+	
+	if not _hovered_entity.is_empty():
+		var ent: Dictionary = _hovered_entity.get("ent", {})
+		var ent_type: String = ent.get("type", "")
+		var name: String = ""
+		match ent_type:
+			"enemy": name = ent.get("name", "Враг")
+			"npc": name = ent.get("name", "Незнакомец")
+			"object":
+				var data: Dictionary = ent.get("data", {})
+				name = data.get("name", "Объект")
+			"exit_marker": name = "Выход"
+		_tooltip_label.text = name
+		_tooltip_label.position = mp + Vector2(16, -20)
+		_tooltip_label.visible = true
+	elif _hovered_wall.x >= 0:
+		_tooltip_label.text = "Стена"
+		_tooltip_label.position = mp + Vector2(16, -20)
+		_tooltip_label.visible = true
+	else:
+		_tooltip_label.visible = false
 
 func _input(event: InputEvent):
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
+			if not _hovered_entity.is_empty():
+				var ent: Dictionary = _hovered_entity.get("ent", {})
+				var etype: String = ent.get("type", "")
+				if etype == "npc" and ent.has("dialogue"):
+					_start_dialogue(ent.dialogue as Array, ent.get("name", "Незнакомец"))
+				elif etype == "enemy":
+					TransitionManager.change_scene("res://scenes/battle/node.tscn")
+				elif etype == "object":
+					_interact_object(ent)
+				return
 			if _hovered_wall.x >= 0:
 				_try_interact_wall(_hovered_wall.x, _hovered_wall.y)
 				return
@@ -1121,6 +1179,7 @@ func _start_rotate(old_dir: int):
 func _process(delta):
 	_update_lighting()
 	_update_mouse_hover()
+	_update_tooltip()
 	_awareness_timer -= delta
 	if _awareness_timer <= 0.0:
 		_awareness_timer = _awareness_interval + randf_range(-2.0, 2.0)
