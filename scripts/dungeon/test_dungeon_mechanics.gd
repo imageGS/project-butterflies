@@ -1050,6 +1050,9 @@ func _start_move(tx: int, ty: int):
 	_anim_to_y = float(ty)
 	_anim_from_angle = _current_angle
 	_anim_to_angle = _current_angle
+	if not _footstep_sounds.is_empty():
+		_footstep_player.stream = _footstep_sounds[randi() % _footstep_sounds.size()]
+		_footstep_player.play()
 	_shake_hud()
 	set_process(true)
 
