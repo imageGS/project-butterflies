@@ -382,7 +382,7 @@ func _setup_entities():
 func _spawn_floor_clutter():
 	var decals: Array[String] = ["garbage.png", "puddles.png", "crack.png"]
 	var weights: Array[float] = [0.25, 0.15, 0.60]
-	var sizes: Array[float] = [0.1, 0.08, 0.06]
+	var sizes: Array[float] = [0.25, 0.3, 0.2]
 	var cache: Dictionary = {}
 	for dn in decals:
 		var t := load("res://assets/textures/decal/" + dn) as Texture2D

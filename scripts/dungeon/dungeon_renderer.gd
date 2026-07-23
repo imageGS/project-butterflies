@@ -293,8 +293,8 @@ func draw_entities(ci: CanvasItem):
 		var scale_h: float = _view_h / (ty * 1.2)
 		var is_floor: bool = ent.get("object_type", "") == "floor_decal"
 		if is_floor:
-			var sz: float = ent.get("size", 0.1)
-			scale_h *= sz * 0.5
+			var sz: float = ent.get("size", 0.15)
+			scale_h *= sz
 		var tex: Texture2D = _get_ent_texture(ent)
 		var spw: float = scale_h; var texw: float = 1.0; var texh: float = 1.0
 		if tex: texw = tex.get_width(); texh = tex.get_height(); spw = scale_h * texw / texh
