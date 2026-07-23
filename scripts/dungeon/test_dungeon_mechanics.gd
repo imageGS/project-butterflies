@@ -1015,17 +1015,19 @@ func _update_mouse_hover():
 
 func _setup_tooltip():
 	_tooltip_label = Label.new()
-	_tooltip_label.add_theme_color_override("font_color", Color(1, 0.95, 0.7))
+	_tooltip_label.add_theme_color_override("font_color", Color(1, 0.95, 0.7, 1))
 	_tooltip_label.add_theme_font_size_override("font_size", 14)
 	_tooltip_label.visible = false
-	$CRT_Root/GameViewport.add_child(_tooltip_label)
+	_tooltip_label.z_index = 10
+	_tooltip_label.position = Vector2(400, 300)
+	$CRT_Root/GameViewport/UI.add_child(_tooltip_label)
 
 func _update_tooltip():
 	if not _tooltip_label: return
 	if not _hovered_entity.is_empty():
 		var ent: Dictionary = _hovered_entity.get("ent", {})
 		var data: Dictionary = ent.get("data", {})
-		_tooltip_label.text = data.get("name", "???")
+		_tooltip_label.text = "[Click] " + data.get("name", "???")
 		_tooltip_label.visible = true
 	else:
 		_tooltip_label.visible = false
