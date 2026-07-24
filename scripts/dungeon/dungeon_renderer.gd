@@ -394,6 +394,9 @@ func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array
 	if _wall_ctrl:
 		_wall_ctrl.queue_redraw()
 
+func queue_redraw_walls():
+	if _wall_ctrl: _wall_ctrl.queue_redraw()
+
 func update_height(data: Array):
 	height_data = data
 	_fill_map_tex()
