@@ -26,6 +26,11 @@ var wall_decors: Dictionary = {}
 var _tex_cache: Dictionary = {}
 var _alpha_cache: Dictionary = {}
 var hovered_grid: Vector2i = Vector2i(-1, -1)
+var mouse_pos: Vector2 = Vector2.ZERO
+
+func _gui_input(event: InputEvent):
+	if event is InputEventMouse:
+		mouse_pos = event.global_position - global_position
 
 func _cell_tex(x: int, y: int, is_wall: bool) -> Texture2D:
 	var key := "%d,%d" % [x, y]
