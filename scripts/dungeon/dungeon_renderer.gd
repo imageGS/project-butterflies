@@ -349,7 +349,7 @@ func _project_entities():
 		var spy: float = feety - (scale_h * 0.5 if is_floor else scale_h)
 		var is_item: bool = ent.get("type", "") == "object" and ent.get("object_type", "") not in ["floor_decal", "rest", "lore"]
 		if is_item and not is_floor:
-			var proximity: float = clamp(1.0 - dist, 0.0, 1.0)
+			var proximity: float = clamp(2.0 - dist, 0.0, 2.0) / 2.0
 			if proximity > 0.01:
 				var lift: float = proximity * 120.0
 				var bob: float = sin(Time.get_ticks_msec() * 0.004) * 12.0 * proximity
