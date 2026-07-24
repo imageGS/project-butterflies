@@ -1021,14 +1021,11 @@ func _setup_tooltip():
 	$CRT_Root/GameViewport/UI.add_child(_tooltip_label)
 
 func _update_tooltip():
-	if not _tooltip_label: return
-	if not _hovered_entity.is_empty():
-		var ent: Dictionary = _hovered_entity.get("ent", {})
-		var data: Dictionary = ent.get("data", {})
-		_tooltip_label.text = "[Click] " + data.get("name", "???")
-		_tooltip_label.visible = true
-	else:
-		_tooltip_label.visible = false
+	if _hovered_entity.is_empty(): return
+	var ent: Dictionary = _hovered_entity.get("ent", {})
+	var data: Dictionary = ent.get("data", {})
+	_show_tip("[Click] " + data.get("name", "???"))
+	_hovered_entity = {}
 
 func _input(event: InputEvent):
 	if event is InputEventMouseButton and event.pressed:
