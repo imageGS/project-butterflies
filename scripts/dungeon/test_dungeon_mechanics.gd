@@ -1005,9 +1005,10 @@ func _update_mouse_hover():
 	_hovered_entity = {}
 	
 	# Mouse-based detection via visible entity positions
-	var mp: Vector2 = _renderer.get_local_mouse_position()
+	var mp_raw: Vector2 = _renderer.get_global_mouse_position()
+	var mp: Vector2 = (mp_raw - _renderer.global_position) * (Vector2(_renderer._view_w, _renderer._view_h) / _renderer.size)
 	var vis: Array = _renderer.get_visible_entities()
-	print("[HVR-MOUSE] mp=(%.0f,%.0f) view=%dx%d vis=%d" % [mp.x, mp.y, _renderer._view_w, _renderer._view_h, vis.size()])
+	if vis.size() > 0: print("[HVR-MOUSE] mp=(%.0f,%.0f) raw=(%.0f,%.0f) global=(%.0f,%.0f) size=%dx%d view=%dx%d" % [mp.x, mp.y, mp_raw.x, mp_raw.y, _renderer.global_position.x, _renderer.global_position.y, _renderer.size.x, _renderer.size.y, _renderer._view_w, _renderer._view_h])
 	for ve: Dictionary in vis:
 		var ex1: float = ve.get("dx1", 0.0)
 		var ex2: float = ve.get("dx2", 0.0)
