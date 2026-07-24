@@ -1011,6 +1011,7 @@ func _update_mouse_hover():
 		if ent.grid_x == fx and ent.grid_y == fy:
 			if ent.get("object_type", "") in ["floor_decal"]: continue
 			_hovered_entity = {"ent": ent}
+			print("[HOVER-FRONT] %s at %d,%d, player pos %d,%d dir %d" % [ent.get("data",{}).get("name","?"), fx, fy, roundi(_player_x), roundi(_player_y), _player_dir])
 			return
 	
 	# Fallback: current cell
@@ -1035,6 +1036,7 @@ func _update_tooltip():
 	if _hovered_entity.is_empty(): return
 	var ent: Dictionary = _hovered_entity.get("ent", {})
 	var data: Dictionary = ent.get("data", {})
+	print("[TOOLTIP] msg='[Click] %s' at grid=(%d,%d) player=(%.1f,%.1f)" % [data.get("name", "???"), ent.grid_x, ent.grid_y, roundi(_player_x), roundi(_player_y)])
 	_show_tip("[Click] " + data.get("name", "???"))
 	_hovered_entity = {}
 
@@ -1044,6 +1046,7 @@ func _check_click_interact():
 	var clicking: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	if clicking and not _was_clicking and not _hovered_entity.is_empty():
 		var ent: Dictionary = _hovered_entity.get("ent", {})
+		print("[CLICK] %s" % ent.get("data",{}).get("name","?"))
 		if ent.get("type", "") == "object":
 			_interact_object(ent)
 			_hovered_entity = {}
@@ -1052,21 +1055,6 @@ func _check_click_interact():
 		elif ent.get("type", "") == "enemy":
 			TransitionManager.change_scene("res://scenes/battle/node.tscn")
 	_was_clicking = clicking
-			if _hovered_wall.x >= 0:
-				_try_interact_wall(_hovered_wall.x, _hovered_wall.y)
-				return
-			for ent: Dictionary in _entities:
-				var fx: int = roundi(_player_x)
-				var fy: int = roundi(_player_y)
-				var vec: Vector2i = DIR_VECTORS[_player_dir]
-				if ent.grid_x == fx + vec.x and ent.grid_y == fy + vec.y:
-					if ent.type == "npc" and ent.has("dialogue"):
-						_start_dialogue(ent.dialogue as Array, ent.get("name", "Незнакомец"))
-					elif ent.type == "object":
-						_interact_object(ent)
-					elif ent.type == "enemy":
-						TransitionManager.change_scene("res://scenes/battle/node.tscn")
-					return
 
 func _toggle_window(win: TextureRect, open_ref: bool, on_pos: Vector2, off_pos: Vector2) -> bool:
 	var tw := create_tween()
