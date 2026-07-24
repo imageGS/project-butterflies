@@ -1004,12 +1004,20 @@ func _update_mouse_hover():
 	_hovered_entity = {}
 	_hovered_wall = Vector2i(-1, -1)
 	
-	# Check front-facing entity (keyboard-style, always works)
+	# Check front cell
 	var vec: Vector2i = DIR_VECTORS[_player_dir]
 	var fx: int = roundi(_player_x) + vec.x
 	var fy: int = roundi(_player_y) + vec.y
 	for ent: Dictionary in _entities:
 		if ent.grid_x == fx and ent.grid_y == fy:
+			_hovered_entity = {"ent": ent}
+			return
+	
+	# Also check current cell
+	var cx: int = roundi(_player_x)
+	var cy: int = roundi(_player_y)
+	for ent: Dictionary in _entities:
+		if ent.grid_x == cx and ent.grid_y == cy:
 			_hovered_entity = {"ent": ent}
 			return
 
