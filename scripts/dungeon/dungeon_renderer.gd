@@ -307,13 +307,11 @@ func _project_entities():
 		var spy: float = feety - (scale_h * 0.5 if is_floor else scale_h)
 		var is_item: bool = ent.get("type", "") == "object" and ent.get("object_type", "") not in ["floor_decal", "rest", "lore"]
 		if is_item and not is_floor:
-			var proximity: float = clamp(2.0 - dist, 0.0, 2.0) / 2.0
+			var proximity: float = clamp(3.0 - dist, 0.0, 3.0) / 3.0
 			if proximity > 0.01:
-				var lift: float = proximity * 40.0
-				var bob: float = sin(Time.get_ticks_msec() * 0.003) * 4.0 * proximity
+				var lift: float = proximity * 60.0
+				var bob: float = sin(Time.get_ticks_msec() * 0.003) * 6.0 * proximity
 				spy -= lift + bob
-				if proximity > 0.7:  # very close
-					pass
 		_visible_entities.append({"ent":ent,"depth":ty,"dist":dist,"dx1":dx1,"dx2":dx2,"spy":spy,"spw":spw,"sph":scale_h,"scx":scx,"tex":tex,"texw":texw,"texh":texh,"col":ent.get("color",Color.WHITE)})
 	var sorter: Callable = func(a: Dictionary, b: Dictionary): return a.depth > b.depth
 	_visible_entities.sort_custom(sorter)

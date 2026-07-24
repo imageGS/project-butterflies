@@ -1011,7 +1011,6 @@ func _update_mouse_hover():
 		if ent.grid_x == fx and ent.grid_y == fy:
 			if ent.get("object_type", "") in ["floor_decal"]: continue
 			_hovered_entity = {"ent": ent}
-			print("[HOVER-FRONT] %s at %d,%d, player pos %d,%d dir %d" % [ent.get("data",{}).get("name","?"), fx, fy, roundi(_player_x), roundi(_player_y), _player_dir])
 			return
 	
 	# Fallback: current cell
@@ -1025,20 +1024,25 @@ func _update_mouse_hover():
 
 func _setup_tooltip():
 	_tooltip_label = Label.new()
-	_tooltip_label.add_theme_color_override("font_color", Color(1, 0.95, 0.7, 1))
-	_tooltip_label.add_theme_font_size_override("font_size", 14)
+	_tooltip_label.add_theme_color_override("font_color", Color(1, 0.95, 0.4, 1))
+	_tooltip_label.add_theme_font_size_override("font_size", 18)
+	_tooltip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_tooltip_label.visible = false
-	_tooltip_label.z_index = 10
-	_tooltip_label.position = Vector2(400, 300)
+	_tooltip_label.z_index = 100
+	_tooltip_label.set_anchors_preset(Control.PRESET_CENTER)
+	_tooltip_label.position = Vector2(-100, 120)
+	_tooltip_label.size = Vector2(200, 30)
 	$CRT_Root/GameViewport/UI.add_child(_tooltip_label)
 
 func _update_tooltip():
-	if _hovered_entity.is_empty(): return
+	if not _tooltip_label: return
+	if _hovered_entity.is_empty():
+		_tooltip_label.visible = false
+		return
 	var ent: Dictionary = _hovered_entity.get("ent", {})
 	var data: Dictionary = ent.get("data", {})
-	print("[TOOLTIP] msg='[Click] %s' at grid=(%d,%d) player=(%.1f,%.1f)" % [data.get("name", "???"), ent.grid_x, ent.grid_y, roundi(_player_x), roundi(_player_y)])
-	_show_tip("[Click] " + data.get("name", "???"))
-	_hovered_entity = {}
+	_tooltip_label.text = "[Click] " + data.get("name", "???")
+	_tooltip_label.visible = true
 
 var _was_clicking: bool = false
 
@@ -1046,7 +1050,6 @@ func _check_click_interact():
 	var clicking: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	if clicking and not _was_clicking and not _hovered_entity.is_empty():
 		var ent: Dictionary = _hovered_entity.get("ent", {})
-		print("[CLICK] %s" % ent.get("data",{}).get("name","?"))
 		if ent.get("type", "") == "object":
 			_interact_object(ent)
 			_hovered_entity = {}
@@ -1154,6 +1157,7 @@ func _process(delta):
 
 	if not _is_animating:
 		_process_held_input(delta)
+		if _renderer: _renderer._project_entities()
 		_update_mouse_hover()
 		_update_tooltip()
 		_check_click_interact()
@@ -1166,6 +1170,7 @@ func _process(delta):
 	_player_y = lerp(_anim_from_y, _anim_to_y, t)
 	_current_angle = lerp_angle(_anim_from_angle, _anim_to_angle, t)
 	_refresh()
+	if _renderer: _renderer._project_entities()
 	_update_mouse_hover()
 	_update_tooltip()
 	_check_click_interact()
