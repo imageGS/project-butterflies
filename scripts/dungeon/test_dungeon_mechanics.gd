@@ -1003,6 +1003,17 @@ func _update_mouse_hover():
 	if not _renderer: return
 	_hovered_entity = {}
 	
+	# Check front cell first (preferred — item floats toward player)
+	var vec: Vector2i = DIR_VECTORS[_player_dir]
+	var fx: int = roundi(_player_x) + vec.x
+	var fy: int = roundi(_player_y) + vec.y
+	for ent: Dictionary in _entities:
+		if ent.grid_x == fx and ent.grid_y == fy:
+			if ent.get("object_type", "") in ["floor_decal"]: continue
+			_hovered_entity = {"ent": ent}
+			return
+	
+	# Fallback: current cell
 	var cx: int = roundi(_player_x)
 	var cy: int = roundi(_player_y)
 	for ent: Dictionary in _entities:
@@ -1024,23 +1035,23 @@ func _update_tooltip():
 	if _hovered_entity.is_empty(): return
 	var ent: Dictionary = _hovered_entity.get("ent", {})
 	var data: Dictionary = ent.get("data", {})
-	print("[TOOLTIP] ", data.get("name", "???"), " aware=", _awareness_label != null)
 	_show_tip("[Click] " + data.get("name", "???"))
 	_hovered_entity = {}
 
-func _input(event: InputEvent):
-	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			if not _hovered_entity.is_empty():
-				var ent: Dictionary = _hovered_entity.get("ent", {})
-				var etype: String = ent.get("type", "")
-				if etype == "npc" and ent.has("dialogue"):
-					_start_dialogue(ent.dialogue as Array, ent.get("name", "Незнакомец"))
-				elif etype == "enemy":
-					TransitionManager.change_scene("res://scenes/battle/node.tscn")
-				elif etype == "object":
-					_interact_object(ent)
-				return
+var _was_clicking: bool = false
+
+func _check_click_interact():
+	var clicking: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	if clicking and not _was_clicking and not _hovered_entity.is_empty():
+		var ent: Dictionary = _hovered_entity.get("ent", {})
+		if ent.get("type", "") == "object":
+			_interact_object(ent)
+			_hovered_entity = {}
+		elif ent.get("type", "") == "npc" and ent.has("dialogue"):
+			_start_dialogue(ent.dialogue as Array, ent.get("name", "Незнакомец"))
+		elif ent.get("type", "") == "enemy":
+			TransitionManager.change_scene("res://scenes/battle/node.tscn")
+	_was_clicking = clicking
 			if _hovered_wall.x >= 0:
 				_try_interact_wall(_hovered_wall.x, _hovered_wall.y)
 				return
@@ -1157,6 +1168,7 @@ func _process(delta):
 		_process_held_input(delta)
 		_update_mouse_hover()
 		_update_tooltip()
+		_check_click_interact()
 		return
 	_anim_timer += delta
 	var dur: float = turn_duration if _anim_from_angle != _anim_to_angle and _anim_from_x == _anim_to_x else move_duration
@@ -1168,6 +1180,7 @@ func _process(delta):
 	_refresh()
 	_update_mouse_hover()
 	_update_tooltip()
+	_check_click_interact()
 	if t >= 1.0:
 		_is_animating = false
 		_check_entity()
