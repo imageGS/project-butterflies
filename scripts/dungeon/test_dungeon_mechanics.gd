@@ -1004,23 +1004,28 @@ func _update_mouse_hover():
 	if not _renderer: return
 	_hovered_entity = {}
 	
-	# Check front cell first
+	# Mouse-based detection via visible entity positions
+	var vp := $CRT_Root/GameViewport
+	if vp:
+		var mp: Vector2 = vp.get_mouse_position()
+		var vis: Array = _renderer.get_visible_entities()
+		for ve: Dictionary in vis:
+			var ex1: float = ve.get("dx1", 0.0)
+			var ex2: float = ve.get("dx2", 0.0)
+			var ey1: float = ve.get("spy", 0.0)
+			var ey2: float = ey1 + ve.get("sph", 0.0)
+			if mp.x >= ex1 and mp.x <= ex2 and mp.y >= ey1 and mp.y <= ey2:
+				var ent: Dictionary = ve.get("ent", {})
+				if ent.get("object_type", "") in ["floor_decal"]: continue
+				_hovered_entity = {"ent": ent}
+				return
+	
+	# Fallback: keyboard front-cell check
 	var vec: Vector2i = DIR_VECTORS[_player_dir]
 	var fx: int = roundi(_player_x) + vec.x
 	var fy: int = roundi(_player_y) + vec.y
-	print("[HVR] player=%d,%d dir=%d front=%d,%d ents=%d" % [roundi(_player_x), roundi(_player_y), _player_dir, fx, fy, _entities.size()])
 	for ent: Dictionary in _entities:
 		if ent.grid_x == fx and ent.grid_y == fy:
-			if ent.get("object_type", "") in ["floor_decal"]: continue
-			_hovered_entity = {"ent": ent}
-			print("[HVR-HIT] %s at %d,%d" % [ent.get("data",{}).get("name","?"), ent.grid_x, ent.grid_y])
-			return
-	
-	# Fallback: current cell
-	var cx: int = roundi(_player_x)
-	var cy: int = roundi(_player_y)
-	for ent: Dictionary in _entities:
-		if ent.grid_x == cx and ent.grid_y == cy:
 			if ent.get("object_type", "") in ["floor_decal"]: continue
 			_hovered_entity = {"ent": ent}
 			return
@@ -1041,11 +1046,13 @@ func _update_tooltip():
 	if not _tooltip_label: return
 	if _hovered_entity.is_empty():
 		_tooltip_label.visible = false
+		if _renderer: _renderer.hovered_grid = Vector2i(-1, -1)
 		return
 	var ent: Dictionary = _hovered_entity.get("ent", {})
 	var data: Dictionary = ent.get("data", {})
 	_tooltip_label.text = "[Click] " + data.get("name", "???")
 	_tooltip_label.visible = true
+	if _renderer: _renderer.hovered_grid = Vector2i(ent.grid_x, ent.grid_y)
 
 var _was_clicking: bool = false
 

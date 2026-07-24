@@ -25,6 +25,7 @@ var fog_color: Color = Color(0.08, 0.08, 0.08)
 var wall_decors: Dictionary = {}
 var _tex_cache: Dictionary = {}
 var _alpha_cache: Dictionary = {}
+var hovered_grid: Vector2i = Vector2i(-1, -1)
 
 func _cell_tex(x: int, y: int, is_wall: bool) -> Texture2D:
 	var key := "%d,%d" % [x, y]
@@ -338,6 +339,18 @@ func draw_entities(ci: CanvasItem):
 				ci.draw_texture_rect_region(ve.tex, Rect2(px2, ve.spy, _strip_w+1, ve.sph), Rect2(rx2, 0, rw, ve.texh), fog_mod)
 			else:
 				ci.draw_rect(Rect2(px2, ve.spy, _strip_w+1, ve.sph), ve.col.lerp(fog_color, fog_blend))
+	
+	# Hover highlight
+	if hovered_grid.x >= 0:
+		for ve in _visible_entities:
+			var ent: Dictionary = ve.get("ent", {})
+			if ent.get("grid_x", -1) == hovered_grid.x and ent.get("grid_y", -1) == hovered_grid.y:
+				var hx: float = ve.get("dx1", 0.0)
+				var hy: float = ve.get("spy", 0.0)
+				var hw: float = ve.get("dx2", hx) - hx
+				var hh: float = ve.get("sph", 0.0)
+				ci.draw_rect(Rect2(hx - 2, hy - 2, hw + 4, hh + 4), Color(1, 0.9, 0.3, 0.8), false, 2.0)
+				break
 
 func draw_fog_overlay(ci: CanvasItem):
 	if not ci: return
