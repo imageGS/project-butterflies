@@ -1143,7 +1143,13 @@ func _start_rotate(old_dir: int):
 	set_process(true)
 	_shake_hud()
 
+var _idle_debug := 0.0
+
 func _process(delta):
+	_idle_debug += delta
+	if _idle_debug > 0.5:
+		_idle_debug = 0.0
+		print("[PROCESS] anim=%s visible_ents=%d" % [_is_animating, _renderer._visible_entities.size() if _renderer else -1])
 	_update_lighting()
 	_awareness_timer -= delta
 	if _awareness_timer <= 0.0:
