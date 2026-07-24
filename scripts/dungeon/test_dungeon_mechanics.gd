@@ -383,6 +383,7 @@ func _setup_entities():
 			_entities.append({ "grid_x": exit.position.x, "grid_y": exit.position.y, "color": Color(1, 0.9, 0.2, 0.9), "type": "exit_marker" })
 	
 	_spawn_floor_clutter()
+	print("[ENTITIES] total=", _entities.size(), " station=", station_data.station_name if station_data else "null")
 
 func _spawn_floor_clutter():
 	var decals: Array[String] = ["garbage.png", "crack.png"]
@@ -1002,24 +1003,14 @@ func _update_lighting():
 func _update_mouse_hover():
 	if not _renderer: return
 	_hovered_entity = {}
-	_hovered_wall = Vector2i(-1, -1)
 	
-	# Check front cell
-	var vec: Vector2i = DIR_VECTORS[_player_dir]
-	var fx: int = roundi(_player_x) + vec.x
-	var fy: int = roundi(_player_y) + vec.y
-	for ent: Dictionary in _entities:
-		if ent.grid_x == fx and ent.grid_y == fy:
-			_hovered_entity = {"ent": ent}
-			return
-	
-	# Also check current cell
 	var cx: int = roundi(_player_x)
 	var cy: int = roundi(_player_y)
 	for ent: Dictionary in _entities:
 		if ent.grid_x == cx and ent.grid_y == cy:
-			_hovered_entity = {"ent": ent}
-			return
+			if _hovered_entity.is_empty():
+				_hovered_entity = {"ent": ent}
+				print("[HOVER] ", ent.get("data", {}).get("name", "???"), " at ", cx, ",", cy)
 
 func _setup_tooltip():
 	_tooltip_label = Label.new()
