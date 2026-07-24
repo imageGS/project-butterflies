@@ -1024,6 +1024,7 @@ func _update_tooltip():
 	if _hovered_entity.is_empty(): return
 	var ent: Dictionary = _hovered_entity.get("ent", {})
 	var data: Dictionary = ent.get("data", {})
+	print("[TOOLTIP] ", data.get("name", "???"), " aware=", _awareness_label != null)
 	_show_tip("[Click] " + data.get("name", "???"))
 	_hovered_entity = {}
 
