@@ -1007,26 +1007,20 @@ func _update_mouse_hover():
 	# Mouse-based detection via visible entity positions
 	var mp: Vector2 = _renderer.get_local_mouse_position()
 	var vis: Array = _renderer.get_visible_entities()
+	print("[HVR-MOUSE] mp=(%.0f,%.0f) view=%dx%d vis=%d" % [mp.x, mp.y, _renderer._view_w, _renderer._view_h, vis.size()])
 	for ve: Dictionary in vis:
 		var ex1: float = ve.get("dx1", 0.0)
 		var ex2: float = ve.get("dx2", 0.0)
 		var ey1: float = ve.get("spy", 0.0)
 		var ey2: float = ey1 + ve.get("sph", 0.0)
+		var n: String = ve.get("ent",{}).get("data",{}).get("name","?")
+		print("[HVR-BOX] %s dx1=%.0f dx2=%.0f spy=%.0f sph=%.0f hit=%s" % [n, ex1, ex2, ey1, ve.get("sph",0.0), mp.x>=ex1 and mp.x<=ex2 and mp.y>=ey1 and mp.y<=ey2])
 		if mp.x >= ex1 and mp.x <= ex2 and mp.y >= ey1 and mp.y <= ey2:
 			var ent: Dictionary = ve.get("ent", {})
 			if ent.get("object_type", "") in ["floor_decal"]: continue
 			_hovered_entity = {"ent": ent}
 			return
-	
-	# Fallback: keyboard front-cell check
-	var vec: Vector2i = DIR_VECTORS[_player_dir]
-	var fx: int = roundi(_player_x) + vec.x
-	var fy: int = roundi(_player_y) + vec.y
-	for ent: Dictionary in _entities:
-		if ent.grid_x == fx and ent.grid_y == fy:
-			if ent.get("object_type", "") in ["floor_decal"]: continue
-			_hovered_entity = {"ent": ent}
-			return
+	return
 
 func _setup_tooltip():
 	_tooltip_label = Label.new()
