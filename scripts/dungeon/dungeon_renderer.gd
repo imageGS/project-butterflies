@@ -315,6 +315,11 @@ func _project_entities():
 		_visible_entities.append({"ent":ent,"depth":ty,"dist":dist,"dx1":dx1,"dx2":dx2,"spy":spy,"spw":spw,"sph":scale_h,"scx":scx,"tex":tex,"texw":texw,"texh":texh,"col":ent.get("color",Color.WHITE)})
 	var sorter: Callable = func(a: Dictionary, b: Dictionary): return a.depth > b.depth
 	_visible_entities.sort_custom(sorter)
+	if _visible_entities.size() > 0:
+		var first: Dictionary = _visible_entities[0]
+		var ent: Dictionary = first.get("ent", {})
+		var name: String = ent.get("data", {}).get("name", "none")
+		print("[PROJECT] %d ents, first=%s depth=%.1f lift=%.0f" % [_visible_entities.size(), name, first.get("depth",0.0), first.get("spy",0.0)])
 
 func draw_entities(ci: CanvasItem):
 	if not ci: return

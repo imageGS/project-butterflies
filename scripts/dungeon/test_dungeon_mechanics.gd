@@ -147,6 +147,7 @@ func _ready():
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	_setup_tooltip()
 	_load_station()
+	print("[INIT] ready, renderer=", _renderer != null, " tooltip=", _tooltip_label != null)
 	_setup_entities()
 	_current_angle = DIR_ANGLES[_player_dir]
 	_setup_dialogue_ui()
@@ -1003,14 +1004,16 @@ func _update_mouse_hover():
 	if not _renderer: return
 	_hovered_entity = {}
 	
-	# Check front cell first (preferred — item floats toward player)
+	# Check front cell first
 	var vec: Vector2i = DIR_VECTORS[_player_dir]
 	var fx: int = roundi(_player_x) + vec.x
 	var fy: int = roundi(_player_y) + vec.y
+	print("[HVR] player=%d,%d dir=%d front=%d,%d ents=%d" % [roundi(_player_x), roundi(_player_y), _player_dir, fx, fy, _entities.size()])
 	for ent: Dictionary in _entities:
 		if ent.grid_x == fx and ent.grid_y == fy:
 			if ent.get("object_type", "") in ["floor_decal"]: continue
 			_hovered_entity = {"ent": ent}
+			print("[HVR-HIT] %s at %d,%d" % [ent.get("data",{}).get("name","?"), ent.grid_x, ent.grid_y])
 			return
 	
 	# Fallback: current cell
