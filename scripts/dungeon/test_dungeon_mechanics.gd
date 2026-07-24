@@ -1006,7 +1006,14 @@ func _update_mouse_hover():
 	
 	# Mouse-based detection via visible entity positions
 	var mp_win: Vector2 = get_viewport().get_mouse_position()
+	var crt := $CRT_Root/CRT_Display as ColorRect
 	var mp: Vector2 = mp_win - _renderer.global_position
+	if crt:
+		var off_x: float = -crt.offset_left; var off_y: float = -crt.offset_top
+		var svp := $CRT_Root/GameViewport as SubViewport
+		var sx: float = float(svp.size.x) / crt.size.x
+		var sy: float = float(svp.size.y) / crt.size.y
+		mp = Vector2((mp_win.x + off_x) * sx, (mp_win.y + off_y) * sy) - _renderer.global_position
 	var vis: Array = _renderer.get_visible_entities()
 	for ve: Dictionary in vis:
 		var ex1: float = ve.get("dx1", 0.0)
