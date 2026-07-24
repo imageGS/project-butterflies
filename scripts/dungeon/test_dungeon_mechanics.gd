@@ -1005,18 +1005,14 @@ func _update_mouse_hover():
 	_hovered_entity = {}
 	
 	# Mouse-based detection via visible entity positions
-	var mp_raw: Vector2 = _renderer.get_global_mouse_position()
-	var mp: Vector2 = (mp_raw - _renderer.global_position) * (Vector2(_renderer._view_w, _renderer._view_h) / _renderer.size)
+	var mp: Vector2 = _renderer.mouse_pos
 	var vis: Array = _renderer.get_visible_entities()
-	if vis.size() > 0: print("[HVR-MOUSE] mp=(%.0f,%.0f) raw=(%.0f,%.0f) global=(%.0f,%.0f) size=%dx%d view=%dx%d" % [mp.x, mp.y, mp_raw.x, mp_raw.y, _renderer.global_position.x, _renderer.global_position.y, _renderer.size.x, _renderer.size.y, _renderer._view_w, _renderer._view_h])
+	print("[HVR-MOUSE] mp=(%.0f,%.0f)" % [mp.x, mp.y])
 	for ve: Dictionary in vis:
 		var ex1: float = ve.get("dx1", 0.0)
 		var ex2: float = ve.get("dx2", 0.0)
 		var ey1: float = ve.get("spy", 0.0)
-		var ey2: float = ey1 + ve.get("sph", 0.0)
-		var n: String = ve.get("ent",{}).get("data",{}).get("name","?")
-		print("[HVR-BOX] %s dx1=%.0f dx2=%.0f spy=%.0f sph=%.0f hit=%s" % [n, ex1, ex2, ey1, ve.get("sph",0.0), mp.x>=ex1 and mp.x<=ex2 and mp.y>=ey1 and mp.y<=ey2])
-		if mp.x >= ex1 and mp.x <= ex2 and mp.y >= ey1 and mp.y <= ey2:
+		if mp.x >= ex1 and mp.x <= ex2 and mp.y >= ey1 and mp.y <= (ey1 + ve.get("sph", 0.0)):
 			var ent: Dictionary = ve.get("ent", {})
 			if ent.get("object_type", "") in ["floor_decal"]: continue
 			_hovered_entity = {"ent": ent}

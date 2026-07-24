@@ -322,10 +322,7 @@ func _project_entities():
 	var sorter: Callable = func(a: Dictionary, b: Dictionary): return a.depth > b.depth
 	_visible_entities.sort_custom(sorter)
 	if _visible_entities.size() > 0:
-		var first: Dictionary = _visible_entities[0]
-		var ent: Dictionary = first.get("ent", {})
-		var name: String = ent.get("data", {}).get("name", "none")
-		print("[PROJECT] %d ents, first=%s depth=%.1f lift=%.0f" % [_visible_entities.size(), name, first.get("depth",0.0), first.get("spy",0.0)])
+		pass
 
 func draw_entities(ci: CanvasItem):
 	if not ci: return
