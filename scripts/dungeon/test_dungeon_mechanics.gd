@@ -1056,6 +1056,23 @@ func _check_click_interact():
 		elif ent.get("type", "") == "enemy":
 			TransitionManager.change_scene("res://scenes/battle/node.tscn")
 	_was_clicking = clicking
+	
+	# Keyboard Space fallback: interact with entity in front cell
+	if Input.is_action_just_pressed("ui_accept"):
+		var vec: Vector2i = DIR_VECTORS[_player_dir]
+		var fx: int = roundi(_player_x) + vec.x
+		var fy: int = roundi(_player_y) + vec.y
+		for ent: Dictionary in _entities:
+			if ent.grid_x == fx and ent.grid_y == fy:
+				if ent.get("type", "") == "object":
+					_interact_object(ent)
+					return
+				elif ent.get("type", "") == "npc" and ent.has("dialogue"):
+					_start_dialogue(ent.dialogue as Array, ent.get("name", "Незнакомец"))
+					return
+				elif ent.get("type", "") == "enemy":
+					TransitionManager.change_scene("res://scenes/battle/node.tscn")
+					return
 
 func _toggle_window(win: TextureRect, open_ref: bool, on_pos: Vector2, off_pos: Vector2) -> bool:
 	var tw := create_tween()

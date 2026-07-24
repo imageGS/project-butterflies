@@ -26,11 +26,6 @@ var wall_decors: Dictionary = {}
 var _tex_cache: Dictionary = {}
 var _alpha_cache: Dictionary = {}
 var hovered_grid: Vector2i = Vector2i(-1, -1)
-var mouse_pos: Vector2 = Vector2.ZERO
-
-func _gui_input(event: InputEvent):
-	if event is InputEventMouse:
-		mouse_pos = event.global_position - global_position
 
 func _cell_tex(x: int, y: int, is_wall: bool) -> Texture2D:
 	var key := "%d,%d" % [x, y]
@@ -199,7 +194,7 @@ func draw_walls(ci: CanvasItem):
 	var fov: float = deg_to_rad(90.0)
 	for i in range(num_strips):
 		var ray_angle: float = player_angle - fov * 0.5 + (i / float(num_strips)) * fov
-		var result: Dictionary = _cast_ray(cam_x, cam_y, ray_angle)
+		var result: Dictionary = _cast_ray_skip_alpha(cam_x, cam_y, ray_angle, true)
 		var perp: float = result.distance
 		if perp < 0.01: perp = 0.01
 		_wall_zbuf[i] = perp
@@ -225,10 +220,24 @@ func draw_walls(ci: CanvasItem):
 				tex_xx = int(tex_w) - tex_xx - 1
 			var shade: float = clamp(1.0 - perp * 0.04, 0.3, 1.0)
 			if result.side == 1: shade *= 0.7
-			var has_alpha := _texture_has_alpha(cell_tex)
-			var wcol: Color = Color(shade, shade, shade, 0.5 if has_alpha else 1.0)
+			var wcol: Color = Color(shade, shade, shade, 1.0)
 			wcol = wcol.lerp(fog_color, fbl)
 			ci.draw_texture_rect_region(cell_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), Rect2(tex_xx, 0, 1, tex_h), wcol)
+			
+			# Draw alpha wall overlays (window frames, glass)  
+			for ah in result.get("alpha_hits", []):
+				var atex: Texture2D = ah.get("tex", null)
+				if not atex: continue
+				var adist: float = ah.get("dist", perp)
+				if adist < 0.01: adist = 0.01
+				var awall_h: float = _view_h / adist
+				var awall_top: float = half_h - awall_h * 0.5
+				var awx: float = ah.get("wall_x", 0.0)
+				var atex_w: float = atex.get_width(); var atex_h: float = atex.get_height()
+				var atex_xx: int = int(awx * atex_w)
+				if (ah.side == 0 and result.get("rdx", 0.0) > 0) or (ah.side == 1 and result.get("rdy", 0.0) < 0):
+					atex_xx = int(atex_w) - atex_xx - 1
+				ci.draw_texture_rect_region(atex, Rect2(i * _strip_w, awall_top, _strip_w + 1, awall_h), Rect2(atex_xx, 0, 1, atex_h), Color(1, 1, 1, 1).lerp(fog_color, fbl))
 		else:
 			var c: Color = Color(0.4, 0.4, 0.5)
 			if result.side == 0: c = Color(0.3, 0.3, 0.4)
@@ -236,7 +245,7 @@ func draw_walls(ci: CanvasItem):
 			shade = lerp(shade, 0.0, fbl); c *= shade
 			ci.draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
 		
-		var dkey := "%d,%d" % [result.get("mx", -1), result.get("my", -1)]
+		var dkey := "%d,%d" % [mx, my]
 		if wall_decors.has(dkey):
 			var raw: Variant = wall_decors[dkey]
 			if not raw is Array: continue
@@ -259,6 +268,9 @@ func draw_walls(ci: CanvasItem):
 				ci.draw_texture_rect(tex, Rect2(dx, dy, ds, ds), false, dcol)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
+	return _cast_ray_skip_alpha(ox, oy, angle, false)
+
+func _cast_ray_skip_alpha(ox: float, oy: float, angle: float, skip_alpha: bool) -> Dictionary:
 	var dir: Vector2 = Vector2(cos(angle), sin(angle))
 	var map_x: int = int(floor(ox)); var map_y: int = int(floor(oy))
 	var delta_x: float = INF if dir.x == 0 else abs(1.0 / dir.x); var delta_y: float = INF if dir.y == 0 else abs(1.0 / dir.y)
@@ -266,18 +278,42 @@ func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
 	var side_x: float = (map_x + 1.0 - ox) * delta_x if dir.x > 0 else (ox - map_x) * delta_x
 	var side_y: float = (map_y + 1.0 - oy) * delta_y if dir.y > 0 else (oy - map_y) * delta_y
 	var side: int = 0; var steps: int = int(fog_distance * 3.0) + 3
+	var alpha_hits: Array = []
 	while steps > 0:
 		steps -= 1
 		if side_x < side_y: side_x += delta_x; map_x += step_x; side = 0
 		else: side_y += delta_y; map_y += step_y; side = 1
 		if map_data.is_empty() or map_x < 0 or map_y < 0 or map_y >= len(map_data) or map_x >= len(map_data[0]): break
-		if map_data[map_y][map_x] == TILE_WALL or map_data[map_y][map_x] == TILE_BLOCKED: break
+		if map_data[map_y][map_x] == TILE_WALL or map_data[map_y][map_x] == TILE_BLOCKED:
+			if skip_alpha:
+				var tex: Texture2D = _cell_tex(map_x, map_y, true)
+				if tex and _texture_has_alpha(tex):
+					var sp: float = side_x - delta_x if side == 0 else side_y - delta_y
+					var wx: float = oy + sp * dir.y if side == 0 else ox + sp * dir.x
+					wx -= floor(wx)
+					var tx_c: int = int(wx * tex.get_width())
+					if (side == 0 and dir.x > 0) or (side == 1 and dir.y < 0): tx_c = tex.get_width() - tx_c - 1
+					if _tex_alpha_at(tex, tx_c) < 0.5:
+						alpha_hits.append({"side":side,"wall_x":wx,"mx":map_x,"my":map_y,"tex":tex,"dist":sp})
+						continue
+			break
 	var perp: float = side_x - delta_x if side == 0 else side_y - delta_y
 	if perp < 0.0: perp = 0.0
-	if perp > fog_distance * 1.5: return {"hit":false,"distance":fog_distance*1.5,"fog":true}
+	if perp > fog_distance * 1.5: return {"hit":false,"distance":fog_distance*1.5,"fog":true,"alpha_hits":alpha_hits}
 	var wall_x: float = oy + perp * dir.y if side == 0 else ox + perp * dir.x
 	wall_x -= floor(wall_x)
-	return {"hit":true,"distance":perp,"fog":false,"side":side,"wall_x":wall_x,"rdx":dir.x,"rdy":dir.y,"mx":map_x,"my":map_y}
+	return {"hit":true,"distance":perp,"fog":false,"side":side,"wall_x":wall_x,"rdx":dir.x,"rdy":dir.y,"mx":map_x,"my":map_y,"alpha_hits":alpha_hits}
+
+func _tex_alpha_at(tex: Texture2D, col: int) -> float:
+	var rid := tex.get_rid().get_id()
+	var key := "%d_%d" % [rid, col]
+	if _alpha_cache.has(key): return _alpha_cache[key]
+	var img := tex.get_image()
+	if not img or img.is_empty(): return 1.0
+	var cx: int = clamp(col, 0, img.get_width() - 1)
+	var a: float = img.get_pixel(cx, img.get_height() / 2).a
+	_alpha_cache[key] = a
+	return a
 
 var _visible_entities: Array = []
 
@@ -315,8 +351,8 @@ func _project_entities():
 		if is_item and not is_floor:
 			var proximity: float = clamp(3.0 - dist, 0.0, 3.0) / 3.0
 			if proximity > 0.01:
-				var lift: float = proximity * 60.0
-				var bob: float = sin(Time.get_ticks_msec() * 0.003) * 6.0 * proximity
+				var lift: float = proximity * 120.0
+				var bob: float = sin(Time.get_ticks_msec() * 0.004) * 12.0 * proximity
 				spy -= lift + bob
 		_visible_entities.append({"ent":ent,"depth":ty,"dist":dist,"dx1":dx1,"dx2":dx2,"spy":spy,"spw":spw,"sph":scale_h,"scx":scx,"tex":tex,"texw":texw,"texh":texh,"col":ent.get("color",Color.WHITE)})
 	var sorter: Callable = func(a: Dictionary, b: Dictionary): return a.depth > b.depth
