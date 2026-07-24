@@ -1008,12 +1008,10 @@ func _update_mouse_hover():
 	var mp_win: Vector2 = get_viewport().get_mouse_position()
 	var mp: Vector2 = mp_win - _renderer.global_position
 	var vis: Array = _renderer.get_visible_entities()
-	print("[HVR-MOUSE] mp=(%.0f,%.0f) win=(%.0f,%.0f)" % [mp.x, mp.y, mp_win.x, mp_win.y])
 	for ve: Dictionary in vis:
 		var ex1: float = ve.get("dx1", 0.0)
 		var ex2: float = ve.get("dx2", 0.0)
-		var ey1: float = ve.get("spy", 0.0)
-		if mp.x >= ex1 and mp.x <= ex2 and mp.y >= ey1 and mp.y <= (ey1 + ve.get("sph", 0.0)):
+		if mp.x >= ex1 and mp.x <= ex2 and mp.y >= ve.get("spy", 0.0) and mp.y <= (ve.get("spy", 0.0) + ve.get("sph", 0.0)):
 			var ent: Dictionary = ve.get("ent", {})
 			if ent.get("object_type", "") in ["floor_decal"]: continue
 			_hovered_entity = {"ent": ent}
