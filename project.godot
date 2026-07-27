@@ -17,6 +17,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+EventBus="*res://scripts/systems/event_bus.gd"
 TransitionManager="*res://scripts/managers/transition_manager.gd"
 PlayerStats="*res://scripts/scenes/player_stats.gd"
 

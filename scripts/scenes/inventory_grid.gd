@@ -74,5 +74,41 @@ func has_item(name: String) -> bool:
 		if s.item.name == name: return true
 	return false
 
+func get_item_at(x: int, y: int) -> Dictionary:
+	for i in slots.size():
+		var s: Dictionary = slots[i]
+		var si: Item = s.get("item")
+		if not si: continue
+		for dx in si.grid_size.x:
+			for dy in si.grid_size.y:
+				if s.x + dx == x and s.y + dy == y:
+					return {"idx": i, "item": si}
+	return {}
+
+func remove_at(x: int, y: int) -> Item:
+	var found := get_item_at(x, y)
+	if found.is_empty(): return null
+	var idx: int = found.idx
+	return remove(idx)
+
+func move_item(from_x: int, from_y: int, to_x: int, to_y: int) -> bool:
+	var found := get_item_at(from_x, from_y)
+	if found.is_empty(): return false
+	var item: Item = found.item
+	var old_idx: int = found.idx
+	if can_place(item, to_x, to_y, old_idx):
+		slots[old_idx].x = to_x
+		slots[old_idx].y = to_y
+		changed.emit()
+		return true
+	return false
+
+func find_slot(item: Item) -> Vector2i:
+	for cy in range(grid_h):
+		for cx in range(grid_w):
+			if can_place(item, cx, cy):
+				return Vector2i(cx, cy)
+	return Vector2i(-1, -1)
+
 func size() -> int:
 	return slots.size()

@@ -1,10 +1,11 @@
 [gd_scene format=3 uid="uid://dix3fb1r17fb6"]
 
 [ext_resource type="Script" uid="uid://r533lqkw3jph" path="res://scripts/dungeon/dungeon_renderer.gd" id="1"]
-[ext_resource type="Script" uid="uid://dklw7i5r0a06u" path="res://scripts/dungeon/test_dungeon_mechanics.gd" id="2"]
+[ext_resource type="Script" uid="uid://dklw7i5r0a06u" path="res://scripts/dungeon/dungeon_gameplay.gd" id="2"]
 [ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="3"]
 [ext_resource type="Texture2D" uid="uid://3aub1ayemjdp" path="res://assets/textures/UI_BACK.png" id="4"]
-[ext_resource type="Resource" path="res://resources/stations/shelter.tres" id="5"]
+[ext_resource type="Script" uid="uid://dsi67p8ck8fw5" path="res://scripts/ui/crt_display.gd" id="4_crt"]
+[ext_resource type="Resource" uid="uid://wye2d2fdeubp" path="res://resources/stations/shelter.tres" id="5"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
 viewport_path = NodePath("CRT_Root/GameViewport")
@@ -37,7 +38,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="CRT_Display" type="ColorRect" parent="CRT_Root" unique_id=63566861]
+[node name="CRT_Display" type="ColorRect" parent="CRT_Root" unique_id=63566861 node_paths=PackedStringArray("subviewport_node")]
 material = SubResource("ShaderMaterial_dg")
 layout_mode = 1
 anchors_preset = 15
@@ -50,6 +51,8 @@ offset_bottom = 31.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+script = ExtResource("4_crt")
+subviewport_node = NodePath("../GameViewport")
 
 [node name="GameViewport" type="SubViewport" parent="CRT_Root" unique_id=1882645422]
 size = Vector2i(1152, 648)

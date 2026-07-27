@@ -26,6 +26,7 @@ var wall_decors: Dictionary = {}
 var _tex_cache: Dictionary = {}
 var _alpha_cache: Dictionary = {}
 var hovered_grid: Vector2i = Vector2i(-1, -1)
+var _outline_cache: Dictionary = {}
 
 func _cell_tex(x: int, y: int, is_wall: bool) -> Texture2D:
 	var key := "%d,%d" % [x, y]
@@ -51,6 +52,39 @@ func _load_tex(tid: String) -> Texture2D:
 				var t := load(p) as Texture2D
 				if t: _tex_cache[tid] = t; return t
 	return null
+
+func _get_outline_tex(tex: Texture2D, outline_width: float = 1.5) -> Texture2D:
+	var key: String = tex.resource_path
+	if _outline_cache.has(key):
+		return _outline_cache[key]
+	var src: Image = tex.get_image()
+	if not src: return tex
+	src.convert(Image.FORMAT_RGBA8)
+	var w: int = src.get_width()
+	var h: int = src.get_height()
+	var dst := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	var rw: int = int(ceil(outline_width))
+	for x in range(w):
+		for y in range(h):
+			var c: Color = src.get_pixel(x, y)
+			if c.a <= 0.0: continue
+			var edge := false
+			for dx in range(-rw, rw + 1):
+				for dy in range(-rw, rw + 1):
+					var nx := x + dx; var ny := y + dy
+					if nx < 0 or nx >= w or ny < 0 or ny >= h:
+						edge = true
+					else:
+						var nc: Color = src.get_pixel(nx, ny)
+						if nc.a <= 0.0:
+							edge = true
+					if edge: break
+				if edge: break
+			if edge:
+				dst.set_pixel(x, y, Color(1, 1, 1))
+	var out_tex := ImageTexture.create_from_image(dst)
+	_outline_cache[key] = out_tex
+	return out_tex
 
 func get_wall_cell_at_strip(strip: int) -> Vector2i:
 	if strip < 0 or strip >= _wall_zbuf.size(): return Vector2i(-1, -1)
@@ -378,16 +412,24 @@ func draw_entities(ci: CanvasItem):
 			else:
 				ci.draw_rect(Rect2(px2, ve.spy, _strip_w+1, ve.sph), ve.col.lerp(fog_color, fog_blend))
 	
-	# Hover highlight
+	# Hover highlight — contour outline via alpha edge detection
 	if hovered_grid.x >= 0:
 		for ve in _visible_entities:
 			var ent: Dictionary = ve.get("ent", {})
 			if ent.get("grid_x", -1) == hovered_grid.x and ent.get("grid_y", -1) == hovered_grid.y:
-				var hx: float = ve.get("dx1", 0.0)
-				var hy: float = ve.get("spy", 0.0)
-				var hw: float = ve.get("dx2", hx) - hx
-				var hh: float = ve.get("sph", 0.0)
-				ci.draw_rect(Rect2(hx - 2, hy - 2, hw + 4, hh + 4), Color(1, 0.9, 0.3, 0.8), false, 2.0)
+				var tex: Texture2D = ve.get("tex", null)
+				if tex:
+					var otex := _get_outline_tex(tex)
+					ci.draw_texture_rect_region(otex,
+						Rect2(ve.scx - ve.spw * 0.5, ve.spy, ve.spw, ve.sph),
+						Rect2(0, 0, ve.texw, ve.texh),
+						Color(1, 1, 1, 0.9))
+				else:
+					var hx: float = ve.get("dx1", 0.0)
+					var hy: float = ve.get("spy", 0.0)
+					var hw: float = ve.get("dx2", hx) - hx
+					var hh: float = ve.get("sph", 0.0)
+					ci.draw_rect(Rect2(hx - 2, hy - 2, hw + 4, hh + 4), Color(1, 1, 1, 0.9), false, 2.0)
 				break
 
 func draw_fog_overlay(ci: CanvasItem):
@@ -432,6 +474,17 @@ func update_view(cx: float, cy: float, angle: float, map: Array, entities: Array
 
 func queue_redraw_walls():
 	if _wall_ctrl: _wall_ctrl.queue_redraw()
+
+func precache_outlines(entities: Array):
+	for ent in entities:
+		var tex: Texture2D
+		var texs: Dictionary = ent.get("textures", {})
+		if not texs.is_empty():
+			for t in texs.values():
+				if t is Texture2D: _get_outline_tex(t)
+		else:
+			tex = ent.get("texture", null)
+			if tex: _get_outline_tex(tex)
 
 func update_height(data: Array):
 	height_data = data

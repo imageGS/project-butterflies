@@ -173,7 +173,7 @@
 ```
 scenes/
   menu/main_menu.tscn              — главное меню (BG + силуэт + бабочка + кнопки)
-  dungeon/test_dungeon_mechanics.tscn — основная станция (рейкастер 48×48)
+  dungeon/dungeon_gameplay.tscn    — основная станция (рейкастер 48×48)
   dungeon/safe_station.tscn        — убежище (рейкастер 15×20)
   battle/node.tscn                 — бой (конечности, видео, частицы)
 ```
@@ -181,42 +181,65 @@ scenes/
 ### Автозагрузки
 - **TransitionManager** — fade-to-black переходы между сценами
 - **PlayerStats** — глобальное состояние (навыки, шкалы, инвентарь)
+- **EventBus** — сигналы для межсистемной связи (dialogue_started/ended, player_moved, flashlight_toggled, inventory_toggled)
 
 ### Контроллеры
-- `test_dungeon_mechanics.gd` — **единый движок станций** (shelter_mode для вариантов)
-- `dungeon_renderer.gd` — рейкастер (стены, пол, спрайты, ZBuffer, туман)
+- `dungeon_gameplay.gd` — **координатор станций** (12 component-систем)
+- `dungeon_renderer.gd` — рейкастер (стены, пол, спрайты, ZBuffer, туман, контурная обводка)
 - `main.gd` — боевая сцена (конечности, HP, атаки, смерть)
 - `main_menu.gd` — меню (интро-статика, кнопки)
 
-### Системы
-| Система | Статус |
-|---------|--------|
-| Рейкастер (стены, пол, текстуры) | ✅ |
-| Спрайты (ZBuffer, floor projection, 4 направления) | ✅ |
-| Движение (WASD + Q/E стрейф, smoothstep) | ✅ |
-| ИИ врагов (патруль, обнаружение, погоня) | ✅ |
-| Fog of war (7 тайлов, плавный переход) | ✅ |
-| Бой: конечности (broken/destroyed), пул HP | ✅ |
-| Бой: Execute, stun, fragile | ✅ |
-| Бой: melt-эффект смерти, спрайты, звуки | ✅ |
-| Ветвящиеся диалоги (JSON, проверки навыков) | ✅ |
-| Визуальный редактор диалогов (GraphEdit) | ✅ |
-| Интерактивные объекты (лут, лор, отдых) | ✅ |
-| PlayerStats (навыки, HP, Sanity, Humanity) | ✅ |
-| SkillCheck (d20 + skill ≥ DC) | ✅ |
-| Переходы между сценами (fade-to-black) | ✅ |
-| Миникарта (25×13 тайлов) | ✅ |
-| Инвентарь (сетка 6×5, размеры, стаки) | ✅ |
-| CRT-шейдер + UI_BACK | ✅ |
-| Убежище (отдых, ТВ, выход) | ✅ |
-| Смерть → пробуждение в убежище | ✅ |
-| Главное меню (BG, силуэт, бабочка, кнопки) | ✅ |
+### Системы (scripts/systems/)
+| Система | Модуль | Статус |
+|---------|--------|--------|
+| Рейкастер (стены, пол, текстуры) | `dungeon_renderer.gd` | ✅ |
+| Спрайты (ZBuffer, floor projection, 4 направления) | `dungeon_renderer.gd` | ✅ |
+| Контурная обводка при наведении (по альфа-каналу) | `dungeon_renderer.gd` | ✅ |
+| Управление картой (тайлы, высота, генерация) | `MapManager` | ✅ |
+| Движение (WASD + Q/E стрейф, smoothstep) | `PlayerMovement` | ✅ |
+| ИИ врагов (патруль, обнаружение, погоня) | `EnemyAI` | ✅ |
+| Менеджер сущностей (спавн, NPC, враги, контейнеры) | `EntityManager` | ✅ |
+| Система взаимодействия (клик, наведение, tooltip) | `InteractionSystem` | ✅ |
+| Лог-система (сообщения с таймстемпами, автоскролл) | `LogBox` | ✅ |
+| Диалоги (ветвление, проверки навыков, печать по буквам) | `DialogueSystem` | ✅ |
+| Звуки (шаги игрока и врагов) | `AudioSystem` | ✅ |
+| Освещение (шейдер fog of war, фонарик) | `LightingSystem` | ✅ |
+| HUD (окна, инвентарь, броски шаров, тряска) | `HUDSystem` | ✅ |
+| Атмосфера (пассивные проверки интуиции) | `AwarenessSystem` | ✅ |
+| Переходы между станциями | `TransitionSystem` | ✅ |
+| Fog of war (7 тайлов, плавный переход) | `dungeon_renderer.gd` | ✅ |
+| Бой: конечности (broken/destroyed), пул HP | `battle/node.tscn` | ✅ |
+| Бой: Execute, stun, fragile | `battle/node.tscn` | ✅ |
+| Бой: melt-эффект смерти, спрайты, звуки | `battle/node.tscn` | ✅ |
+| Ветвящиеся диалоги (JSON, проверки навыков) | `DialogueSystem` | ✅ |
+| Визуальный редактор диалогов (GraphEdit) | `dialogue_editor/` | ✅ |
+| Интерактивные объекты (лут, лор, отдых) | `InteractionSystem` | ✅ |
+| PlayerStats (навыки, HP, Sanity, Humanity) | autoload | ✅ |
+| SkillCheck (d20 + skill ≥ DC) | `SkillCheck` | ✅ |
+| Переходы между сценами (fade-to-black) | `TransitionManager` | ✅ |
+| Миникарта (25×13 тайлов) | `MinimapControl` | ✅ |
+| Инвентарь (сетка 6×5, размеры, стаки) | `InventoryPanel` + `ItemCatalog` | ✅ |
+| Экипировка (HEAD/BODY/WEAPON) | `EquipmentSlots` | ✅ |
+| CRT-шейдер + UI_BACK | `CRT_Display` | ✅ |
+| Убежище (отдых, ТВ, выход) | `dungeon_gameplay.gd` | ✅ |
+| Смерть → пробуждение в убежище | `PlayerStats` + `TransitionManager` | ✅ |
+| Главное меню (BG, силуэт, бабочка, кнопки) | `main_menu.gd` | ✅ |
+| Звук печати диалогов (генерация sine-wave, NPC-питч) | `DialogueSystem` | ✅ |
 | Глобальная карта метро | ❌ |
 | День/Ночь + Падальщики | ❌ |
 | Эффекты рассудка (галлюцинации) | ❌ |
 | Создание персонажа | ❌ |
 | Human-экшены в бою (Reason, Intimidate) | ❌ |
 | Инструментарий (Resource-файлы вместо хардкода) | 🔄 |
+
+### Архитектура
+Монолитный `test_dungeon_mechanics.gd` (1863 строк) разбит на 12 component-систем (Node-дети `dungeon_gameplay.gd`). Коммуникация:
+- **Родитель→Дитя**: прямые `@onready`/`var` ссылки
+- **Дитя→Родитель**: сигналы
+- **Межсистемные зависимости**: Callable-функции (EnemyAI получает `_is_walkable`, `_is_blocked` как Callable)
+- **Глобальные события**: `EventBus` (autoload)
+
+Текущий размер `dungeon_gameplay.gd`: ~345 строк (координация, `_ready()`, `_process()`, `_unhandled_input()`, `_refresh()`).
 
 ## План по инструментарию
 Переход от хардкода к data-driven:

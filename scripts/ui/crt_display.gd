@@ -7,6 +7,7 @@ func _ready():
 
 func _gui_input(event: InputEvent):
 	if not subviewport_node or not event:
+		prints("[CRT]", "no subviewport")
 		return
 	if event is InputEventMouseButton or event is InputEventMouseMotion:
 		var new_event = event.duplicate()
