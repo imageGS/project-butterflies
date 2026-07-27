@@ -148,7 +148,6 @@ func _ready():
 	add_child(_lighting_system)
 	_lighting_system.setup($CRT_Root/GameViewport)
 	_lighting_system.apply_light_settings(light_ambient, light_dither, light_pixel_size, light_glow_amount, light_softness, light_curve)
-	_lighting_system.apply_player_light(player_light_radius, player_light_intensity, player_light_color)
 
 	_hud_system.add_test_items()
 	_renderer.precache_outlines(_entities)
@@ -282,7 +281,12 @@ func _unhandled_input(event):
 
 
 func _process(delta):
-	_lighting_system.update_lighting(light_ambient, light_dither, light_pixel_size, light_glow_amount, light_softness, light_curve, player_light_radius, player_light_intensity, player_light_color)
+	_lighting_system.update_lighting(
+		light_ambient, light_dither, light_pixel_size, light_glow_amount, light_softness, light_curve,
+		player_light_radius, player_light_intensity, player_light_color,
+		_player_movement.player_x + 0.5, _player_movement.player_y + 0.5, _player_movement.current_angle,
+		_entities
+	)
 	_awareness_system.process(delta)
 
 	_enemy_ai.sync_state(_entities, _map_manager.map_data, _player_movement.player_x, _player_movement.player_y, _player_movement.is_animating)

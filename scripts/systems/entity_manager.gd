@@ -243,6 +243,19 @@ func _setup_fallback_entities():
 		{ "grid_x": 36, "grid_y": 23, "type": "object", "object_type": "container", "data": { "name": "Сейф", "description": "Небольшой сейф. Код сбит, но дверца открыта.", "loot": ["Патроны", "Золотая монета"] }},
 		{ "grid_x": 1, "grid_y": 22, "type": "object", "object_type": "lore", "data": { "name": "Газета", "description": "Скомканная газета. Заголовок: «ПРОПАЖА ЛЮДЕЙ В МЕТРО — ПОЛИЦИЯ БЕССИЛЬНА». Дата — полгода назад." }},
 		{ "grid_x": 24, "grid_y": 24, "type": "object", "object_type": "lore", "data": { "name": "Алтарь", "description": "Странная конструкция в центре лабиринта. Свечи, символы. Кто-то проводил здесь ритуал." }},
+		# Torches with dynamic lighting
+		{ "grid_x": 8, "grid_y": 5, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.15,
+			"data": { "name": "Факел", "description": "Пламя факела освещает коридор." },
+			"light_source": { "radius": 200.0, "intensity": 1.0, "color": Color(1.0, 0.55, 0.2), "flicker": 0.15, "height": 1.0 }},
+		{ "grid_x": 23, "grid_y": 7, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.15,
+			"data": { "name": "Факел", "description": "Пламя факела освещает коридор." },
+			"light_source": { "radius": 200.0, "intensity": 1.0, "color": Color(1.0, 0.55, 0.2), "flicker": 0.15, "height": 1.0 }},
+		{ "grid_x": 12, "grid_y": 19, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.15,
+			"data": { "name": "Факел", "description": "Пламя факела освещает коридор." },
+			"light_source": { "radius": 200.0, "intensity": 1.0, "color": Color(1.0, 0.55, 0.2), "flicker": 0.15, "height": 1.0 }},
+		{ "grid_x": 38, "grid_y": 21, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.15,
+			"data": { "name": "Факел", "description": "Пламя факела освещает коридор." },
+			"light_source": { "radius": 200.0, "intensity": 1.0, "color": Color(1.0, 0.55, 0.2), "flicker": 0.15, "height": 1.0 }},
 	]
 	for o in objects:
 		entities.append(o)
