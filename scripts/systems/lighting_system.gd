@@ -36,17 +36,17 @@ func _world_to_screen(wx: float, wy: float, cam_x: float, cam_y: float, cam_angl
 	var dir_y := sin(cam_angle)
 	var plane_x := -dir_y
 	var plane_y := dir_x
-	var inv_det := 1.0 / max(plane_x * dir_y - dir_x * plane_y, 0.0001)
-	var sx := wx - cam_x
-	var sy := wy - cam_y
-	var tx := inv_det * (dir_y * sx - dir_x * sy)
-	var ty := inv_det * (-plane_y * sx + plane_x * sy)
+	var inv_det: float = 1.0 / max(plane_x * dir_y - dir_x * plane_y, 0.0001)
+	var sx: float = wx - cam_x
+	var sy: float = wy - cam_y
+	var tx: float = inv_det * (dir_y * sx - dir_x * sy)
+	var ty: float = inv_det * (-plane_y * sx + plane_x * sy)
 	if ty <= 0.01:
 		return Vector2(-1, -1)
-	var scx := int((view_w / 2.0) * (1.0 + tx / ty))
-	var feety := view_h / 2.0 + view_h / (2.0 * ty)
-	var half_h := view_h / 2.0
-	var y := feety - height * half_h / ty
+	var scx: int = int((view_w / 2.0) * (1.0 + tx / ty))
+	var feety: float = view_h / 2.0 + view_h / (2.0 * ty)
+	var half_h: float = view_h / 2.0
+	var y: float = feety - height * half_h / ty
 	return Vector2(scx, y)
 
 func update_lighting(
@@ -57,9 +57,9 @@ func update_lighting(
 	if not light_mat: return
 	apply_light_settings(ambient, dither, pixel_size, glow, softness, curve)
 
-	var vp_size := _viewport.get_visible_rect().size
-	var view_w := int(vp_size.x)
-	var view_h := int(vp_size.y)
+	var vp_size: Vector2 = _viewport.get_visible_rect().size
+	var view_w: int = int(vp_size.x)
+	var view_h: int = int(vp_size.y)
 	if view_w <= 0 or view_h <= 0: return
 
 	var pos_arr := PackedVector2Array()
@@ -77,19 +77,19 @@ func update_lighting(
 	for ent in entities:
 		var ls = ent.get("light_source", null)
 		if not ls: continue
-		var wx := ent.grid_x + 0.5
-		var wy := ent.grid_y + 0.5
-		var lh := ls.get("height", 0.0)
-		var sp := _world_to_screen(wx, wy, cam_x, cam_y, cam_angle, view_w, view_h, lh)
+		var wx: float = ent.grid_x + 0.5
+		var wy: float = ent.grid_y + 0.5
+		var lh: float = ls.get("height", 0.0)
+		var sp: Vector2 = _world_to_screen(wx, wy, cam_x, cam_y, cam_angle, view_w, view_h, lh)
 		if sp.x < 0: continue
 
-		var flicker := ls.get("flicker", 0.0)
-		var flick := 1.0
-		if flicker > 0.0:
-			flick = 1.0 + sin(flicker_time * 13.37 + pos_arr.size() * 7.77) * flicker * 0.5
+		var flicker_amount: float = ls.get("flicker", 0.0)
+		var flick: float = 1.0
+		if flicker_amount > 0.0:
+			flick = 1.0 + sin(flicker_time * 13.37 + pos_arr.size() * 7.77) * flicker_amount * 0.5
 
-		var radius := ls.get("radius", 150.0) * flick
-		var intensity := ls.get("intensity", 0.6) * flick
+		var radius: float = ls.get("radius", 150.0) * flick
+		var intensity: float = ls.get("intensity", 0.6) * flick
 		var col: Color = ls.get("color", Color(1.0, 0.6, 0.3))
 
 		pos_arr.append(sp)
