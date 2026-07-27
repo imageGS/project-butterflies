@@ -469,7 +469,7 @@ func _write_map_file(path: String):
 func _play_station():
 	_save_station()
 	PlayerStats.current_station = _station_data
-	TransitionManager.change_scene("res://scenes/dungeon/test_dungeon_mechanics.tscn")
+	TransitionManager.change_scene("res://scenes/dungeon/dungeon_gameplay.tscn")
 
 func _update_station_from_ui():
 	_station_data.station_name = _name_edit.text

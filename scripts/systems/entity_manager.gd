@@ -33,6 +33,12 @@ func setup_entities(station_data, is_shelter: bool) -> Array:
 			"data": { "name": "кровать", "description": "Старая кровать." }})
 		entities.append({ "grid_x": 10, "grid_y": 10, "color": Color(0.4, 0.8, 0.4), "type": "object", "object_type": "lore",
 			"data": { "name": "ТВ", "description": "Работает. Помехи, потом голос: «...проход открыт в западном крыле». И снова помехи." }})
+		entities.append({ "grid_x": 1, "grid_y": 3, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.25,
+			"data": { "name": "Свеча", "description": "Огарок свечи в жестяной банке." },
+			"light_source": { "radius": 120.0, "intensity": 0.8, "color": Color(1.0, 0.65, 0.3), "flicker": 0.12, "height": 0.8 }})
+		entities.append({ "grid_x": 13, "grid_y": 3, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.25,
+			"data": { "name": "Свеча", "description": "Огарок свечи в жестяной банке." },
+			"light_source": { "radius": 120.0, "intensity": 0.8, "color": Color(1.0, 0.65, 0.3), "flicker": 0.12, "height": 0.8 }})
 		var medkit_tex := load("res://sprites/entity/medkit.png") as Texture2D
 		entities.append({ "grid_x": 7, "grid_y": 10, "texture": medkit_tex, "type": "object", "object_type": "container",
 			"data": { "name": "Аптечка", "loot": ["Медикаменты"] }, "size": 0.2})
@@ -250,7 +256,7 @@ func _setup_fallback_entities():
 		{ "grid_x": 23, "grid_y": 7, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.15,
 			"data": { "name": "Факел", "description": "Пламя факела освещает коридор." },
 			"light_source": { "radius": 200.0, "intensity": 1.0, "color": Color(1.0, 0.55, 0.2), "flicker": 0.15, "height": 1.0 }},
-		{ "grid_x": 12, "grid_y": 19, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.15,
+		{ "grid_x": 20, "grid_y": 24, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.15,
 			"data": { "name": "Факел", "description": "Пламя факела освещает коридор." },
 			"light_source": { "radius": 200.0, "intensity": 1.0, "color": Color(1.0, 0.55, 0.2), "flicker": 0.15, "height": 1.0 }},
 		{ "grid_x": 38, "grid_y": 21, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.15,

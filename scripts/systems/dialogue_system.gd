@@ -368,7 +368,7 @@ func select_response(vis_idx: int):
 func _go_to(idx: int):
 	if idx <= -2:
 		close()
-		TransitionManager.change_scene("res://scenes/dungeon/test_dungeon_mechanics.tscn")
+		TransitionManager.change_scene("res://scenes/dungeon/dungeon_gameplay.tscn")
 	elif idx < 0:
 		close()
 	else:

@@ -79,4 +79,4 @@ func _play_click():
 
 func _start_game():
 	state = 2
-	TransitionManager.change_scene("res://scenes/dungeon/test_dungeon_mechanics.tscn")
+	TransitionManager.change_scene("res://scenes/dungeon/dungeon_gameplay.tscn")
