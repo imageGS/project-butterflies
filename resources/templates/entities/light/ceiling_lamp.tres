@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="EntityTemplate" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/entity_template.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "ceiling_lamp"
+display_name = "Потолочный светильник"
+category = "light"
+subtype = "lamp"
+sprites = {
+"front": "sprites/entity/ceiling_lamp"
+}
+light_source = {
+"color": Color(1, 0.95, 0.8, 1),
+"flicker": 0.02,
+"height": 0.9,
+"intensity": 0.8,
+"radius": 350,
+"style": "fluorescent",
+"world_radius": 5.0
+}
+size = 0.25
+ceiling_lift = 0.9

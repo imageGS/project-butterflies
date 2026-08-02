@@ -1,0 +1,263 @@
+[gd_scene format=3 uid="uid://bdrbkox0gr4xx"]
+
+[ext_resource type="Script" uid="uid://6oavyluanrfb" path="res://scripts/intro/intro.gd" id="1"]
+[ext_resource type="Script" uid="uid://00ob3m0h63bo" path="res://scripts/ui/log_box.gd" id="2"]
+[ext_resource type="Texture2D" uid="uid://betg18dylynfi" path="res://assets/UI/MAIN_HUD.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://rm4c8x6mp622" path="res://assets/UI/UL_BALL.png" id="8"]
+[ext_resource type="Texture2D" uid="uid://vtg71r31y8xt" path="res://assets/UI/UR_BALL.png" id="9"]
+[ext_resource type="Texture2D" uid="uid://8yxie12b1xfd" path="res://assets/UI/DL_BALL.png" id="10"]
+[ext_resource type="Texture2D" uid="uid://cgjm604m48xsd" path="res://assets/UI/DR_BALL.png" id="11"]
+[ext_resource type="Texture2D" uid="uid://bw2dbgvpjdox5" path="res://assets/UI/DIALOGUE_PORTRAIT_WINDOW.png" id="12"]
+[ext_resource type="Texture2D" uid="uid://c45he1iujo4ea" path="res://assets/UI/DIALOGUE_BOX.png" id="13"]
+[ext_resource type="Script" uid="uid://dorlplpkyk00j" path="res://scripts/systems/dialogue_system.gd" id="16"]
+[ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="17"]
+[ext_resource type="Script" uid="uid://dsi67p8ck8fw5" path="res://scripts/ui/crt_display.gd" id="18"]
+[ext_resource type="Shader" uid="uid://bo6vwa8420ku8" path="res://shaders/intro_background.gdshader" id="19"]
+[ext_resource type="Shader" uid="uid://dp2xn6l7gwvu1" path="res://shaders/glass_shatter.gdshader" id="20"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_glass"]
+resource_local_to_scene = true
+shader = ExtResource("20")
+shader_parameter/use_captured = false
+shader_parameter/fall_progress = 0.0
+shader_parameter/pieces_x = 5
+shader_parameter/pieces_y = 5
+shader_parameter/gravity = 3.5
+shader_parameter/scatter = 0.3
+shader_parameter/rotation_amount = 1.2
+shader_parameter/point_jitter = 0.35
+shader_parameter/delay_variation = 0.15
+shader_parameter/edge_thickness = 0.008
+shader_parameter/edge_brightness = 0.35
+shader_parameter/alpha_fade = 0.5
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_intro"]
+viewport_path = NodePath("CRT_Root/GameViewport")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_intro"]
+resource_local_to_scene = true
+shader = ExtResource("17")
+shader_parameter/tex = SubResource("ViewportTexture_intro")
+shader_parameter/mask_type = 0
+shader_parameter/curve = 0.083
+shader_parameter/sharpness = 1.0
+shader_parameter/color_offset = -0.487
+shader_parameter/mask_brightness = 0.367
+shader_parameter/scanline_brightness = 0.582
+shader_parameter/min_scanline_thickness = 0.836
+shader_parameter/aspect = 0.565
+shader_parameter/wobble_strength = 0.613
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_intro_bg"]
+resource_local_to_scene = true
+shader = ExtResource("19")
+shader_parameter/speed = 1.5
+shader_parameter/height_limit = 0.5
+shader_parameter/bar_height = 0.03
+shader_parameter/color_speed = 1.0
+shader_parameter/alpha = 1.0
+shader_parameter/follow_strength = 0.7
+shader_parameter/fade_strength = 2.0
+shader_parameter/use_rgb = false
+shader_parameter/color1 = Color(0.0588, 0.0588, 0.1059, 1)
+shader_parameter/color2 = Color(0.3373, 0.3529, 0.4588, 1)
+shader_parameter/color3 = Color(0.7765, 0.7176, 0.7451, 1)
+shader_parameter/color4 = Color(0.9804, 0.9843, 0.9647, 1)
+
+[node name="Intro" type="Control" unique_id=1999834186]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1")
+
+[node name="GlassOverlay" type="ColorRect" parent="." unique_id=1337]
+visible = false
+z_index = 10
+material = SubResource("ShaderMaterial_glass")
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="CRT_Root" type="Control" parent="." unique_id=1472337495]
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CRT_Display" type="ColorRect" parent="CRT_Root" unique_id=1154350223 node_paths=PackedStringArray("subviewport_node")]
+material = SubResource("ShaderMaterial_intro")
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -48.0
+offset_top = -22.0
+offset_right = 49.094
+offset_bottom = 31.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("18")
+subviewport_node = NodePath("../GameViewport")
+
+[node name="GameViewport" type="SubViewport" parent="CRT_Root" unique_id=1060187797]
+transparent_bg = true
+size = Vector2i(1152, 648)
+size_2d_override = Vector2i(1152, 648)
+
+[node name="UIRoot" type="Control" parent="CRT_Root/GameViewport" unique_id=670397028]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="ColorRect" parent="CRT_Root/GameViewport/UIRoot" unique_id=766105019]
+material = SubResource("ShaderMaterial_intro_bg")
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="HUDOverlay" type="Control" parent="CRT_Root/GameViewport/UIRoot" unique_id=549564161]
+z_index = 5
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="LogBox" type="Control" parent="CRT_Root/GameViewport/UIRoot/HUDOverlay" unique_id=1411456034]
+z_index = 10
+anchors_preset = 0
+offset_left = 349.50983
+offset_top = 508.23532
+offset_right = 784.80396
+offset_bottom = 578.8236
+mouse_filter = 2
+script = ExtResource("2")
+
+[node name="MainHUD" type="TextureRect" parent="CRT_Root/GameViewport/UIRoot/HUDOverlay" unique_id=2101881728]
+z_index = 1
+texture_filter = 1
+layout_mode = 0
+offset_right = 1151.0
+offset_bottom = 648.0
+mouse_filter = 2
+texture = ExtResource("3")
+
+[node name="UL_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UIRoot/HUDOverlay" unique_id=1538003324]
+texture_filter = 1
+layout_mode = 0
+offset_left = 3.0
+offset_top = 7.0
+offset_right = 118.0
+offset_bottom = 122.0
+pivot_offset = Vector2(58, 58)
+mouse_filter = 2
+texture = ExtResource("8")
+
+[node name="UR_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UIRoot/HUDOverlay" unique_id=1870248238]
+texture_filter = 1
+layout_mode = 0
+offset_left = 1040.0
+offset_top = 9.0
+offset_right = 1148.0
+offset_bottom = 117.0
+pivot_offset = Vector2(54, 54)
+mouse_filter = 2
+texture = ExtResource("9")
+
+[node name="DL_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UIRoot/HUDOverlay" unique_id=884716344]
+texture_filter = 1
+layout_mode = 0
+offset_left = 1040.0
+offset_top = 524.0
+offset_right = 1143.0
+offset_bottom = 627.0
+pivot_offset = Vector2(52, 52)
+mouse_filter = 2
+texture = ExtResource("10")
+
+[node name="DR_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UIRoot/HUDOverlay" unique_id=1603001036]
+texture_filter = 1
+layout_mode = 0
+offset_left = 7.0
+offset_top = 508.0
+offset_right = 125.0
+offset_bottom = 626.0
+pivot_offset = Vector2(59, 59)
+mouse_filter = 2
+texture = ExtResource("11")
+
+[node name="DialoguePortraitWindow" type="TextureRect" parent="CRT_Root/GameViewport/UIRoot/HUDOverlay" unique_id=426325682]
+texture_filter = 1
+layout_mode = 0
+offset_left = 841.6667
+offset_top = 288.62747
+offset_right = 1041.6667
+offset_bottom = 488.62747
+mouse_filter = 2
+texture = ExtResource("12")
+
+[node name="DialoguePortrait" type="TextureRect" parent="CRT_Root/GameViewport/UIRoot/HUDOverlay/DialoguePortraitWindow" unique_id=1756093488]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.125
+anchor_top = 0.125
+anchor_right = 0.87500006
+anchor_bottom = 0.75000006
+offset_left = 0.49018097
+offset_top = -52.450974
+offset_right = 0.49012756
+offset_bottom = -52.450974
+mouse_filter = 2
+stretch_mode = 5
+
+[node name="DialogueName" type="Label" parent="CRT_Root/GameViewport/UIRoot/HUDOverlay/DialoguePortraitWindow" unique_id=475336674]
+layout_mode = 0
+offset_left = 8.823547
+offset_top = 173.60786
+offset_right = 190.1961
+offset_bottom = 199.60786
+theme_override_colors/font_color = Color(0.9, 0.85, 0.7, 1)
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+
+[node name="DialogueBoxWindow" type="TextureRect" parent="CRT_Root/GameViewport/UIRoot/HUDOverlay" unique_id=294568235]
+texture_filter = 1
+layout_mode = 0
+offset_left = 325.9804
+offset_top = 336.66672
+offset_right = 875.9804
+offset_bottom = 506.66672
+scale = Vector2(0.88235295, 0.88235295)
+mouse_filter = 2
+texture = ExtResource("13")
+
+[node name="DialogueText" type="RichTextLabel" parent="CRT_Root/GameViewport/UIRoot/HUDOverlay/DialogueBoxWindow" unique_id=555910190]
+layout_mode = 0
+offset_left = 25.0
+offset_top = 25.0
+offset_right = 525.0
+offset_bottom = 145.0
+bbcode_enabled = true
+scroll_active = false
+autowrap_mode = 2
+
+[node name="DialogueSystem" type="Node" parent="CRT_Root/GameViewport/UIRoot" unique_id=689576044]
+script = ExtResource("16")

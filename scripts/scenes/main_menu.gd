@@ -79,4 +79,7 @@ func _play_click():
 
 func _start_game():
 	state = 2
-	TransitionManager.change_scene("res://scenes/dungeon/dungeon_gameplay.tscn")
+	if PlayerStats.has_flag("intro_seen"):
+		TransitionManager.change_scene("res://scenes/dungeon/dungeon_gameplay.tscn")
+	else:
+		TransitionManager.change_scene("res://scenes/intro/intro.tscn")

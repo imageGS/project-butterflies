@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="EntityTemplate" format=3]
+
+[ext_resource type="Script" uid="uid://crbrk1svm02ch" path="res://scripts/resources/entity_template.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "knife"
+display_name = "Нож (лут)"
+category = "item"
+type = 2
+subtype = "knife"
+sprites = {
+"front": "sprites/items/knife.png"
+}
+default_state = "front"
+size = 0.3

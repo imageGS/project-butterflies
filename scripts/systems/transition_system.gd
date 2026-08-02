@@ -16,6 +16,11 @@ func transition_to_station(exit: ExitData):
 	var dir: int = exit.resolve_dir(target.spawn_dir)
 	PlayerStats.flags["_transition_spawn"] = spawn
 	PlayerStats.flags["_transition_dir"] = dir
+
+	var card := StationCard.new(target.station_name, target.time_of_day)
+	add_child(card)
+	await card.done
+
 	TransitionManager.change_scene("res://scenes/dungeon/dungeon_gameplay.tscn")
 
 func ask_leave_station():

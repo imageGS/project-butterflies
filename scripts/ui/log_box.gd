@@ -15,6 +15,11 @@ var font: Font
 func _ready():
 	mouse_filter = MOUSE_FILTER_IGNORE
 	_setup_inner()
+	resized.connect(_on_resized)
+
+func _on_resized():
+	if scroll:
+		scroll.size = size
 
 func _setup_inner():
 	scroll = ScrollContainer.new()

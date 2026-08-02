@@ -28,6 +28,7 @@ var inv_panel: InventoryPanel
 var equip_slots: EquipmentSlots
 
 var _hud_root: Control
+var _time_label: Label
 
 signal examine_requested(item_name: String, description: String)
 
@@ -35,6 +36,10 @@ func setup(hud_root: Control, dialogue_system: DialogueSystem, font: Font):
 	if not hud_root: return
 	_hud_root = hud_root
 	hud_base_pos = hud_root.position
+	_time_label = _hud_root.get_node_or_null("TimeLabel")
+	if _time_label:
+		_time_label.add_theme_font_override("font", font)
+		_time_label.text = "--:--"
 	for ball_name in ["UL_Ball", "UR_Ball", "DL_Ball", "DR_Ball"]:
 		var ball: TextureRect = hud_root.get_node_or_null(ball_name)
 		if ball: hud_balls.append(ball)
@@ -89,16 +94,34 @@ func setup(hud_root: Control, dialogue_system: DialogueSystem, font: Font):
 	if inv_panel:
 		inv_panel.equip_slots = equip_slots
 
+	PlayerStats.flashlight_energy_changed.connect(_on_flashlight_energy_changed)
+	_update_flashlight_bar()
+
+func _update_flashlight_bar():
+	var bar: FlashlightBar = _hud_root.get_node_or_null("FlashlightBar") as FlashlightBar
+	if bar:
+		bar.update_energy(PlayerStats.flashlight_energy, PlayerStats.max_flashlight_energy)
+
+func _on_flashlight_energy_changed(energy: float, max_energy: float):
+	_update_flashlight_bar()
+
 func shake():
 	if not _hud_root: return
 	var tw := create_tween()
 	tw.tween_property(_hud_root, "position", hud_base_pos + Vector2(randf_range(-3, 3), randf_range(-2, 2)), 0.04)
 	tw.tween_property(_hud_root, "position", hud_base_pos, 0.08)
 
-func tick_balls(delta: float):
+func tick_balls(delta: float, brightness: float = 1.0):
+	var speed: float = clampf(brightness * 1.2, 0.0, 1.2)
 	for i in hud_balls.size():
-		hud_ball_angles[i] += delta * 1.2
+		var dir: float = -1.0 if i == 0 or i == 2 else 1.0
+		hud_ball_angles[i] += delta * speed * dir
 		hud_balls[i].rotation = hud_ball_angles[i]
+	if _time_label:
+		var gt: float = PlayerStats.game_time
+		var h: int = floori(gt)
+		var m: int = floori((gt - h) * 60.0)
+		_time_label.text = "%02d:%02d" % [h, m]
 
 func toggle_inventory():
 	if not inv_box or not char_box: return

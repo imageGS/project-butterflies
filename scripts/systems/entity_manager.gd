@@ -12,7 +12,7 @@ func setup(mm: MapManager, ds: DialogueSystem):
 	dialogue_system = ds
 
 
-func setup_entities(station_data, is_shelter: bool) -> Array:
+func setup_entities(station_data) -> Array:
 	entities = []
 	if PlayerStats._pending_corpse.x >= 0:
 		entities.append({
@@ -23,39 +23,15 @@ func setup_entities(station_data, is_shelter: bool) -> Array:
 		})
 		PlayerStats._pending_corpse = Vector2i(-1, -1)
 
-	if station_data and not station_data.entity_spawns.is_empty():
-		for spawn: EntitySpawn in station_data.entity_spawns:
+	if station_data:
+		for raw: EntitySpawn in station_data.entity_spawns:
+			var spawn: EntitySpawn = TemplateLibrary.resolve_spawn(raw)
 			var ent: Dictionary = _create_entity_from_spawn(spawn)
 			if not ent.is_empty():
 				entities.append(ent)
-	elif is_shelter:
-		entities.append({ "grid_x": 3, "grid_y": 5, "color": Color(0.3, 0.5, 0.7), "type": "object", "object_type": "rest",
-			"data": { "name": "кровать", "description": "Старая кровать." }})
-		entities.append({ "grid_x": 10, "grid_y": 10, "color": Color(0.4, 0.8, 0.4), "type": "object", "object_type": "lore",
-			"data": { "name": "ТВ", "description": "Работает. Помехи, потом голос: «...проход открыт в западном крыле». И снова помехи." }})
-
-		var medkit_tex := load("res://sprites/entity/medkit.png") as Texture2D
-		entities.append({ "grid_x": 7, "grid_y": 10, "texture": medkit_tex, "type": "object", "object_type": "container",
-			"data": { "name": "Аптечка", "loot": ["Медикаменты"] }, "size": 0.2})
-		var kitsu_portrait := load("res://sprites/npc/kitsu/kitsu_front.png") as Texture2D
-		var kitsu_front := load("res://sprites/npc/kitsu/kitsu_front.png") as Texture2D
-		var kitsu_back := load("res://sprites/npc/kitsu/kitsu_back.png") as Texture2D
-		var kitsu_left := load("res://sprites/npc/kitsu/kitsu_left.png") as Texture2D
-		var kitsu_right := load("res://sprites/npc/kitsu/kitsu_right.png") as Texture2D
-		var kitsu_dialogue: Array = []
-		var f := FileAccess.get_file_as_string("res://dialogues/kitsu/main.json")
-		if f:
-			var d: Variant = JSON.parse_string(f)
-			if d and typeof(d) == TYPE_DICTIONARY:
-				kitsu_dialogue = dialogue_system.convert_nodes(d)
-		entities.append({ "grid_x": 5, "grid_y": 5, "color": Color(0.2, 0.6, 0.2), "type": "npc", "name": "Кицунэ", "texture": kitsu_portrait, "textures": { "front": kitsu_front, "back": kitsu_back, "left": kitsu_left, "right": kitsu_right }, "dialogue": kitsu_dialogue })
-	else:
-		_setup_fallback_entities()
-
-	if station_data:
 		for exit: ExitData in station_data.exits:
 			entities.append({ "grid_x": exit.position.x, "grid_y": exit.position.y, "color": Color(1, 0.9, 0.2, 0.9), "type": "exit_marker" })
-	
+
 	_spawn_floor_clutter()
 	return entities
 
@@ -77,20 +53,20 @@ func has_wall_neighbor(gx: int, gy: int) -> bool:
 
 
 func _spawn_floor_clutter():
-	var decals: Array[String] = ["garbage.png", "crack.png"]
-	var weights: Array[float] = [0.2, 0.8]
-	var sizes: Array[float] = [0.25, 0.2]
+	var decals: Array[String] = ["garbage.png"]
+	var weights: Array[float] = [1.0]
+	var sizes: Array[float] = [0.25]
 	var cache: Dictionary = {}
 	for dn in decals:
 		var t := load("res://assets/textures/decal/" + dn) as Texture2D
 		if t: cache[dn] = t
 	if cache.is_empty(): return
-	
+
 	var occupied: Dictionary = {}
 	for ent in entities:
 		if ent.has("grid_x") and ent.has("grid_y"):
 			occupied["%d,%d" % [ent.grid_x, ent.grid_y]] = true
-	
+
 	var total: int = map_manager.map_data.size() * map_manager.map_data[0].size()
 	for _i in range(int(total * 0.1)):
 		var gx: int = randi() % map_manager.map_data[0].size()
@@ -98,14 +74,14 @@ func _spawn_floor_clutter():
 		if not map_manager.is_walkable(gx, gy): continue
 		if occupied.has("%d,%d" % [gx, gy]): continue
 		if has_wall_neighbor(gx, gy): continue
-		
+
 		var r: float = randf()
 		var sum: float = 0.0
 		var idx: int = 0
 		for w in weights.size():
 			sum += weights[w]
 			if r <= sum: idx = w; break
-		
+
 		var tex: Texture2D = cache.get(decals[idx], null)
 		if not tex: continue
 		occupied["%d,%d" % [gx, gy]] = true
@@ -134,11 +110,11 @@ func _create_enemy_entity(spawn: EntitySpawn) -> Dictionary:
 	var subtype: String = spawn.subtype
 	if subtype.is_empty(): subtype = "bunny"
 	var tex_base: String = "res://sprites/enemy/bunny/bunny_enemy" if subtype == "bunny" else "res://sprites/enemy/scav_enemy_1"
-	var tex_f: Texture2D = load(tex_base + ".png") if subtype == "bunny" else load(tex_base + ".png")
-	var tex_b: Texture2D = load("res://sprites/enemy/bunny/bunny_enemy_back.png") if subtype == "bunny" else tex_f
-	var tex_l: Texture2D = load("res://sprites/enemy/bunny/bunny_enemy_left.png") if subtype == "bunny" else tex_f
-	var tex_r: Texture2D = load("res://sprites/enemy/bunny/bunny_enemy_right.png") if subtype == "bunny" else tex_f
-	var tex_c: Texture2D = load("res://sprites/enemy/bunny/bunny_enemy_chase.png") if subtype == "bunny" else tex_f
+	var tex_f: Texture2D = load(tex_base + ".png") as Texture2D
+	var tex_b: Texture2D = load("res://sprites/enemy/bunny/bunny_enemy_back.png") as Texture2D if subtype == "bunny" else tex_f
+	var tex_l: Texture2D = load("res://sprites/enemy/bunny/bunny_enemy_left.png") as Texture2D if subtype == "bunny" else tex_f
+	var tex_r: Texture2D = load("res://sprites/enemy/bunny/bunny_enemy_right.png") as Texture2D if subtype == "bunny" else tex_f
+	var tex_c: Texture2D = load("res://sprites/enemy/bunny/bunny_enemy_chase.png") as Texture2D if subtype == "bunny" else tex_f
 	var audio := AudioStreamPlayer.new()
 	audio.volume_db = -4.0
 	add_child(audio)
@@ -159,24 +135,41 @@ func _create_enemy_entity(spawn: EntitySpawn) -> Dictionary:
 func _create_npc_entity(spawn: EntitySpawn) -> Dictionary:
 	var subtype: String = spawn.subtype
 	if subtype.is_empty(): subtype = "wanderer"
-	var portrait: Texture2D = load("res://sprites/npc/17_sprite.png")
-	var name: String = "Незнакомец"
+	var name: String = spawn.extra.get("name", "")
 	var dialogue: Array = []
-	if subtype == "wanderer":
-		var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
-		if file:
-			var data: Dictionary = JSON.parse_string(file)
-			if data:
-				name = data.get("name", name)
-				dialogue = data.get("nodes", [])
-	return {
+	var parsed: Variant = null
+	var paths: Array[String] = [
+		"res://dialogues/%s/main.json" % subtype,
+		"res://dialogues/%s.json" % subtype,
+	]
+	for p in paths:
+		if FileAccess.file_exists(p):
+			var file := FileAccess.get_file_as_string(p)
+			if file:
+				parsed = JSON.parse_string(file)
+				if parsed is Dictionary: break
+	if parsed is Dictionary:
+		var d: Dictionary = parsed
+		if name.is_empty():
+			name = d.get("name", "Незнакомец")
+		if d.has("nodes") and typeof(d["nodes"]) == TYPE_ARRAY:
+			dialogue = d["nodes"]
+		elif dialogue_system and dialogue_system.has_method("convert_nodes"):
+			dialogue = dialogue_system.convert_nodes(d)
+	if name.is_empty():
+		name = "Незнакомец"
+	var ent: Dictionary = {
 		"grid_x": spawn.position.x, "grid_y": spawn.position.y,
 		"color": Color(0.2, 0.6, 0.2),
 		"type": "npc",
 		"name": name,
-		"texture": portrait,
 		"dialogue": dialogue,
 	}
+	if not spawn.texture.is_empty():
+		var visual := _resolve_entity_visuals(spawn.texture)
+		if visual.has("texture"): ent["texture"] = visual["texture"]
+		if visual.has("textures"): ent["textures"] = visual["textures"]
+	return ent
 
 
 func _create_item_entity(spawn: EntitySpawn) -> Dictionary:
@@ -199,77 +192,81 @@ func _create_object_entity(spawn: EntitySpawn) -> Dictionary:
 		data.name = subtype
 	if not data.has("description"):
 		data.description = "Ничего особенного."
-	return {
+	var ent: Dictionary = {
 		"grid_x": spawn.position.x, "grid_y": spawn.position.y,
 		"color": Color(0.6, 0.6, 0.6),
 		"type": "object",
 		"object_type": subtype,
 		"data": data,
+		"size": spawn.size,
 	}
+	if not spawn.light_source.is_empty():
+		ent["light_source"] = spawn.light_source.duplicate()
+	if not spawn.texture.is_empty():
+		var visual := _resolve_entity_visuals(spawn.texture)
+		if visual.has("texture"): ent["texture"] = visual["texture"]
+		if visual.has("textures"): ent["textures"] = visual["textures"]
+		if visual.has("front_on") and not data.has("tv_front_on"): data.tv_front_on = visual["front_on"]
+		if visual.has("front_off") and not data.has("tv_front_off"): data.tv_front_off = visual["front_off"]
+	if data.has("color") and data["color"] is Array and data["color"].size() >= 3:
+		ent["color"] = Color(data["color"][0], data["color"][1], data["color"][2])
+	if spawn.ceiling_lift != 0.0:
+		ent["ceiling_lift"] = spawn.ceiling_lift
+	if spawn.visual_offset_x != 0.0:
+		ent["visual_offset_x"] = spawn.visual_offset_x
+	if spawn.facing != 2:
+		ent["facing"] = spawn.facing
+	return ent
 
 
-func _setup_fallback_entities():
-	var tex_f := load("res://sprites/enemy/bunny/bunny_enemy.png")
-	var tex_b := load("res://sprites/enemy/bunny/bunny_enemy_back.png")
-	var tex_l := load("res://sprites/enemy/bunny/bunny_enemy_left.png")
-	var tex_r := load("res://sprites/enemy/bunny/bunny_enemy_right.png")
-	var spawns: Array[Dictionary] = [
-		{ "pos": Vector2i(2, 10), "dir": Dir.SOUTH },
-		{ "pos": Vector2i(46, 10), "dir": Dir.SOUTH },
-		{ "pos": Vector2i(25, 2), "dir": Dir.EAST },
-	]
-	for s in spawns:
-		var audio := AudioStreamPlayer.new()
-		audio.volume_db = -4.0
-		add_child(audio)
-		entities.append({
-			"grid_x": s.pos.x, "grid_y": s.pos.y,
-			"anim_x": float(s.pos.x), "anim_y": float(s.pos.y),
-			"color": Color(0.8, 0.2, 0.2),
-			"type": "enemy",
-			"facing": s.dir,
-			"textures": { "front": tex_f, "back": tex_b, "left": tex_l, "right": tex_r, "chase": load("res://sprites/enemy/bunny/bunny_enemy_chase.png") },
-			"move_progress": 1.0,
-			"move_timer": randf_range(0.5, 1.0),
-			"chase_active": false,
-			"audio_player": audio,
-		})
-
-	var objects: Array[Dictionary] = [
-		{ "grid_x": 1, "grid_y": 9, "type": "object", "object_type": "container", "data": { "name": "Рюкзак", "description": "Чей-то брошенный рюкзак.", "loot": ["Консервы", "Бинт"] }},
-		{ "grid_x": 16, "grid_y": 13, "type": "object", "object_type": "lore", "data": { "name": "Стена", "description": "Кто-то выцарапал: «NEW DAWN — ЭТО АД». Буквы дрожат." }},
-		{ "grid_x": 28, "grid_y": 15, "type": "object", "object_type": "rest", "data": { "name": "скамья", "description": "Обшарпанная деревянная скамья." }},
-		{ "grid_x": 28, "grid_y": 22, "type": "object", "object_type": "container", "data": { "name": "Ящик", "description": "Деревянный ящик с инструментами.", "loot": ["Аптечка"] }},
-		{ "grid_x": 19, "grid_y": 20, "type": "object", "object_type": "lore", "data": { "name": "Труп", "description": "Тело в форме охранника. В кармане пусто. Нашивка: NEW DAWN." }},
-		{ "grid_x": 36, "grid_y": 23, "type": "object", "object_type": "container", "data": { "name": "Сейф", "description": "Небольшой сейф. Код сбит, но дверца открыта.", "loot": ["Патроны", "Золотая монета"] }},
-		{ "grid_x": 1, "grid_y": 22, "type": "object", "object_type": "lore", "data": { "name": "Газета", "description": "Скомканная газета. Заголовок: «ПРОПАЖА ЛЮДЕЙ В МЕТРО — ПОЛИЦИЯ БЕССИЛЬНА». Дата — полгода назад." }},
-		{ "grid_x": 24, "grid_y": 24, "type": "object", "object_type": "lore", "data": { "name": "Алтарь", "description": "Странная конструкция в центре лабиринта. Свечи, символы. Кто-то проводил здесь ритуал." }},
-		# Torches with dynamic lighting
-		{ "grid_x": 8, "grid_y": 5, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.15,
-			"data": { "name": "Факел", "description": "Пламя факела освещает коридор." },
-			"light_source": { "radius": 200.0, "intensity": 1.0, "color": Color(1.0, 0.55, 0.2), "flicker": 0.15, "height": 1.0 }},
-		{ "grid_x": 23, "grid_y": 7, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.15,
-			"data": { "name": "Факел", "description": "Пламя факела освещает коридор." },
-			"light_source": { "radius": 200.0, "intensity": 1.0, "color": Color(1.0, 0.55, 0.2), "flicker": 0.15, "height": 1.0 }},
-		{ "grid_x": 20, "grid_y": 24, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.15,
-			"data": { "name": "Факел", "description": "Пламя факела освещает коридор." },
-			"light_source": { "radius": 200.0, "intensity": 1.0, "color": Color(1.0, 0.55, 0.2), "flicker": 0.15, "height": 1.0 }},
-		{ "grid_x": 38, "grid_y": 21, "color": Color(1.0, 0.6, 0.2), "type": "object", "object_type": "light", "size": 0.15,
-			"data": { "name": "Факел", "description": "Пламя факела освещает коридор." },
-			"light_source": { "radius": 200.0, "intensity": 1.0, "color": Color(1.0, 0.55, 0.2), "flicker": 0.15, "height": 1.0 }},
-	]
-	for o in objects:
-		entities.append(o)
-
-	var file := FileAccess.get_file_as_string("res://dialogues/wanderer.json")
-	if file:
-		var data: Dictionary = JSON.parse_string(file)
-		if data and data.has("nodes"):
-			entities.append({
-				"grid_x": 35, "grid_y": 23,
-				"color": Color(0.2, 0.6, 0.2),
-				"type": "npc",
-				"name": data.get("name", "Незнакомец"),
-				"texture": load("res://sprites/npc/17_sprite.png"),
-				"dialogue": data.nodes,
-			})
+func _resolve_entity_visuals(tid: String) -> Dictionary:
+	if tid.ends_with(".png"):
+		var t := load("res://" + tid) as Texture2D
+		if t: return { "texture": t }
+		return {}
+	var base: String = ("res://" + tid).trim_suffix("/")
+	var result: Dictionary = {}
+	var dir := DirAccess.open(base)
+	if not dir: return {}
+	var front: Texture2D = null
+	var back: Texture2D = null
+	var left: Texture2D = null
+	var right: Texture2D = null
+	var other: Texture2D = null
+	var front_on: Texture2D = null
+	var front_off: Texture2D = null
+	dir.list_dir_begin()
+	var f := dir.get_next()
+	while f != "":
+		if not dir.current_is_dir() and f.ends_with(".png"):
+			var t := load(base + "/" + f) as Texture2D
+			if t:
+				if f.contains("front_on"):
+					if not front_on: front_on = t
+				elif f.contains("front_off"):
+					if not front_off: front_off = t
+				elif f.contains("front"):
+					if not front: front = t
+				elif f.contains("back"):
+					if not back: back = t
+				elif f.contains("side_l") or f.contains("left") or f.contains("_l."):
+					if not left: left = t
+				elif f.contains("side_r") or f.contains("right") or f.contains("_r."):
+					if not right: right = t
+				elif not other:
+					other = t
+		f = dir.get_next()
+	dir.list_dir_end()
+	if front or back or left or right:
+		if not front and front_off: front = front_off
+		if not front: front = other
+		if not front: front = back if back else (left if left else right)
+		if not back: back = front
+		if not left: left = front
+		if not right: right = front
+		result["textures"] = { "front": front, "back": back, "left": left, "right": right }
+	elif other:
+		result["texture"] = other
+	if front_on: result["front_on"] = front_on
+	if front_off: result["front_off"] = front_off
+	return result

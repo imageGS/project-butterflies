@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="EntityTemplate" format=3]
+
+[ext_resource type="Script" uid="uid://crbrk1svm02ch" path="res://scripts/resources/entity_template.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "bed"
+display_name = "Кровать"
+category = "rest"
+type = 3
+subtype = "rest"
+extra = {
+"name": "Кровать",
+"description": "Можно отдохнуть и восстановить силы."
+}
+size = 1.0

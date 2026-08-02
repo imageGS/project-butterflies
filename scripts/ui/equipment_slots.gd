@@ -21,6 +21,9 @@ var _drag_follower: ColorRect
 signal equipped(slot_type: int, item: Item)
 signal unequipped(slot_type: int, item: Item)
 
+func is_dragging() -> bool:
+	return _dragging
+
 func _ready():
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build_slots()
@@ -94,9 +97,14 @@ func try_unequip(slot_type: int) -> Item:
 	return item
 
 func _input(event: InputEvent):
+	if not is_visible_in_tree(): return
 	if not (event is InputEventMouseButton or event is InputEventMouseMotion): return
+	if inventory_panel and inventory_panel.is_dragging():
+		return
 	var local_event := make_input_local(event)
 	var local_pos: Vector2 = (local_event as InputEventMouse).position
+	if not Rect2(Vector2(), size).has_point(local_pos) and not _dragging:
+		return
 
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
@@ -117,6 +125,14 @@ func _input(event: InputEvent):
 
 	if event is InputEventMouseMotion and _dragging:
 		_drag_follower.position = local_pos - _drag_follower.size / 2
+		return
+
+	if event is InputEventMouseMotion and not _dragging:
+		var t := hit_test(local_pos)
+		if t >= 0 and slots.get(t):
+			CursorManager.set_cursor("hand")
+		else:
+			CursorManager.set_cursor("pointer")
 
 func _start_drag(slot_type: int):
 	_drag_slot = slot_type
@@ -129,6 +145,7 @@ func _start_drag(slot_type: int):
 	slots[slot_type] = null
 	_update_slot_visual(slot_type)
 	_dragging = true
+	CursorManager.set_cursor("pinch")
 	_drag_follower = ColorRect.new()
 	_drag_follower.size = Vector2(_drag_item.grid_size.x * 14, _drag_item.grid_size.y * 14)
 	_drag_follower.color = _drag_item.icon_color
@@ -171,6 +188,7 @@ func _cleanup_drag():
 	_dragging = false
 	_drag_item = null
 	_drag_slot = -1
+	CursorManager.set_cursor("pointer")
 
 func _update_slot_visual(slot_type: int):
 	var rect: ColorRect = _slot_rects.get(slot_type)

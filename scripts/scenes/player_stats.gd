@@ -2,6 +2,7 @@ extends Node
 
 signal health_depleted
 signal sanity_depleted
+signal flashlight_energy_changed(energy: float, max_energy: float)
 
 enum Skill { COMPOSURE, STAMINA, AGILITY, RESOURCEFULNESS, INTUITION }
 const SKILL_NAMES := ["composure", "stamina", "agility", "resourcefulness", "intuition"]
@@ -21,6 +22,10 @@ const SKILL_NAMES_RU := ["Хладнокровие", "Стойкость", "По
 
 @export var death_count: int = 0
 @export var cycle: int = 0
+
+var game_time: float = 12.0
+var flashlight_energy: float = 100.0
+var max_flashlight_energy: float = 100.0
 
 var inventory: InventoryGrid = InventoryGrid.new()
 var flags: Dictionary = {}
@@ -87,6 +92,14 @@ func restore_sanity(amount: int):
 func change_humanity(amount: int):
 	humanity = clamp(humanity + amount, 0, 10)
 
+func change_flashlight_energy(amount: float):
+	flashlight_energy = clamp(flashlight_energy + amount, 0.0, max_flashlight_energy)
+	flashlight_energy_changed.emit(flashlight_energy, max_flashlight_energy)
+
+func set_flashlight_energy(value: float):
+	flashlight_energy = clamp(value, 0.0, max_flashlight_energy)
+	flashlight_energy_changed.emit(flashlight_energy, max_flashlight_energy)
+
 var _limb_snapshot: Dictionary = {}
 
 func save_limb_state(c: Combatant):
@@ -115,6 +128,7 @@ func create_combatant() -> Combatant:
 	return c
 
 func reset():
+	flashlight_energy = max_flashlight_energy
 	composure = 6; stamina = 5; agility = 4
 	resourcefulness = 3; intuition = 2
 	health = 10; max_health = 10

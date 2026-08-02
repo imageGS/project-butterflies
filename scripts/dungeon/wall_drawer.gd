@@ -17,6 +17,7 @@ func _draw():
 	
 	renderer.draw_walls(self)
 	renderer.draw_entities(self)
+	renderer.draw_floor_dust(self)
 	renderer.draw_fog_overlay(self)
 
 func _draw_ceiling_tex(vw: int, vh: int, hh: float):

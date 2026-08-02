@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://c8w7nm7je1a3q"]
 
 [ext_resource type="Script" uid="uid://dklw7i5r0a06u" path="res://scripts/dungeon/dungeon_gameplay.gd" id="1_hh2bj"]
-[ext_resource type="Resource" uid="uid://wye2d2fdeubp" path="res://resources/stations/shelter.tres" id="2_1g4uf"]
+[ext_resource type="Resource" uid="uid://cnako84qhbvts" path="res://resources/stations/shelter.tres" id="2_1g4uf"]
 [ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="3_n3bek"]
 [ext_resource type="Script" uid="uid://dsi67p8ck8fw5" path="res://scripts/ui/crt_display.gd" id="4_qrrgc"]
 [ext_resource type="Script" uid="uid://00ob3m0h63bo" path="res://scripts/ui/log_box.gd" id="5_o8cag"]
@@ -18,6 +18,8 @@
 [ext_resource type="Texture2D" uid="uid://bw2dbgvpjdox5" path="res://assets/UI/DIALOGUE_PORTRAIT_WINDOW.png" id="16_7p8ri"]
 [ext_resource type="Texture2D" uid="uid://c45he1iujo4ea" path="res://assets/UI/DIALOGUE_BOX.png" id="17_qsra6"]
 [ext_resource type="Script" uid="uid://r533lqkw3jph" path="res://scripts/dungeon/dungeon_renderer.gd" id="18_exaos"]
+[ext_resource type="Script" uid="uid://bsxqrhfashg2b" path="res://scripts/ui/flashlight_bar.gd" id="19_kylwp"]
+[ext_resource type="Script" uid="uid://cxjno28kcmy8b" path="res://scripts/ui/cursor_visual.gd" id="20_4wqa"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
 viewport_path = NodePath("CRT_Root/GameViewport")
@@ -36,15 +38,15 @@ shader_parameter/min_scanline_thickness = 0.836000027835
 shader_parameter/aspect = 0.5650000030875
 shader_parameter/wobble_strength = 0.6130000291175
 
+[sub_resource type="LabelSettings" id="LabelSettings_n3bek"]
+font_size = 25
+
 [node name="TestDungeon" type="Node" unique_id=1919637851]
 script = ExtResource("1_hh2bj")
 station_data = ExtResource("2_1g4uf")
 light_ambient = 0.0
-light_dither = 4.0
-light_pixel_size = 1.0
 light_glow_amount = 0.001
 light_softness = 0.5
-light_curve = 0.5
 player_light_intensity = 0.5
 
 [node name="CRT_Root" type="Control" parent="." unique_id=640219047]
@@ -77,6 +79,12 @@ scaling_3d_mode = 5
 oversampling = false
 size = Vector2i(1152, 648)
 size_2d_override = Vector2i(1152, 648)
+
+[node name="CursorVisual" type="Control" parent="CRT_Root/GameViewport" unique_id=2042736688]
+layout_mode = 3
+anchors_preset = 0
+mouse_filter = 2
+script = ExtResource("20_4wqa")
 
 [node name="UI" type="Control" parent="CRT_Root/GameViewport" unique_id=907422615]
 layout_mode = 3
@@ -222,6 +230,31 @@ pivot_offset = Vector2(59, 59)
 mouse_filter = 2
 texture = ExtResource("15_anbqd")
 
+[node name="FlashlightBar" type="Control" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=879162348]
+z_index = 10
+texture_filter = 1
+anchors_preset = 0
+offset_left = 150.4902
+offset_top = 538.62744
+offset_right = 222.4902
+offset_bottom = 547.62744
+scale = Vector2(1.6986616, 1.6986616)
+mouse_filter = 2
+script = ExtResource("19_kylwp")
+
+[node name="TimeLabel" type="Label" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=2013385091]
+z_index = 10
+layout_mode = 0
+offset_left = 451.4706
+offset_top = 28.823555
+offset_right = 533.8236
+offset_bottom = 54.823555
+theme_override_colors/font_color = Color(0.9, 0.85, 0.7, 1)
+theme_override_font_sizes/font_size = 18
+label_settings = SubResource("LabelSettings_n3bek")
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="DialoguePortraitWindow" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=66377145]
 texture_filter = 1
 layout_mode = 0
@@ -267,15 +300,15 @@ scale = Vector2(0.88235295, 0.88235295)
 mouse_filter = 2
 texture = ExtResource("17_qsra6")
 
-[node name="DialogueText" type="Label" parent="CRT_Root/GameViewport/UI/HUDOverlay/DialogueBoxWindow" unique_id=66377149]
+[node name="DialogueText" type="RichTextLabel" parent="CRT_Root/GameViewport/UI/HUDOverlay/DialogueBoxWindow" unique_id=66377149]
 layout_mode = 0
 offset_left = 25.0
 offset_top = 25.0
 offset_right = 525.0
 offset_bottom = 145.0
-theme_override_colors/font_color = Color(0.9019608, 0.8509804, 0.7019608, 1)
-theme_override_font_sizes/font_size = 18
-autowrap_mode = 3
+bbcode_enabled = true
+scroll_active = false
+autowrap_mode = 2
 
 [node name="DialogueResponses" type="VBoxContainer" parent="CRT_Root/GameViewport/UI" unique_id=1640949736]
 z_index = 5
@@ -310,10 +343,15 @@ grow_vertical = 2
 script = ExtResource("18_exaos")
 
 [node name="InfoLabel" type="Label" parent="CRT_Root/GameViewport/UI/CentralViewport/DungeonView" unique_id=597423150]
+visible = false
+z_index = 10
+z_as_relative = false
 layout_mode = 0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 200.0
-offset_bottom = 40.0
+offset_left = 408.0
+offset_top = 8.000008
+offset_right = 600.0
+offset_bottom = 40.000008
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+vertical_alignment = 1

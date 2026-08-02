@@ -8,6 +8,13 @@ enum Type { ENEMY, NPC, ITEM, OBJECT }
 @export var subtype: String = ""
 @export var facing: int = 2
 @export var extra: Dictionary = {}
+@export var light_source: Dictionary = {}
+@export var texture: String = ""
+@export var size: float = 0.3
+@export var ceiling_lift: float = 0.0
+@export var visual_offset_x: float = 0.0
+@export var template_id: String = ""
+@export var overrides: Dictionary = {}
 
 func get_type_name() -> String:
 	match type:

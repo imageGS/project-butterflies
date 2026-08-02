@@ -1,8 +1,373 @@
-[gd_resource type="Resource" script_class="StationData" format=3 uid="uid://wye2d2fdeubp"]
+[gd_resource type="Resource" script_class="StationData" format=3 uid="uid://cnako84qhbvts"]
 
 [ext_resource type="Script" uid="uid://csdjjp2doowrq" path="res://scripts/resources/station_data.gd" id="1"]
 [ext_resource type="Script" uid="uid://dfcaawdjgi8lu" path="res://scripts/resources/exit_data.gd" id="2"]
 [ext_resource type="Script" uid="uid://3gcudehlx3nq" path="res://scripts/resources/entity_spawn.gd" id="3_entity"]
+
+[sub_resource type="Resource" id="EntitySpawn_1"]
+script = ExtResource("3_entity")
+position = Vector2i(3, 5)
+type = 3
+subtype = "rest"
+extra = {
+"description": "Старая кровать.",
+"name": "кровать"
+}
+
+[sub_resource type="Resource" id="EntitySpawn_2"]
+script = ExtResource("3_entity")
+position = Vector2i(10, 10)
+type = 3
+subtype = "tv"
+extra = {
+"description": "Работает. Помехи, потом голос: «...проход открыт в западном крыле». И снова помехи.",
+"name": "ТВ"
+}
+texture = "sprites/entity/tv"
+size = 0.6
+
+[sub_resource type="Resource" id="EntitySpawn_3"]
+script = ExtResource("3_entity")
+position = Vector2i(7, 10)
+type = 3
+subtype = "container"
+extra = {
+"loot": ["medkit"],
+"name": "Аптечка"
+}
+texture = "sprites/entity/medkit.png"
+size = 0.2
+
+[sub_resource type="Resource" id="EntitySpawn_4"]
+script = ExtResource("3_entity")
+position = Vector2i(5, 5)
+type = 1
+subtype = "kitsu"
+extra = {
+"name": "Кицунэ"
+}
+texture = "sprites/npc/kitsu"
+
+[sub_resource type="Resource" id="EntitySpawn_5"]
+script = ExtResource("3_entity")
+position = Vector2i(4, 6)
+type = 3
+subtype = "lamp"
+light_source = {
+"color": Color(1, 0.95, 0.8, 1),
+"flicker": 0.02,
+"height": 0.9,
+"intensity": 0.8,
+"radius": 350,
+"style": "fluorescent",
+"world_radius": 5.0
+}
+texture = "sprites/entity/ceiling_lamp"
+size = 0.25
+ceiling_lift = 0.9
+overrides = {
+"ceiling_lift": 0.9,
+"extra": {
+"color": [1.0, 0.95, 0.8]
+},
+"facing": 2,
+"light_source": {
+"color": Color(1, 0.95, 0.8, 1),
+"flicker": 0.0,
+"height": 0.9,
+"intensity": 1.0,
+"radius": 500,
+"style": "",
+"world_radius": 5.0
+},
+"size": 0.25,
+"subtype": "lamp",
+"texture": "sprites/entity/ceiling_lamp",
+"type": 3,
+"visual_offset_x": 0.0
+}
+
+[sub_resource type="Resource" id="EntitySpawn_6"]
+script = ExtResource("3_entity")
+position = Vector2i(10, 6)
+type = 3
+subtype = "lamp"
+light_source = {
+"color": Color(1, 0.95, 0.8, 1),
+"flicker": 0.02,
+"height": 0.9,
+"intensity": 0.8,
+"radius": 350,
+"style": "fluorescent",
+"world_radius": 5.0
+}
+texture = "sprites/entity/ceiling_lamp"
+size = 0.25
+ceiling_lift = 0.9
+overrides = {
+"ceiling_lift": 0.9,
+"extra": {
+"color": [1.0, 0.95, 0.8]
+},
+"facing": 2,
+"light_source": {
+"color": Color(1, 0.95, 0.8, 1),
+"flicker": 0.0,
+"height": 0.9,
+"intensity": 1.0,
+"radius": 500,
+"style": "",
+"world_radius": 5.0
+},
+"size": 0.25,
+"subtype": "lamp",
+"texture": "sprites/entity/ceiling_lamp",
+"type": 3,
+"visual_offset_x": 0.0
+}
+
+[sub_resource type="Resource" id="EntitySpawn_7"]
+script = ExtResource("3_entity")
+position = Vector2i(4, 11)
+type = 3
+subtype = "lamp"
+light_source = {
+"color": Color(1, 0.95, 0.8, 1),
+"flicker": 0.02,
+"height": 0.9,
+"intensity": 0.8,
+"radius": 350,
+"style": "fluorescent",
+"world_radius": 5.0
+}
+texture = "sprites/entity/ceiling_lamp"
+size = 0.25
+ceiling_lift = 0.9
+overrides = {
+"ceiling_lift": 0.9,
+"extra": {
+"color": [1.0, 0.95, 0.8]
+},
+"facing": 2,
+"light_source": {
+"color": Color(1, 0.95, 0.8, 1),
+"flicker": 0.0,
+"height": 0.9,
+"intensity": 1.0,
+"radius": 500,
+"style": "",
+"world_radius": 5.0
+},
+"size": 0.25,
+"subtype": "lamp",
+"texture": "sprites/entity/ceiling_lamp",
+"type": 3,
+"visual_offset_x": 0.0
+}
+
+[sub_resource type="Resource" id="EntitySpawn_8"]
+script = ExtResource("3_entity")
+position = Vector2i(10, 11)
+type = 3
+subtype = "lamp"
+light_source = {
+"color": Color(1, 0.95, 0.8, 1),
+"flicker": 0.02,
+"height": 0.9,
+"intensity": 0.8,
+"radius": 350,
+"style": "fluorescent",
+"world_radius": 5.0
+}
+texture = "sprites/entity/ceiling_lamp"
+size = 0.25
+ceiling_lift = 0.9
+overrides = {
+"ceiling_lift": 0.9,
+"extra": {
+"color": [1.0, 0.95, 0.8]
+},
+"facing": 2,
+"light_source": {
+"color": Color(1, 0.95, 0.8, 1),
+"flicker": 0.0,
+"height": 1.0,
+"intensity": 1.0,
+"radius": 500,
+"style": "",
+"world_radius": 5.0
+},
+"size": 0.25,
+"subtype": "lamp",
+"texture": "sprites/entity/ceiling_lamp",
+"type": 3,
+"visual_offset_x": 0.0
+}
+
+[sub_resource type="Resource" id="EntitySpawn_9"]
+script = ExtResource("3_entity")
+position = Vector2i(4, 16)
+type = 3
+subtype = "lamp"
+light_source = {
+"color": Color(1, 0.95, 0.8, 1),
+"flicker": 0.02,
+"height": 0.9,
+"intensity": 0.8,
+"radius": 350,
+"style": "fluorescent",
+"world_radius": 5.0
+}
+texture = "sprites/entity/ceiling_lamp"
+size = 0.25
+ceiling_lift = 0.9
+overrides = {
+"ceiling_lift": 0.9,
+"extra": {
+"color": [1.0, 0.95, 0.8]
+},
+"facing": 2,
+"light_source": {
+"color": Color(1, 0.95, 0.8, 1),
+"flicker": 0.0,
+"height": 0.9,
+"intensity": 1.0,
+"radius": 500,
+"style": "",
+"world_radius": 5.0
+},
+"size": 0.25,
+"subtype": "lamp",
+"texture": "sprites/entity/ceiling_lamp",
+"type": 3,
+"visual_offset_x": 0.0
+}
+
+[sub_resource type="Resource" id="EntitySpawn_10"]
+script = ExtResource("3_entity")
+position = Vector2i(10, 16)
+type = 3
+subtype = "lamp"
+light_source = {
+"color": Color(1, 0.95, 0.8, 1),
+"flicker": 0.02,
+"height": 0.9,
+"intensity": 0.8,
+"radius": 350,
+"style": "fluorescent",
+"world_radius": 5.0
+}
+texture = "sprites/entity/ceiling_lamp"
+size = 0.25
+ceiling_lift = 0.9
+overrides = {
+"ceiling_lift": 0.9,
+"extra": {
+"color": [1.0, 0.95, 0.8]
+},
+"facing": 2,
+"light_source": {
+"color": Color(1, 0.95, 0.8, 1),
+"flicker": 0.0,
+"height": 0.9,
+"intensity": 1.0,
+"radius": 500,
+"style": "",
+"world_radius": 5.0
+},
+"size": 0.25,
+"subtype": "lamp",
+"texture": "sprites/entity/ceiling_lamp",
+"type": 3,
+"visual_offset_x": 0.0
+}
+
+[sub_resource type="Resource" id="Resource_rsrwf"]
+script = ExtResource("3_entity")
+position = Vector2i(2, 9)
+template_id = "trash_bin"
+
+[sub_resource type="Resource" id="Resource_q3784"]
+script = ExtResource("3_entity")
+position = Vector2i(1, 7)
+template_id = "wending_machine"
+overrides = {
+"ceiling_lift": 0.0,
+"extra": {
+"color": [0.42745098, 0.47843137, 1.0],
+"description": "Старый торговый автомат. За стеклом уже ничего не осталось.",
+"name": "Торговый автомат"
+},
+"facing": 1,
+"light_source": {
+"color": Color(0.42745098, 0.47843137, 1, 1),
+"flicker": 0.0,
+"height": 0.2,
+"intensity": 0.6,
+"radius": 150,
+"style": "",
+"world_radius": 2.0
+},
+"size": 1.0,
+"subtype": "container",
+"texture": "sprites/entity/wending_machine",
+"type": 3,
+"visual_offset_x": -0.4
+}
+
+[sub_resource type="Resource" id="Resource_bepir"]
+script = ExtResource("3_entity")
+position = Vector2i(1, 6)
+template_id = "wending_machine"
+overrides = {
+"ceiling_lift": 0.0,
+"extra": {
+"description": "Старый торговый автомат. За стеклом уже ничего не осталось.",
+"name": "Торговый автомат"
+},
+"facing": 1,
+"size": 1.0,
+"subtype": "container",
+"texture": "sprites/entity/wending_machine",
+"type": 3,
+"visual_offset_x": -0.4
+}
+
+[sub_resource type="Resource" id="Resource_avln7"]
+script = ExtResource("3_entity")
+position = Vector2i(13, 5)
+template_id = "backpack"
+overrides = {
+"ceiling_lift": 0.0,
+"extra": {
+"description": "Брошенный рюкзак. Внутри что-то есть.",
+"name": "Рюкзак"
+},
+"facing": 2,
+"size": 2.0,
+"subtype": "container",
+"texture": "sprites/entity/backpack",
+"type": 3,
+"visual_offset_x": 0.0
+}
+
+[sub_resource type="Resource" id="Resource_f12sn"]
+script = ExtResource("3_entity")
+position = Vector2i(7, 7)
+template_id = "locker"
+overrides = {
+"ceiling_lift": 0.0,
+"extra": {
+"description": "Старый металлический шкаф для хранения.",
+"name": "Шкаф"
+},
+"facing": 0,
+"size": 1.0,
+"subtype": "container",
+"texture": "sprites/entity/locker",
+"type": 3,
+"visual_offset_x": 0.0
+}
 
 [sub_resource type="Resource" id="ExitData_1"]
 script = ExtResource("2")
@@ -17,5 +382,7 @@ station_name = "Убежище"
 map_file = "res://resources/stations/maps/shelter.txt"
 spawn = Vector2i(3, 3)
 outer_ring = false
-fog_distance = 15.0
+is_safe = true
+fog_distance = 10.0
 exits = Array[ExtResource("2")]([SubResource("ExitData_1")])
+entity_spawns = Array[ExtResource("3_entity")]([SubResource("EntitySpawn_1"), SubResource("EntitySpawn_2"), SubResource("EntitySpawn_3"), SubResource("EntitySpawn_4"), SubResource("EntitySpawn_5"), SubResource("EntitySpawn_6"), SubResource("EntitySpawn_7"), SubResource("EntitySpawn_8"), SubResource("EntitySpawn_9"), SubResource("EntitySpawn_10"), SubResource("Resource_rsrwf"), SubResource("Resource_q3784"), SubResource("Resource_bepir"), SubResource("Resource_avln7"), SubResource("Resource_f12sn")])

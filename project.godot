@@ -18,8 +18,10 @@ config/icon="res://icon.svg"
 [autoload]
 
 EventBus="*res://scripts/systems/event_bus.gd"
+CursorManager="*res://scripts/systems/cursor_manager.gd"
 TransitionManager="*res://scripts/managers/transition_manager.gd"
 PlayerStats="*res://scripts/scenes/player_stats.gd"
+TemplateLibrary="*res://scripts/resources/template_library.gd"
 
 [display]
 

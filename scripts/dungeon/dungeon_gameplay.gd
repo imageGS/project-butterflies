@@ -21,6 +21,8 @@ const TILE_EXIT := 7
 const TILE_ITEM := 8
 const TILE_RAIL := 9
 
+const FLASHLIGHT_MAX_AIM: float = 0.5
+
 @export var move_duration: float = 0.25
 @export var turn_duration: float = 0.2
 
@@ -43,27 +45,34 @@ var _transition_system: TransitionSystem
 @onready var _renderer: Control = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView
 @onready var _label: Label = $CRT_Root/GameViewport/UI/CentralViewport/DungeonView/InfoLabel
 @onready var _minimap_ctrl: MinimapControl = $CRT_Root/GameViewport/UI/HUDOverlay/UL_Window/Minimap
+@onready var _cursor_visual: Control = $CRT_Root/GameViewport/CursorVisual
 
 @export var shelter_mode: bool = false  # deprecated, station_data defines the level
 @export var station_data: StationData
 @export_group("Lighting")
 @export var light_ambient: float = 0.15
-@export var light_dither: float = 6.0
-@export var light_pixel_size: float = 2.0
 @export var light_glow_amount: float = 0.0
 @export var light_softness: float = 0.3
-@export var light_curve: float = 1.6
 @export var player_light_radius: float = 300.0
 @export var player_light_intensity: float = 1.2
 @export var player_light_color: Color = Color(1.0, 0.95, 0.8)
 
 var _lighting_system: LightingSystem
+var _floor_dust: FloorDust
+var _last_dust_tile_x: int = -999
+var _last_dust_tile_y: int = -999
+var _dark_timer: float = 0.0
+const DARK_FEAR_TIME: float = 10.0
+var _entity_lights: Array = []
+var _flashlight_aim: float = 0.0
 
 func _ready():
 	var fd := FontFile.new()
 	fd.font_data = load("res://font/Silver.ttf")
 	_mono_font = fd
-	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	CursorManager.hide_system_cursor()
+	CursorManager.virtual = true
+	CursorManager.set_cursor("eye")
 	_map_manager = MapManager.new()
 	add_child(_map_manager)
 	_map_manager.setup(_renderer)
@@ -92,7 +101,13 @@ func _ready():
 	_entity_manager = EntityManager.new()
 	add_child(_entity_manager)
 	_entity_manager.setup(_map_manager, _dialogue_system)
-	_entities = _entity_manager.setup_entities(station_data, station_data != null and station_data.station_name == "Убежище")
+	_entities = _entity_manager.setup_entities(station_data)
+	_floor_dust = FloorDust.new()
+	add_child(_floor_dust)
+	if _map_manager and not _map_manager.map_data.is_empty():
+		_floor_dust.generate_for_map(_map_manager.map_data)
+		_floor_dust.generate_fog_map(_map_manager.map_data)
+	_renderer.floor_dust = _floor_dust
 	_audio_system = AudioSystem.new()
 	add_child(_audio_system)
 	_audio_system.setup(self)
@@ -102,7 +117,8 @@ func _ready():
 		func(): return _hud_system.inv_open,
 		func(): _refresh(),
 		func(): _hud_system.shake(),
-		move_duration, turn_duration
+		move_duration, turn_duration,
+		func(tx, ty): return _tile_blocked_by_entity(tx, ty)
 	)
 
 	_hud_system = HUDSystem.new()
@@ -146,12 +162,19 @@ func _ready():
 
 	_lighting_system = LightingSystem.new()
 	add_child(_lighting_system)
-	_lighting_system.setup($CRT_Root/GameViewport)
-	_lighting_system.apply_light_settings(light_ambient, light_dither, light_pixel_size, light_glow_amount, light_softness, light_curve)
+	_lighting_system.setup($CRT_Root/GameViewport, _renderer)
 
 	_hud_system.add_test_items()
 	_renderer.precache_outlines(_entities)
 	_refresh()
+
+func _tile_blocked_by_entity(tx: int, ty: int) -> bool:
+	for ent in _entities:
+		if ent.grid_x == tx and ent.grid_y == ty:
+			if ent.get("object_type", "") in ["floor_decal", "lamp", "light"]:
+				continue
+			return true
+	return false
 
 func _load_station():
 	if not PlayerStats.current_station:
@@ -160,6 +183,8 @@ func _load_station():
 		else:
 			PlayerStats.current_station = load("res://resources/stations/shelter.tres")
 	station_data = PlayerStats.current_station
+
+	PlayerStats.game_time = station_data.time_of_day
 
 	var spawn: Vector2i = station_data.spawn
 	var dir: int = station_data.spawn_dir
@@ -184,6 +209,7 @@ func _load_station():
 				_renderer.set_floor_texture(ft)
 		meta.cells.erase("_floor_")
 		_renderer.wall_decors = meta.cells
+		_renderer.rebuild_floor_atlas()
 	_player_movement.player_x = float(spawn.x)
 	_player_movement.player_y = float(spawn.y)
 	_player_movement.player_dir = dir
@@ -194,6 +220,8 @@ func _unhandled_input(event):
 		match event.keycode:
 			KEY_TAB:
 				_hud_system.toggle_inventory()
+				if _hud_system.inv_open:
+					CursorManager.set_cursor("pointer")
 				return
 			KEY_R:
 				if _hud_system.inv_open and _hud_system.inv_panel:
@@ -252,7 +280,10 @@ func _unhandled_input(event):
 					_interaction_system.try_interact()
 			KEY_L:
 				if not _dialogue_system.active:
-					_lighting_system.flashlight_on = not _lighting_system.flashlight_on
+					if _lighting_system.flashlight_on or PlayerStats.flashlight_energy > 0.0:
+						var was_on: bool = _lighting_system.flashlight_on
+						_lighting_system.flashlight_on = not was_on
+						_audio_system.play_flashlight_toggle(_lighting_system.flashlight_on)
 			KEY_M:
 				if not _dialogue_system.active and _hud_system.ul_window:
 					_hud_system.ul_open = _hud_system.toggle_window(_hud_system.ul_window, _hud_system.ul_open, _hud_system.ul_on_pos, _hud_system.ul_off_pos)
@@ -279,19 +310,99 @@ func _unhandled_input(event):
 					_dialogue_system.select_response(5)
 
 
+func _update_flashlight_aim():
+	var vp: Viewport = get_viewport()
+	if not vp:
+		return
+	var win_w: float = vp.get_visible_rect().size.x
+	if win_w <= 0.0:
+		return
+	var mx: float = vp.get_mouse_position().x
+	var fx: float = clampf((mx - win_w * 0.5) / (win_w * 0.5), -1.0, 1.0)
+	_flashlight_aim = fx * FLASHLIGHT_MAX_AIM
+	if _renderer:
+		_renderer.flashlight_aim = _flashlight_aim
+
 
 func _process(delta):
+	if _cursor_visual:
+		_cursor_visual.update_position(get_viewport().get_mouse_position())
+		var cur: Dictionary = CursorManager.get_current_cursor()
+		if not cur.is_empty():
+			_cursor_visual.show_cursor(cur.tex, cur.hotspot)
+	_update_flashlight_aim()
+	# Day/night cycle
+	if station_data and not station_data.is_safe:
+		PlayerStats.game_time += delta * (1.0 / 120.0)
+		if PlayerStats.game_time >= 24.0: PlayerStats.game_time -= 24.0
+		var gt: float = PlayerStats.game_time
+		var day_factor: float
+		if gt >= 6.0 and gt < 20.0:
+			day_factor = 1.0
+		elif gt >= 20.0 and gt < 22.0:
+			day_factor = 1.0 - (gt - 20.0) / 2.0
+		elif gt >= 0.0 and gt < 6.0:
+			day_factor = gt / 6.0 * 0.5
+		else:
+			day_factor = 0.0
+		light_ambient = lerpf(0.0, 0.3, day_factor)
+		player_light_intensity = lerpf(1.8, 0.5, day_factor)
+		_renderer.fog_color = Color(lerpf(0.02, 0.08, day_factor), lerpf(0.02, 0.08, day_factor), lerpf(0.06, 0.08, day_factor))
+		_renderer.fog_distance = lerpf(5.0, 7.0, day_factor)
+	else:
+		light_ambient = 0.15
+
+	for ent in _entities:
+		if ent.get("object_type") == "tv":
+			var d: Dictionary = ent.get("data", {})
+			var t: float = d.get("tv_timer", 0.0)
+			if t > 0.0:
+				t -= delta
+				if t <= 0.0:
+					var off_tex: Texture2D = d.get("tv_front_off", null)
+					if off_tex:
+						ent.textures["front"] = off_tex
+				d.tv_timer = max(t, 0.0)
+
+	if _lighting_system.flashlight_on:
+		PlayerStats.change_flashlight_energy(-0.5 * delta)
+		if PlayerStats.flashlight_energy <= 0.0:
+			_lighting_system.flashlight_on = false
+	_update_floor_lights()
+	var pl: Color = _renderer._get_light_at(_player_movement.player_x, _player_movement.player_y)
+	var brightness: float = (pl.r + pl.g + pl.b) / 3.0
+	if _lighting_system.flashlight_on:
+		brightness = maxf(brightness, 0.15)
+	if brightness >= 0.12:
+		_dark_timer = 0.0
+		_audio_system.stop_breathing()
+	else:
+		_dark_timer += delta
+		if _dark_timer >= DARK_FEAR_TIME:
+			_audio_system.start_breathing()
 	_lighting_system.update_lighting(
-		light_ambient, light_dither, light_pixel_size, light_glow_amount, light_softness, light_curve,
+		light_glow_amount, light_softness,
 		player_light_radius, player_light_intensity, player_light_color,
-		_player_movement.player_x + 0.5, _player_movement.player_y + 0.5, _player_movement.current_angle,
-		_entities
+		_player_movement.player_x, _player_movement.player_y, _player_movement.current_angle, _entity_lights, _flashlight_aim
 	)
 	_awareness_system.process(delta)
 
+	if _floor_dust:
+		var tx: int = roundi(_player_movement.player_x)
+		var ty: int = roundi(_player_movement.player_y)
+		if tx != _last_dust_tile_x or ty != _last_dust_tile_y:
+			_floor_dust.puff_tile(tx, ty)
+			_floor_dust.displace_fog(tx, ty)
+			_last_dust_tile_x = tx
+			_last_dust_tile_y = ty
+
 	_enemy_ai.sync_state(_entities, _map_manager.map_data, _player_movement.player_x, _player_movement.player_y, _player_movement.is_animating)
 	_enemy_ai.update(delta)
-	_hud_system.tick_balls(delta)
+	pl = _renderer._get_light_at(_player_movement.player_x, _player_movement.player_y)
+	var ball_brightness: float = (pl.r + pl.g + pl.b) / 3.0
+	if _lighting_system.flashlight_on:
+		ball_brightness = maxf(ball_brightness, 0.15)
+	_hud_system.tick_balls(delta, ball_brightness)
 
 	if not _player_movement.is_animating:
 		if not _hud_system.inv_open:
@@ -302,6 +413,7 @@ func _process(delta):
 		if not _hud_system.inv_open and not _dialogue_system.active:
 			_interaction_system.update_mouse_hover(get_viewport().get_mouse_position())
 			_interaction_system.update_tooltip()
+			_interaction_system.update_cursor()
 			_interaction_system.check_click_interact()
 		return
 
@@ -311,6 +423,7 @@ func _process(delta):
 		if _renderer: _renderer._project_entities()
 		_interaction_system.update_mouse_hover(get_viewport().get_mouse_position())
 		_interaction_system.update_tooltip()
+		_interaction_system.update_cursor()
 		_interaction_system.check_click_interact()
 		if t >= 1.0:
 			_interaction_system.check_entity()
@@ -324,11 +437,18 @@ func _on_examine_item(item_name: String, description: String):
 func _on_dialogue_started(npc_name: String):
 	_log_system.save()
 	_log_system.set_separation(0)
+	CursorManager.set_cursor("pointer")
 
 func _on_dialogue_ended():
 	_log_system.restore()
 	_log_system.set_separation(4)
 	_log_system.scroll_to_bottom()
+	CursorManager.set_cursor("eye")
+
+func _exit_tree():
+	CursorManager.virtual = false
+	CursorManager.reset()
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
 func _on_entity_interacted(ent: Dictionary):
 	if ent.get("type") == "enemy":
@@ -337,6 +457,41 @@ func _on_entity_interacted(ent: Dictionary):
 	elif ent.get("type") == "exit":
 		var exit: ExitData = station_data.get_exit_at(Vector2i(ent.grid_x, ent.grid_y)) if station_data else null
 		if exit: _transition_system.transition_to_station(exit)
+
+func _update_floor_lights():
+	var floor_ambient: float = 0.0
+	var emergency_night: bool = false
+	if station_data and not station_data.is_safe:
+		var gt := PlayerStats.game_time
+		var f: float
+		if gt >= 6.0 and gt < 20.0: f = 1.0
+		elif gt >= 20.0 and gt < 22.0: f = 1.0 - (gt - 20.0) / 2.0
+		elif gt >= 0.0 and gt < 6.0: f = gt / 6.0
+		else: f = 0.0
+		floor_ambient = lerpf(0.05, 0.5, f)
+		emergency_night = (gt >= 22.0 or gt < 6.0)
+	else:
+		floor_ambient = 0.0
+	_entity_lights.clear()
+	for ent in _entities:
+		var ls = ent.get("light_source", null)
+		if not ls: continue
+		var entry := {
+			grid_x = ent.grid_x,
+			grid_y = ent.grid_y,
+			world_radius = ls.get("world_radius", ls.get("radius", 150.0) * 0.01),
+			intensity = ls.get("intensity", 0.6),
+			color = ls.get("color", Color(1.0, 0.6, 0.3)),
+			height = ls.get("height", 0.2),
+			style = ls.get("style", ""),
+		}
+		if emergency_night and ls.get("emergency", false):
+			entry.color = Color(1.0, 0.25, 0.15)
+			entry.style = "alarm"
+		_entity_lights.append(entry)
+	_renderer._entity_lights = _entity_lights
+	var flash_intensity: float = player_light_intensity * 3.0 if _lighting_system.flashlight_on else 0.0
+	_renderer._update_floor_lighting(floor_ambient, _entity_lights, _player_movement.player_x, _player_movement.player_y, flash_intensity, player_light_radius * 0.015, player_light_color, _flashlight_aim)
 
 func _refresh():
 	if _renderer:

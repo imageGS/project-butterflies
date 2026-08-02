@@ -320,6 +320,7 @@ func _update_hover(local_pos: Vector2):
 	var hit := _hit_test(local_pos)
 	if hit.is_empty():
 		_clear_hover()
+		CursorManager.set_cursor("pointer")
 		return
 	if hit.origin != _hovered_origin:
 		_clear_hover()
@@ -327,16 +328,28 @@ func _update_hover(local_pos: Vector2):
 		_hovered_item = hit.item
 		queue_redraw()
 		_show_tooltip(hit.item, local_pos)
+		CursorManager.set_cursor("hand")
 	else:
 		_update_tooltip_position(local_pos)
 
+func is_dragging() -> bool:
+	return _dragging
+
+func _over_equipment(mp: Vector2) -> bool:
+	if not equip_slots or not equip_slots.is_visible_in_tree(): return false
+	var p := equip_slots.get_global_transform().affine_inverse() * mp
+	return Rect2(Vector2(), equip_slots.size).has_point(p)
+
 func _input(event: InputEvent):
-	if not inventory or not visible: return
+	if not inventory or not is_visible_in_tree(): return
 
 	if event is InputEventKey:
 		return
 
 	if not (event is InputEventMouseButton or event is InputEventMouseMotion): return
+
+	if equip_slots and equip_slots.is_dragging():
+		return
 
 	var local_event := make_input_local(event)
 	var local_pos: Vector2 = Vector2(0, 0)
@@ -344,6 +357,11 @@ func _input(event: InputEvent):
 		local_pos = (local_event as InputEventMouse).position
 
 	if event is InputEventMouseMotion and not _dragging:
+		if local_pos.x < 0 or local_pos.y < 0 or local_pos.x > size.x or local_pos.y > size.y:
+			_clear_hover()
+			if not _over_equipment((event as InputEventMouse).position):
+				CursorManager.set_cursor("pointer")
+			return
 		if _ctx_items.is_empty():
 			_update_hover(local_pos)
 			return
@@ -400,6 +418,7 @@ func _input(event: InputEvent):
 				_dragging = true
 				_drag_item = hit.item
 				_drag_from = hit.origin
+				CursorManager.set_cursor("pinch")
 				inventory.remove(hit.idx)
 				_drag_follower = TextureRect.new()
 				var fw: int = CELL_SIZE * _drag_item.grid_size.x + GAP * (_drag_item.grid_size.x - 1)
@@ -460,6 +479,8 @@ func _close_context_menu():
 func _use_item(item: Item, idx: int):
 	if item.heal_amount > 0:
 		PlayerStats.heal(item.heal_amount)
+	elif item.id == "battery":
+		PlayerStats.change_flashlight_energy(25.0)
 	var s: Dictionary = inventory.slots[idx]
 	s.item.stack_count -= 1
 	if s.item.stack_count <= 0:
@@ -502,9 +523,10 @@ func _cleanup_drag():
 	_dragging = false
 	_drag_item = null
 	_rebuild_items()
+	CursorManager.set_cursor("pointer")
 
 func rotate_focused_item() -> void:
-	if not inventory or not visible:
+	if not inventory or not is_visible_in_tree():
 		return
 	if _dragging:
 		_drag_item.texture_rotated = not _drag_item.texture_rotated

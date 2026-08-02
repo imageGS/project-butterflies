@@ -15,6 +15,15 @@ var _strip_w: int = 4
 var _wall_zbuf: Array[float] = []
 
 var entities_on_map: Array = []
+var _entity_lights: Array = []
+var floor_ambient: float = 0.0
+var _flashlight_on: bool = false
+var _flashlight_range: float = 6.0
+var _flashlight_intensity: float = 0.0
+var _flashlight_color: Color = Color.WHITE
+var flashlight_aim: float = 0.0
+var flicker_enabled: bool = true
+
 var _wall_tex: Texture2D = load("res://assets/textures/wall/default.png")
 var _floor_tex: Texture2D = load("res://assets/textures/floor/default.png")
 var _ceiling_enabled: bool = false
@@ -27,6 +36,7 @@ var _tex_cache: Dictionary = {}
 var _alpha_cache: Dictionary = {}
 var hovered_grid: Vector2i = Vector2i(-1, -1)
 var _outline_cache: Dictionary = {}
+var floor_dust: Node = null
 
 func _cell_tex(x: int, y: int, is_wall: bool) -> Texture2D:
 	var key := "%d,%d" % [x, y]
@@ -97,6 +107,13 @@ func get_wall_cell_at_strip(strip: int) -> Vector2i:
 	var result: Dictionary = _cast_ray(cam_x, cam_y, angle)
 	return Vector2i(result.get("mx", -1), result.get("my", -1))
 
+func is_entity_occluded(ve: Dictionary) -> bool:
+	var scx: float = ve.get("scx", -1.0)
+	if scx < 0.0: return false
+	var si: int = int(scx / _strip_w)
+	if si < 0 or si >= _wall_zbuf.size(): return false
+	return ve.depth >= _wall_zbuf[si]
+
 func set_floor_texture(tid: String):
 	var t := _load_tex(tid)
 	if t:
@@ -147,6 +164,13 @@ func _setup_floor():
 	_floor_ctrl.material = _floor_mat
 	_floor_mat.set_shader_parameter("floor_tex", _floor_tex)
 	_floor_mat.set_shader_parameter("rail_tex", _floor_tex)
+	_init_fog_tex()
+
+func _init_fog_tex():
+	var img := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+	img.set_pixel(0, 0, Color(0.5, 0.0, 0.0, 1.0))
+	var tex := ImageTexture.create_from_image(img)
+	_floor_mat.set_shader_parameter("fog_tex", tex)
 
 func _setup_walls():
 	_wall_ctrl = Control.new()
@@ -166,10 +190,102 @@ func _fill_map_tex():
 			var fh: float = height_data[y][x] if y < height_data.size() and x < height_data[y].size() else 0.0
 			_map_img.set_pixel(x, y, Color(1.0 if is_wall else 0.0, (fh + 2.0) / 4.0, 0, 1))
 	_map_tex = ImageTexture.create_from_image(_map_img)
+	_build_floor_atlas()
 	if _floor_mat:
 		_floor_mat.set_shader_parameter("map_tex", _map_tex)
 		_floor_mat.set_shader_parameter("map_w", _map_w)
 		_floor_mat.set_shader_parameter("map_h", _map_h)
+
+const ATLAS_TILE: int = 256
+const ATLAS_COLS: int = 8
+
+var _floor_atlas_tex: Texture2D
+var _floor_map_tex: ImageTexture
+var _floor_atlas_hash: int = 0
+
+func rebuild_floor_atlas():
+	_build_floor_atlas()
+
+func _build_floor_atlas():
+	if map_data.is_empty() or _floor_mat == null: return
+	var h: int = map_data.hash()
+	h = h * 31 + wall_decors.hash()
+	if h == _floor_atlas_hash: return
+	_floor_atlas_hash = h
+	var tile_ids := {}
+	var cell_tex := {}
+	var next: int = 0
+	for y in _map_h:
+		for x in _map_w:
+			if map_data[y][x] == TILE_WALL or map_data[y][x] == TILE_BLOCKED:
+				continue
+			var tid := ""
+			var rot: int = 0
+			var key := "%d,%d" % [x, y]
+			if wall_decors.has(key):
+				var cell: Dictionary = wall_decors[key]
+				tid = str(cell.get("texture", ""))
+				rot = int(cell.get("rotation", 0))
+			if tid.is_empty(): continue
+			if _load_tex(tid) == null: continue
+			var tkey := "%s|%d" % [tid, rot]
+			if not tile_ids.has(tkey):
+				tile_ids[tkey] = next
+				next += 1
+			cell_tex[key] = tile_ids[tkey]
+	if next == 0:
+		var empty_img := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+		empty_img.set_pixel(0, 0, Color(0, 0, 0, 0))
+		var empty_tex := ImageTexture.create_from_image(empty_img)
+		_floor_mat.set_shader_parameter("floor_map", empty_tex)
+		return
+	var rows := int(ceil(next / float(ATLAS_COLS)))
+	var atlas := Image.create(ATLAS_COLS * ATLAS_TILE, rows * ATLAS_TILE, false, Image.FORMAT_RGBA8)
+	for k in tile_ids:
+		var idx: int = tile_ids[k]
+		var parts: PackedStringArray = String(k).split("|")
+		var tex := _load_tex(parts[0])
+		var img: Image = tex.get_image()
+		if not img: continue
+		img.convert(Image.FORMAT_RGBA8)
+		if img.get_width() != ATLAS_TILE or img.get_height() != ATLAS_TILE:
+			img.resize(ATLAS_TILE, ATLAS_TILE, Image.INTERPOLATE_NEAREST)
+		var rot := int(parts[1])
+		if rot != 0:
+			img = _rotate_img(img, rot)
+		var col := idx % ATLAS_COLS
+		var row := idx / ATLAS_COLS
+		atlas.blit_rect(img, Rect2i(0, 0, ATLAS_TILE, ATLAS_TILE), Vector2i(col * ATLAS_TILE, row * ATLAS_TILE))
+	var fmap := Image.create(_map_w, _map_h, false, Image.FORMAT_RGBA8)
+	for y in _map_h:
+		for x in _map_w:
+			var key := "%d,%d" % [x, y]
+			if cell_tex.has(key):
+				var idx: int = cell_tex[key]
+				fmap.set_pixel(x, y, Color(float(idx % ATLAS_COLS) / ATLAS_COLS, float(idx / ATLAS_COLS) / rows, 0, 1))
+			else:
+				fmap.set_pixel(x, y, Color(0, 0, 0, 0))
+	var atlas_tex := ImageTexture.create_from_image(atlas)
+	var fmap_tex := ImageTexture.create_from_image(fmap)
+	_floor_mat.set_shader_parameter("floor_atlas", atlas_tex)
+	_floor_mat.set_shader_parameter("floor_map", fmap_tex)
+	_floor_mat.set_shader_parameter("atlas_cols", ATLAS_COLS)
+	_floor_mat.set_shader_parameter("atlas_rows", rows)
+
+func _rotate_img(img: Image, quarter_turns: int) -> Image:
+	quarter_turns = posmod(quarter_turns, 4)
+	if quarter_turns == 0: return img
+	var w: int = img.get_width()
+	var h: int = img.get_height()
+	var out := Image.create(w, h, false, img.get_format())
+	for y in range(h):
+		for x in range(w):
+			var src := img.get_pixel(x, y)
+			match quarter_turns:
+				1: out.set_pixel(h - 1 - y, x, src)
+				2: out.set_pixel(w - 1 - x, h - 1 - y, src)
+				3: out.set_pixel(y, w - 1 - x, src)
+	return out
 
 func _update_floor_shader():
 	if not _floor_mat: return
@@ -179,6 +295,119 @@ func _update_floor_shader():
 	_floor_mat.set_shader_parameter("fog_dist", fog_distance)
 	_floor_mat.set_shader_parameter("fog_fade", fog_fade)
 	_floor_mat.set_shader_parameter("fog_color", fog_color)
+	if floor_dust and floor_dust.has_method("get_fog_texture"):
+		var ft = floor_dust.get_fog_texture()
+		if ft:
+			_floor_mat.set_shader_parameter("fog_tex", ft)
+			var ga = floor_dust.get("fog_base_alpha")
+			if ga != null:
+				_floor_mat.set_shader_parameter("ground_fog_alpha", ga)
+			var gc = floor_dust.get("fog_color")
+			if gc != null:
+				_floor_mat.set_shader_parameter("ground_fog_color", gc)
+
+
+
+const LIGHT_STYLES: Dictionary = {
+	fluorescent = "mmamammmmammamamaaammma",
+	pulse = "abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba",
+	candle = "mmmmmaaaaammmmmaaaaaabcdefgabcdefg",
+	strobe = "mamamamamama",
+	alarm = "nmlkjihgfedcbaabcdefghijklmn",
+}
+
+func _get_light_style_mod(style_name: String, gx: int, gy: int) -> float:
+	if style_name.is_empty() or not flicker_enabled: return 1.0
+	var style: String = LIGHT_STYLES.get(style_name, "")
+	if style.is_empty(): return 1.0
+	var t: int = Time.get_ticks_msec()
+	var offset: int = 0
+	if style_name != "alarm":
+		offset = abs(gx * 73856093 + gy * 19349663) % 100000
+	var idx: int = ((t / 100) + offset) % style.length()
+	var ch: int = style.unicode_at(idx) - 97
+	return clampf(ch / 12.0, 0.0, 2.0)
+
+func _get_light_at(wx: float, wy: float) -> Color:
+	var lr: float = floor_ambient
+	var lg: float = floor_ambient
+	var lb: float = floor_ambient
+	for ls in _entity_lights:
+		var dx: float = wx - (ls.grid_x + 0.5)
+		var dy: float = wy - (ls.grid_y + 0.5)
+		var h: float = ls.get("height", 0.0)
+		var dist: float = sqrt(dx * dx + dy * dy + h * h)
+		if dist >= ls.world_radius: continue
+		var falloff: float = 1.0 - smoothstep(0.0, ls.world_radius, dist)
+		var smod: float = _get_light_style_mod(ls.get("style", ""), ls.grid_x, ls.grid_y)
+		var strength: float = falloff * ls.intensity * smod
+		lr += ls.color.r * strength
+		lg += ls.color.g * strength
+		lb += ls.color.b * strength
+	return Color(clampf(lr, 0.0, 1.0), clampf(lg, 0.0, 1.0), clampf(lb, 0.0, 1.0))
+
+func _get_flashlight_at(wx: float, wy: float, ray_angle: float) -> Color:
+	if not _flashlight_on: return Color.BLACK
+	var dx: float = wx - cam_x
+	var dy: float = wy - cam_y
+	var dist: float = sqrt(dx * dx + dy * dy)
+	if dist > _flashlight_range: return Color.BLACK
+	var angle_diff: float = abs(ray_angle - (player_angle + flashlight_aim))
+	if angle_diff > PI: angle_diff = TAU - angle_diff
+	var beam: float = 1.0 - smoothstep(0.35, 0.70, angle_diff)
+	if beam <= 0.0: return Color.BLACK
+	var dist_falloff: float = 1.0 - smoothstep(0.0, _flashlight_range, dist)
+	var strength: float = beam * dist_falloff * _flashlight_intensity
+	return _flashlight_color * strength
+
+func _update_floor_lighting(ambient: float, light_sources: Array, flash_x: float = 0.0, flash_y: float = 0.0, flash_intensity: float = 0.0, flash_radius: float = 0.0, flash_color: Color = Color(1, 1, 1), flash_aim: float = 0.0):
+	floor_ambient = ambient
+	if not _floor_mat: return
+	_floor_mat.set_shader_parameter("ambient_light", ambient)
+	var total: int = mini(light_sources.size(), 16)
+	_floor_mat.set_shader_parameter("light_count", total)
+	var pos_arr := PackedVector2Array()
+	var rad_arr := PackedFloat32Array()
+	var int_arr := PackedFloat32Array()
+	var col_arr := PackedVector3Array()
+	var hgt_arr := PackedFloat32Array()
+	pos_arr.resize(16)
+	rad_arr.resize(16)
+	int_arr.resize(16)
+	col_arr.resize(16)
+	hgt_arr.resize(16)
+	for i in total:
+		var ls: Dictionary = light_sources[i]
+		pos_arr[i] = Vector2(ls.grid_x + 0.5, ls.grid_y + 0.5)
+		rad_arr[i] = ls.world_radius
+		var smod: float = _get_light_style_mod(ls.get("style", ""), ls.grid_x, ls.grid_y)
+		int_arr[i] = ls.intensity * smod
+		var c: Color = ls.color
+		col_arr[i] = Vector3(c.r, c.g, c.b)
+		hgt_arr[i] = ls.get("height", 0.0)
+	for i in range(total, 16):
+		pos_arr[i] = Vector2(0, 0)
+		rad_arr[i] = 0.0
+		int_arr[i] = 0.0
+		col_arr[i] = Vector3(0, 0, 0)
+		hgt_arr[i] = 0.0
+	_floor_mat.set_shader_parameter("light_pos", pos_arr)
+	_floor_mat.set_shader_parameter("light_rad", rad_arr)
+	_floor_mat.set_shader_parameter("light_int", int_arr)
+	_floor_mat.set_shader_parameter("light_col", col_arr)
+	_floor_mat.set_shader_parameter("light_height", hgt_arr)
+	var flash_on: bool = flash_intensity > 0.0
+	_floor_mat.set_shader_parameter("flashlight_on", flash_on)
+	if flash_on:
+		_floor_mat.set_shader_parameter("flashlight_pos", Vector2(flash_x + 0.5, flash_y + 0.5))
+		_floor_mat.set_shader_parameter("flashlight_rad", flash_radius)
+		_floor_mat.set_shader_parameter("flashlight_int", flash_intensity)
+		_floor_mat.set_shader_parameter("flashlight_col", Vector3(flash_color.r, flash_color.g, flash_color.b))
+	_floor_mat.set_shader_parameter("flashlight_aim", flash_aim)
+	_flashlight_on = flash_on
+	_flashlight_range = flash_radius
+	_flashlight_intensity = flash_intensity
+	_flashlight_color = flash_color
 
 func _texture_has_alpha(tex: Texture2D) -> bool:
 	if not tex: return false
@@ -245,6 +474,11 @@ func draw_walls(ci: CanvasItem):
 		if perp > fog_distance - fog_fade:
 			fbl = clamp((perp - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
 		var mx: int = result.get("mx", -1); var my: int = result.get("my", -1)
+		var wall_light := _get_light_at(mx + 0.5, my + 0.5)
+		wall_light += _get_flashlight_at(mx + 0.5, my + 0.5, ray_angle)
+		wall_light.r = clampf(wall_light.r, 0.0, 1.0)
+		wall_light.g = clampf(wall_light.g, 0.0, 1.0)
+		wall_light.b = clampf(wall_light.b, 0.0, 1.0)
 		var cell_tex := _cell_tex(mx, my, true)
 		if cell_tex:
 			var wall_x: float = result.get("wall_x", 0.0)
@@ -256,6 +490,7 @@ func draw_walls(ci: CanvasItem):
 			if result.side == 1: shade *= 0.7
 			var wcol: Color = Color(shade, shade, shade, 1.0)
 			wcol = wcol.lerp(fog_color, fbl)
+			wcol *= wall_light
 			ci.draw_texture_rect_region(cell_tex, Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), Rect2(tex_xx, 0, 1, tex_h), wcol)
 			
 			# Draw alpha wall overlays (window frames, glass)  
@@ -271,12 +506,13 @@ func draw_walls(ci: CanvasItem):
 				var atex_xx: int = int(awx * atex_w)
 				if (ah.side == 0 and result.get("rdx", 0.0) > 0) or (ah.side == 1 and result.get("rdy", 0.0) < 0):
 					atex_xx = int(atex_w) - atex_xx - 1
-				ci.draw_texture_rect_region(atex, Rect2(i * _strip_w, awall_top, _strip_w + 1, awall_h), Rect2(atex_xx, 0, 1, atex_h), Color(1, 1, 1, 1).lerp(fog_color, fbl))
+				ci.draw_texture_rect_region(atex, Rect2(i * _strip_w, awall_top, _strip_w + 1, awall_h), Rect2(atex_xx, 0, 1, atex_h), Color(1, 1, 1, 1).lerp(fog_color, fbl) * wall_light)
 		else:
 			var c: Color = Color(0.4, 0.4, 0.5)
 			if result.side == 0: c = Color(0.3, 0.3, 0.4)
 			var shade: float = clamp(1.0 - perp * 0.04, 0.2, 1.0)
 			shade = lerp(shade, 0.0, fbl); c *= shade
+			c *= wall_light
 			ci.draw_rect(Rect2(i * _strip_w, wall_top, _strip_w + 1, wall_h), c)
 		
 		var dkey := "%d,%d" % [mx, my]
@@ -299,6 +535,7 @@ func draw_walls(ci: CanvasItem):
 				var dy: float = wall_top + wall_h * (1.0 - d_height) - ds * 0.5
 				var dcol: Color = Color(1, 1, 1, 1)
 				dcol = dcol.lerp(fog_color, fbl)
+				dcol *= wall_light
 				ci.draw_texture_rect(tex, Rect2(dx, dy, ds, ds), false, dcol)
 
 func _cast_ray(ox: float, oy: float, angle: float) -> Dictionary:
@@ -362,7 +599,7 @@ func _project_entities():
 	var plane_x: float = -dir_y; var plane_y: float = dir_x
 	var inv_det: float = 1.0 / (plane_x * dir_y - dir_x * plane_y)
 	for ent: Dictionary in entities_on_map:
-		var sx2: float = ent.grid_x + 0.5 - cam_x; var sy2: float = ent.grid_y + 0.5 - cam_y
+		var sx2: float = ent.grid_x + 0.5 - cam_x + ent.get("visual_offset_x", 0.0); var sy2: float = ent.grid_y + 0.5 - cam_y + ent.get("visual_offset_y", 0.0)
 		var dist: float = sqrt(sx2 * sx2 + sy2 * sy2)
 		if dist < 0.01: continue
 		var tx: float = inv_det * (dir_y * sx2 - dir_x * sy2); var ty: float = inv_det * (-plane_y * sx2 + plane_x * sy2)
@@ -381,8 +618,12 @@ func _project_entities():
 		var dx1: int = max(0, int(scx - spw * 0.5)); var dx2: int = min(_view_w, int(scx + spw * 0.5))
 		var feety: float = half_h + half_h / ty
 		var spy: float = feety - (scale_h * 0.5 if is_floor else scale_h)
-		var is_item: bool = ent.get("type", "") == "object" and ent.get("object_type", "") not in ["floor_decal", "rest", "lore"]
-		if is_item and not is_floor:
+		var ceiling_lift: float = ent.get("ceiling_lift", 0.0)
+		if ceiling_lift > 0.0:
+			var wall_h_px: float = 2.0 * half_h / ty
+			spy -= wall_h_px * ceiling_lift
+		var floating: bool = ent.get("data", {}).get("floating", false)
+		if floating and not is_floor:
 			var proximity: float = clamp(2.0 - dist, 0.0, 2.0) / 2.0
 			if proximity > 0.01:
 				var lift: float = proximity * 120.0
@@ -401,6 +642,18 @@ func draw_entities(ci: CanvasItem):
 		var ss: int = int(ve.dx1 / _strip_w); var se: int = int((ve.dx2 + _strip_w - 1) / _strip_w)
 		var fog_blend: float = clamp((ve.dist - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
 		var fog_mod: Color = Color.WHITE.lerp(fog_color, fog_blend); fog_mod.a = 1.0
+		var ent: Dictionary = ve.get("ent", {})
+		var ent_ex: float = ent.get("grid_x", -1) + 0.5
+		var ent_ey: float = ent.get("grid_y", -1) + 0.5
+		if ent_ex >= 0.0 and ent_ey >= 0.0:
+			var ent_light := _get_light_at(ent_ex, ent_ey)
+			var ent_angle: float = atan2(ent_ey - cam_y, ent_ex - cam_x)
+			ent_light += _get_flashlight_at(ent_ex, ent_ey, ent_angle)
+			ent_light.r = clampf(ent_light.r, 0.0, 1.0)
+			ent_light.g = clampf(ent_light.g, 0.0, 1.0)
+			ent_light.b = clampf(ent_light.b, 0.0, 1.0)
+			fog_mod *= ent_light
+
 		for si in range(ss, se):
 			if si >= num_strips: break
 			if ve.depth >= _wall_zbuf[si]: continue
@@ -446,11 +699,67 @@ func draw_fog_overlay(ci: CanvasItem):
 		ci.draw_rect(Rect2(0, y, _view_w, 1), Color(0, 0, 0, a))
 		ci.draw_rect(Rect2(0, _view_h - y - 1, _view_w, 1), Color(0, 0, 0, a))
 
+func draw_floor_dust(ci: CanvasItem):
+	if not ci or not floor_dust: return
+	if not floor_dust.has_method("get_specks_in_range"): return
+	var num_strips: int = _wall_zbuf.size()
+	if num_strips <= 0: return
+	var specks: Array = floor_dust.get_specks_in_range(cam_x, cam_y, fog_distance)
+	if specks.is_empty(): return
+	var half_h: float = _view_h * 0.5
+	var dir_x: float = cos(player_angle)
+	var dir_y: float = sin(player_angle)
+	var plane_x: float = -dir_y
+	var plane_y: float = dir_x
+	var inv_det: float = 1.0 / (plane_x * dir_y - dir_x * plane_y)
+	var dust_color: Color = Color(0.7, 0.65, 0.6)
+	var puff_spread: float = 12.0
+	var puff_dur: float = 0.6
+	var c_val = floor_dust.get("color")
+	if c_val != null: dust_color = c_val
+	var s_val = floor_dust.get("puff_spread")
+	if s_val != null: puff_spread = s_val
+	var d_val = floor_dust.get("puff_duration")
+	if d_val != null: puff_dur = d_val
+	for entry in specks:
+		var s: Dictionary = entry.speck
+		var wx: float = float(entry.tile_x) + s.ox
+		var wy: float = float(entry.tile_y) + s.oy
+		var puff_prog: float = 0.0
+		if s.state == "puffing":
+			puff_prog = s.puff_timer / puff_dur
+			wx += s.puff_dir_x * puff_prog * puff_spread
+			wy += s.puff_dir_y * puff_prog * puff_spread
+		var sx: float = wx - cam_x
+		var sy: float = wy - cam_y
+		var tx: float = inv_det * (dir_y * sx - dir_x * sy)
+		var ty: float = inv_det * (-plane_y * sx + plane_x * sy)
+		if ty <= 0.02: continue
+		var scx: int = int(_view_w * 0.5 * (1.0 + tx / ty))
+		if scx < -_strip_w or scx >= _view_w + _strip_w: continue
+		var si: int = clampi(int(scx / _strip_w), 0, num_strips - 1)
+		if ty >= _wall_zbuf[si]: continue
+		var fog_blend: float = clamp((ty - (fog_distance - fog_fade)) / fog_fade, 0.0, 1.0)
+		if fog_blend >= 1.0: continue
+		var scale_h: float = _view_h / (ty * 1.2) * (s.sz / 50.0)
+		if scale_h < 0.3: continue
+		var feety: float = half_h + half_h / ty
+		var spy: float = feety - scale_h * 0.5
+		var speck_a: float = s.alpha
+		if puff_prog > 0.0:
+			speck_a *= 1.0 - puff_prog
+		var c: Color = dust_color
+		c = c.lerp(fog_color, fog_blend)
+		c.a = clamp(speck_a * (1.0 - fog_blend), 0.0, 1.0)
+		if c.a <= 0.01: continue
+		ci.draw_rect(Rect2(scx - scale_h * 0.5, spy, max(scale_h, 0.5), max(scale_h, 0.5)), c)
+
 func _get_ent_texture(ent: Dictionary) -> Texture2D:
 	var texs: Dictionary = ent.get("textures", {})
 	if texs.is_empty(): return ent.get("texture", null)
 	if ent.get("chase_active", false): var chase: Texture2D = texs.get("chase",null); if chase: return chase
-	var ex: float = ent.get("anim_x", float(ent.grid_x)); var ey: float = ent.get("anim_y", float(ent.grid_y))
+	var ex: float = ent.get("anim_x", float(ent.grid_x)) + ent.get("visual_offset_x", 0.0)
+	var ey: float = ent.get("anim_y", float(ent.grid_y)) + ent.get("visual_offset_y", 0.0)
 	var dx: float = cam_x - (ex + 0.5); var dy: float = cam_y - (ey + 0.5); var va: float = atan2(dy, dx)
 	var fi: int = ent.get("facing", 2); var ea: float = [-PI/2,0,PI/2,PI][fi]; var di: float = va - ea
 	while di > PI: di -= TAU; while di < -PI: di += TAU

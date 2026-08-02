@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EntityTemplate" format=3 uid="uid://b6mqq0xfm8nqe"]
+
+[ext_resource type="Script" uid="uid://crbrk1svm02ch" path="res://scripts/resources/entity_template.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "locker"
+display_name = "Шкаф"
+category = "container"
+subtype = "container"
+sprites = {
+"front": "sprites/entity/locker"
+}
+extra = {
+"description": "Старый металлический шкаф для хранения.",
+"name": "Шкаф"
+}
+size = 1.0

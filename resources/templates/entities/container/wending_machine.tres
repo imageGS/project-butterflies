@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EntityTemplate" format=3 uid="uid://bsian4uclpllw"]
+
+[ext_resource type="Script" uid="uid://crbrk1svm02ch" path="res://scripts/resources/entity_template.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "wending_machine"
+display_name = "Торговый автомат"
+category = "container"
+subtype = "container"
+sprites = {
+"front": "sprites/entity/wending_machine"
+}
+extra = {
+"description": "Старый торговый автомат. За стеклом уже ничего не осталось.",
+"name": "Торговый автомат"
+}
+size = 1.0

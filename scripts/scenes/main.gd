@@ -1,6 +1,7 @@
 extends Node
 
 const _melt_shader := preload("res://shaders/melt.gdshader")
+const _BlockMinigameScript := preload("res://scripts/battle/block_minigame.gd")
 
 # ---------------------------------------------------- Константы боя
 
@@ -28,6 +29,10 @@ enum SelectionMode { NONE, ATTACK, ACTION, ITEM }
 const FLEE_DC := 10
 
 var enemy_stunned: bool = false
+var _aiming: bool = false
+var _aim_elapsed: float = 0.0
+var _original_enemy_x: float
+var _sway_amp: float = 30.0
 var _execute_btn: Button
 
 # ---------------------------------------------------- Настраиваемые ссылки
@@ -90,10 +95,16 @@ var rat: Combatant
 var player: Combatant
 var enemy_parts: Dictionary = {}      # limb_name -> TextureRect
 var attack_buttons: Dictionary = {}   # limb_name -> Button
+var _limb_images: Dictionary = {}     # limb_name -> Image (для пиксель-перфект хиттеста)
 
 # Текущий контекст выбора цели
 var selection_mode: int = SelectionMode.NONE
 var selection_context: Dictionary = {}
+
+@onready var _log_system: LogBox = $GameViewport/UI/HUDOverlay/LogBox
+@onready var _crosshair = $GameViewport/UI/CentralViewport/BattleCrosshair
+@onready var _block_minigame = $GameViewport/UI/BlockMinigame
+var _log_font: Font
 
 # "Ручная камера"
 var original_ui_root_position: Vector2
@@ -250,6 +261,13 @@ func _ready():
 
 	for limb_name in enemy_parts:
 		var rect: TextureRect = enemy_parts[limb_name]
+		if rect and rect.texture:
+			var img = rect.texture.get_image()
+			if img:
+				_limb_images[limb_name] = img
+
+	for limb_name in enemy_parts:
+		var rect: TextureRect = enemy_parts[limb_name]
 		if rect:
 			_breath_parts[limb_name] = rect.position
 
@@ -276,8 +294,16 @@ func _ready():
 		original_ui_root_position = ui_root.position
 
 	_setup_audio()
+	if _crosshair:
+		_crosshair.fired.connect(_on_crosshair_fired)
 	update_all_status()
 	enable_player_ui()
+
+	var fd := FontFile.new()
+	fd.font_data = load("res://font/Silver.ttf")
+	_log_font = fd
+	if _log_system:
+		_log_system.set_font(_log_font)
 
 func _setup_main_menu():
 	if not main_menu:
@@ -319,13 +345,23 @@ func _connect_button(btn: Button, callback: Callable):
 		btn.mouse_entered.connect(_play_ui_select)
 
 # ==================================================== Хелперы
+var _last_log_label: Label
+
 func _log(text: String, append: bool = false):
-	if not log_label:
+	if not _log_system:
+		if log_label:
+			if append:
+				log_label.text += text
+			else:
+				log_label.text = text
 		return
-	if append:
-		log_label.text += text
+	if append and _last_log_label and is_instance_valid(_last_log_label):
+		_last_log_label.text += text
 	else:
-		log_label.text = text
+		_log_system.add_message(text, Color(1, 1, 1))
+	await get_tree().process_frame
+	if _log_system.container.get_child_count() > 0:
+		_last_log_label = _log_system.container.get_child(-1)
 
 func _roll_d20(modifier: int = 0) -> int:
 	return SkillCheck.roll(modifier)
@@ -377,12 +413,9 @@ func _on_attack_pressed():
 	if state != State.PLAYER_INPUT or attack_mode_active:
 		return
 	attack_mode_active = true
-	selection_mode = SelectionMode.ATTACK
-	selection_context = {}
-	update_attack_buttons()
+	state = State.PLAYER_ACTING
 	main_menu.hide()
-	attack_submenu.show()
-	_log("Выберите часть тела для атаки...")
+	_start_aim_minigame()
 
 func _on_action_pressed():
 	if state != State.PLAYER_INPUT or attack_mode_active:
@@ -539,6 +572,133 @@ func _player_attack(part: String) -> bool:
 
 	return false
 
+# ==================================================== Атака с прицелом
+func _start_aim_minigame():
+	if not rat or not rat.is_alive():
+		_log("Некого атаковать.")
+		enable_player_ui()
+		return
+	if not _crosshair:
+		_log("Ошибка: прицел не найден.")
+		enable_player_ui()
+		return
+	var bounds := Rect2(0, 0, 500, 400)
+	if enemy_container:
+		bounds = enemy_container.get_rect()
+	_crosshair.start(bounds)
+	_aiming = true
+	_aim_elapsed = 0.0
+	if enemy_container:
+		_original_enemy_x = enemy_container.position.x
+	_log("Прицельтесь и кликните! (Shift — задержать дыхание)")
+
+func _on_crosshair_fired(pos: Vector2):
+	if not _aiming:
+		return
+	_aiming = false
+	if _crosshair:
+		_crosshair.stop()
+	if enemy_container:
+		enemy_container.position.x = _original_enemy_x
+
+	if pos == Vector2(-1, -1):
+		_log("Прицеливание отменено.")
+		attack_mode_active = false
+		state = State.PLAYER_INPUT
+		enable_player_ui()
+		return
+
+	var global_pos := pos
+	if _crosshair:
+		var cr = _crosshair.get_global_rect()
+		global_pos = cr.position + pos
+	var hit_limb := _determine_hit_limb(global_pos)
+	if hit_limb == "":
+		_log("Промах!")
+		_play_swing()
+		_play_miss()
+		_play_random_hit_video()
+		await get_tree().create_timer(hit_video_duration).timeout
+		attack_mode_active = false
+		switch_to_enemy_turn()
+		return
+
+	attack_mode_active = false
+	_play_swing()
+	_play_random_hit_video()
+	await get_tree().create_timer(hit_video_duration).timeout
+
+	var dead := _player_aim_attack(hit_limb)
+	if dead or not rat.is_alive():
+		await play_enemy_death()
+		end_battle("win")
+		return
+
+	switch_to_enemy_turn()
+
+func _determine_hit_limb(pos: Vector2) -> String:
+	var hit_order = ["head", "arm_left", "arm_right", "leg_left", "leg_right", "torso"]
+	for limb_name in hit_order:
+		var rect: TextureRect = enemy_parts.get(limb_name)
+		if not rect or not rect.visible:
+			continue
+		var gr = rect.get_global_rect()
+		if not gr.has_point(pos):
+			continue
+		if _pixel_hit_test(limb_name, rect, gr, pos):
+			return limb_name
+	return ""
+
+func _pixel_hit_test(limb_name: String, rect: TextureRect, global_rect: Rect2, global_pos: Vector2) -> bool:
+	var img = _limb_images.get(limb_name)
+	if not img:
+		return true
+	if global_rect.size.x <= 0 or global_rect.size.y <= 0:
+		return true
+	var uv = (global_pos - global_rect.position) / global_rect.size
+	var tex_size = rect.texture.get_size()
+	var tx = int(uv.x * tex_size.x)
+	var ty = int(uv.y * tex_size.y)
+	tx = clamp(tx, 0, tex_size.x - 1)
+	ty = clamp(ty, 0, tex_size.y - 1)
+	var px = img.get_pixel(tx, ty)
+	return px.a > 0.1
+
+func _player_aim_attack(part: String) -> bool:
+	if not rat.is_alive():
+		_log("Крыса уже мертва.")
+		return true
+	if not rat.limbs.has(part) or rat.limbs[part].is_destroyed():
+		_log("Конечность %s уже уничтожена." % LIMB_NAMES_RU.get(part, part))
+		return false
+
+	var limb: Limb = rat.limbs[part]
+	var was_broken: bool = limb.is_broken()
+	var dmg: int = PLAYER_DAMAGE
+	var actual_dmg: int = limb.take_damage(dmg)
+	rat.take_total_damage(2)
+
+	if was_broken and limb.is_destroyed():
+		_log("Вы РАЗРУШИЛИ %s! (dmg=%d)" % [LIMB_NAMES_RU[part], actual_dmg], true)
+		PlayerStats.change_humanity(-1)
+		enemy_stunned = true
+		play_hit_feedback(part, true)
+	elif limb.is_broken() and not was_broken:
+		_log("Вы СЛОМАЛИ %s! (dmg=%d)" % [LIMB_NAMES_RU[part], actual_dmg], true)
+		enemy_stunned = true
+		play_hit_feedback(part, false)
+	else:
+		_log("Попадание в %s (−%d). [%d HP]" % [LIMB_NAMES_RU[part], actual_dmg, limb.hp])
+		_play_impact(part, false)
+
+	sync_enemy_sprites()
+	update_all_status()
+
+	if not rat.is_alive():
+		_log("\nВРАГ ПОВЕРЖЕН!", true)
+		return true
+	return false
+
 # ==================================================== Эффектная смерть врага
 func play_enemy_death():
 
@@ -610,6 +770,39 @@ func switch_to_enemy_turn():
 		return
 	enemy_attack()
 
+const _COMBO_POSITIONS := [
+	Vector2(0.5, 0.5),
+	Vector2(0.3, 0.3),
+	Vector2(0.7, 0.3),
+	Vector2(0.3, 0.7),
+	Vector2(0.7, 0.7),
+	Vector2(0.5, 0.25),
+	Vector2(0.5, 0.75),
+	Vector2(0.25, 0.5),
+	Vector2(0.75, 0.5),
+]
+
+func _generate_block_combo(act: Dictionary) -> Array:
+	var hit_count = randi() % 3 + 1
+	var combo := []
+	var used_pos := []
+	for i in range(hit_count):
+		var pos = _COMBO_POSITIONS[randi() % _COMBO_POSITIONS.size()]
+		var attempts = 0
+		while pos in used_pos and attempts < 10:
+			pos = _COMBO_POSITIONS[randi() % _COMBO_POSITIONS.size()]
+			attempts += 1
+		used_pos.append(pos)
+		var speed = randf_range(0.7, 1.3)
+		combo.append({
+			pos = pos,
+			duration = 0.8 / speed,
+			perfect = 120.0,
+			grace = 45.0,
+			threshold = 0.35,
+		})
+	return combo
+
 func enemy_attack():
 	if state != State.ENEMY_ACTING: return
 	if not rat.is_alive(): return
@@ -620,31 +813,69 @@ func enemy_attack():
 	var act: Dictionary = acts[limb_name]
 	_log("\n%s использует %s!" % [rat.char_name, act.get("name", "атаку")], true)
 
-	var roll := _roll_d20()
-	var enemy_skill: int = rat.get_skill("agility")
-	var total := roll + enemy_skill
-	var dc: int = 8 + player.get_skill("agility")
-
-	if act.get("dmg", 0) > 0 and total >= dc:
-		var target_limb: String = rat.get_random_alive_limb()
-		var limb: Limb = player.limbs[target_limb]
-		if limb and not limb.is_destroyed():
-			var was_b: bool = limb.is_broken()
-			limb.take_damage(act.dmg)
-			player.take_total_damage(2)
-			if was_b and limb.is_destroyed():
-				_log("%s РАЗРУШЕНА! (%d+%d=%d)" % [LIMB_NAMES_RU[target_limb], roll, enemy_skill, total], true)
-			elif limb.is_broken() and not was_b:
-				_log("%s СЛОМАНА! (%d+%d=%d)" % [LIMB_NAMES_RU[target_limb], roll, enemy_skill, total], true)
-			else:
-				_log("Попадание! (%d+%d=%d ≥ %d)" % [roll, enemy_skill, total, dc], true)
-			play_player_hit_feedback()
-	else:
+	if act.get("dmg", 0) <= 0:
 		_log("%s — без урона." % act.get("name", ""))
 		if act.get("name", "х") == "Прыжок":
 			_log("Ловкость врага временно повышена!")
 		elif act.get("name", "х") == "Визг":
 			_log("Вы оглушены визгом!")
+		update_all_status()
+		if not player.is_alive():
+			end_battle("lose")
+		else:
+			switch_to_player_turn()
+		return
+
+	if _block_minigame:
+		var combo = _generate_block_combo(act)
+		_block_minigame.start_combo(combo)
+		var results = await _block_minigame.combo_finished
+		var total_mult: float = 0.0
+		for r in results:
+			match r:
+				_BlockMinigameScript.State.SUCCESS:
+					total_mult += 0.0
+				_BlockMinigameScript.State.EARLY, _BlockMinigameScript.State.LATE:
+					total_mult += 0.5
+				_BlockMinigameScript.State.MISS:
+					total_mult += 1.0
+		var avg_mult = total_mult / max(1, results.size())
+		var successful = 0
+		for r in results:
+			if r == _BlockMinigameScript.State.SUCCESS:
+				successful += 1
+		var result_text = "%d/%d блоков" % [successful, results.size()]
+		if successful == results.size():
+			_log("Идеальная серия блоков! Урона нет.")
+		elif avg_mult < 0.5:
+			_log("Большая часть заблокирована. (%s)" % result_text)
+		else:
+			_log("Слабый блок. (%s)" % result_text)
+
+		var target_limb: String = rat.get_random_alive_limb()
+		var limb: Limb = player.limbs[target_limb]
+		if limb and not limb.is_destroyed():
+			var actual_dmg = max(1, int(act.dmg * avg_mult))
+			var was_b: bool = limb.is_broken()
+			limb.take_damage(actual_dmg)
+			player.take_total_damage(2)
+			if was_b and limb.is_destroyed():
+				_log("%s РАЗРУШЕНА! (блок: %s)" % [LIMB_NAMES_RU[target_limb], result_text], true)
+			elif limb.is_broken() and not was_b:
+				_log("%s СЛОМАНА! (блок: %s)" % [LIMB_NAMES_RU[target_limb], result_text], true)
+			else:
+				_log("Попадание! (блок: %s, урон: %d)" % [result_text, actual_dmg], true)
+			play_player_hit_feedback()
+	else:
+		_log("Блок не сработал, получаете полный урон!")
+		await get_tree().create_timer(0.3).timeout
+		var target_limb: String = rat.get_random_alive_limb()
+		var limb: Limb = player.limbs[target_limb]
+		if limb and not limb.is_destroyed():
+			limb.take_damage(act.dmg)
+			player.take_total_damage(2)
+			_log("Попадание! (−%d к %s)" % [act.dmg, LIMB_NAMES_RU.get(target_limb, target_limb)])
+			play_player_hit_feedback()
 
 	update_all_status()
 	if not player.is_alive():
@@ -965,6 +1196,10 @@ func _process(delta: float):
 			var rect: TextureRect = enemy_parts.get(limb_name)
 			if rect and rect.visible:
 				rect.position = _breath_parts[limb_name] + Vector2(0, breath)
+
+	if _aiming and enemy_container:
+		_aim_elapsed += delta
+		enemy_container.position.x = _original_enemy_x + sin(_aim_elapsed * 3.0) * _sway_amp
 
 	if not ui_root:
 		return

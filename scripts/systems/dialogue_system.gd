@@ -14,7 +14,7 @@ var log_system: LogBox
 @onready var _box_window: TextureRect
 @onready var _portrait: TextureRect
 @onready var _name_label: Label
-@onready var _text_label: Label
+@onready var _text_label
 
 var _nodes: Array = []
 var _index: int = 0
@@ -27,14 +27,31 @@ var _box_on_pos: Vector2
 var _box_off_pos: Vector2
 
 var _type_player: AudioStreamPlayer
+var _burst_player: AudioStreamPlayer
+var _continue_hint: Label
 var _pitch_map: Dictionary = {}
+var _default_blip_stream: AudioStreamWAV
+var _speaker_streams: Dictionary = {}
+
+var _is_narration: bool = false
+var _shake_active: bool = false
+var _shake_intensity: float = 2.0
+var _shake_label_pos: Vector2
+var _shake_tween: Tween
+var _skip_requested: bool = false
+var _slow_type: bool = false
+var _slow_char_delay: float = 0.32
+var _char_delay: float = 0.04
+var _sentence_pause_duration: float = 0.35
+var _comma_pause_duration: float = 0.0
+var _continue_hint_enabled: bool = false
 
 func setup(
 	portrait_window: TextureRect,
 	box_window: TextureRect,
 	portrait_node: TextureRect,
 	name_label: Label,
-	text_label: Label,
+	text_label,
 	log: LogBox,
 	default_portrait: Texture2D
 ):
@@ -57,21 +74,54 @@ func setup(
 	_box_window.visible = false
 
 	_portrait.texture = default_portrait
-	_text_label.add_theme_font_override("font", log.font)
-	_text_label.add_theme_font_size_override("font_size", 32)
+	_text_label.add_theme_font_override("normal_font", log.font)
+	_text_label.add_theme_font_size_override("normal_font_size", 32)
 	_name_label.add_theme_font_override("font", log.font)
 	_name_label.add_theme_font_size_override("font_size", 32)
 
+	_setup_continue_hint()
 	_setup_audio()
 
 func _setup_audio():
 	_type_player = AudioStreamPlayer.new()
-	_type_player.stream = _generate_blip()
+	_default_blip_stream = _generate_blip()
+	_type_player.stream = _default_blip_stream
+	_type_player.volume_db = -8.0
 	add_child(_type_player)
+	_burst_player = AudioStreamPlayer.new()
+	_burst_player.stream = load("res://audio/ui/dialogue/explosion.ogg")
+	_burst_player.volume_db = -10.0
+	add_child(_burst_player)
 	_pitch_map = {
 		"Кицунэ": 1.8,
 		"Странник": 1.2,
 	}
+	_speaker_streams["Кицунэ"] = load("res://audio/ui/dialogue/kitsu.ogg")
+	_speaker_streams["Силуэт"] = load("res://audio/ui/dialogue/silhouette.ogg")
+
+func _setup_continue_hint():
+	_continue_hint = Label.new()
+	_continue_hint.text = "SPACE, чтобы продолжить"
+	_continue_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_continue_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_continue_hint.add_theme_font_size_override("font_size", 22)
+	_continue_hint.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85, 1.0))
+	_continue_hint.add_theme_font_override("font", log_system.font)
+	_continue_hint.position = Vector2(60, 135)
+	_continue_hint.size = Vector2(400, 28)
+	_continue_hint.visible = false
+	_box_window.add_child(_continue_hint)
+
+func _show_continue_hint():
+	_continue_hint.visible = true
+	var tw := create_tween().set_loops()
+	tw.tween_property(_continue_hint, "modulate:a", 0.15, 0.8).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(_continue_hint, "modulate:a", 0.5, 0.8).set_ease(Tween.EASE_IN_OUT)
+
+func _hide_continue_hint():
+	if is_instance_valid(_continue_hint):
+		_continue_hint.visible = false
+		_continue_hint.modulate.a = 0.5
 
 func _generate_blip(freq: float = 800.0, duration: float = 0.035, vol: float = 0.4) -> AudioStreamWAV:
 	var sample_rate: float = 22050.0
@@ -95,25 +145,34 @@ func _generate_blip(freq: float = 800.0, duration: float = 0.035, vol: float = 0
 	wav.stereo = false
 	return wav
 
-func start(nodes: Array, npc_name: String = "Незнакомец"):
+func start(nodes: Array, npc_name: String = "Незнакомец", is_narration: bool = false, settings: Dictionary = {}):
 	active = true
 	busy = false
 	_nodes = nodes
 	_index = 0
+	_is_narration = is_narration
+	_continue_hint_enabled = settings.get("continue_hint", false)
+	_char_delay = settings.get("char_delay", 0.04)
+	_sentence_pause_duration = settings.get("pause_duration", 0.35)
+	_comma_pause_duration = settings.get("comma_pause", 0.0)
+	_slow_char_delay = settings.get("slow_char_delay", 0.32)
 	_name_label.text = npc_name
 	_portrait_window.modulate.a = 1.0
 	_box_window.modulate.a = 1.0
-	_portrait_window.visible = true
+	_portrait_window.visible = not is_narration
+	_name_label.visible = not is_narration
 	_box_window.visible = true
 	dialogue_started.emit(npc_name)
 	var tw := create_tween().set_parallel()
-	tw.tween_property(_portrait_window, "position", _portrait_on_pos, 0.25).set_ease(Tween.EASE_OUT)
+	if not is_narration:
+		tw.tween_property(_portrait_window, "position", _portrait_on_pos, 0.25).set_ease(Tween.EASE_OUT)
 	tw.tween_property(_box_window, "position", _box_on_pos, 0.25).set_ease(Tween.EASE_OUT)
 	_show_node()
 
 func close():
 	active = false
 	busy = false
+	_hide_continue_hint()
 	log_system.clear_responses()
 	log_system.clear_check_labels()
 	var tw := create_tween().set_parallel()
@@ -130,13 +189,16 @@ func close():
 	, CONNECT_ONE_SHOT)
 
 func advance():
-	if busy or not active:
+	if not active:
+		return
+	if busy:
+		_skip_requested = true
 		return
 	var node: Dictionary = _nodes[_index]
 	var responses: Array = node.get("responses", [])
 	var visible := _count_visible(responses)
 	if visible == 0:
-		_index += 1
+		_index = node.get("next", _index + 1)
 		_show_node()
 	else:
 		_select(0)
@@ -213,6 +275,7 @@ func _set_portrait(portrait_path: String):
 		_portrait.texture = _default_portrait
 
 func _show_node():
+	_hide_continue_hint()
 	log_system.clear_responses()
 	log_system.clear_check_labels()
 
@@ -223,32 +286,156 @@ func _show_node():
 	busy = true
 
 	var node: Dictionary = _nodes[_index]
-	var full_text: String = node.get("text", "")
-	_text_label.text = full_text
-	_text_label.visible_characters = 0
-	_set_portrait(node.get("portrait", ""))
+	var raw_text: String = node.get("text", "")
 
-	var total: int = full_text.length()
-	var char_delay: float = 0.04
-	var pause_duration: float = 0.35
+	var is_narrator_node: bool = node.get("narrator", false)
+	var speaker: String = node.get("speaker", "")
+
+	# Apply narrator/speaker mode
+	if is_narrator_node:
+		_portrait_window.visible = false
+		_name_label.visible = false
+	elif not speaker.is_empty():
+		_name_label.text = speaker
+		_name_label.visible = true
+		_portrait_window.visible = false
+	else:
+		_portrait_window.visible = not _is_narration
+		_name_label.visible = not _is_narration
+		_set_portrait(node.get("portrait", ""))
+
+	# Strip all BBCode tags for iteration; keep display_text with color for RichTextLabel
+	var display_text: String = raw_text
+	display_text = display_text.replace("[shake]", "").replace("[/shake]", "")
+	var clean_text: String = display_text
+	var bb_re := RegEx.new()
+	bb_re.compile("\\[\\/?\\w+(?:=\\w+)?\\]")
+	clean_text = bb_re.sub(clean_text, "", true)
+	_text_label.text = display_text
+	_text_label.visible_characters = 0
+
+	var total: int = clean_text.length()
+	var char_delay: float = _char_delay
+	var pause_duration: float = _sentence_pause_duration
 	var npc_name: String = _name_label.text
 	var pitch: float = _pitch_map.get(npc_name, 1.0)
 	if is_instance_valid(_type_player):
 		_type_player.pitch_scale = pitch
+		var custom_stream: AudioStream = _speaker_streams.get(speaker, null)
+		if custom_stream == null:
+			custom_stream = _speaker_streams.get(npc_name, null)
+		if custom_stream:
+			_type_player.stream = custom_stream
+		else:
+			_type_player.stream = _default_blip_stream
 
-	for i in range(1, total + 1):
-		_text_label.visible_characters = i
-		if is_instance_valid(_type_player):
-			var ch: String = full_text[i - 1]
-			if ch != ' ' and ch != '\t' and ch != '\n':
-				_type_player.play()
-		await get_tree().create_timer(char_delay).timeout
-		if i < total:
-			var prev: String = full_text[i - 1]
-			if prev == '.' or prev == '!' or prev == '?':
-				await get_tree().create_timer(pause_duration).timeout
+	# Build shake regions mapped to clean_text positions
+	var search_from: int = 0
+	var shake_regions: Array[Vector2i] = []
+	var shake_tag: String = "[shake]"
+	var shake_close: String = "[/shake]"
+	while true:
+		var tag_start: int = raw_text.find(shake_tag, search_from)
+		if tag_start < 0: break
+		var tag_end: int = raw_text.find(shake_close, tag_start + shake_tag.length())
+		if tag_end < 0: break
+		var shake_content: String = raw_text.substr(tag_start + shake_tag.length(), tag_end - (tag_start + shake_tag.length()))
+		# Map position in raw_text to position in clean_text (all tags stripped)
+		var before_raw: String = raw_text.substr(0, tag_start)
+		var clean_before: String = bb_re.sub(before_raw.replace("[shake]", "").replace("[/shake]", ""), "", true)
+		var clean_content: String = bb_re.sub(shake_content, "", true)
+		var clean_start: int = clean_before.length()
+		var clean_end: int = clean_start + clean_content.length()
+		shake_regions.append(Vector2i(clean_start, clean_end))
+		search_from = tag_end + shake_close.length()
+
+	# Check word_burst mode
+	var word_burst: bool = node.get("word_burst", false)
+
+	# Type out text
+	_shake_active = false
+	if is_instance_valid(_shake_tween):
+		_shake_tween.kill()
+		_shake_tween = null
+
+		if word_burst:
+			var words: PackedStringArray = clean_text.split(" ", false)
+			var typed_pos: int = 0
+			for w_idx in words.size():
+				if _skip_requested:
+					_text_label.visible_characters = total
+					_skip_requested = false
+					if is_instance_valid(_burst_player):
+						_burst_player.stop()
+					break
+				var w: String = words[w_idx]
+				typed_pos += w.length()
+				_text_label.visible_characters = typed_pos
+				if is_instance_valid(_burst_player):
+					_burst_player.pitch_scale = 1.0 + (w_idx % 3) * 0.15
+					_burst_player.play()
+				await get_tree().create_timer(1.0).timeout
+				typed_pos += 1
+	else:
+		for i in range(1, total + 1):
+			if _skip_requested:
+				_text_label.visible_characters = total
+				_skip_requested = false
+				if is_instance_valid(_type_player):
+					_type_player.stop()
+				break
+			_text_label.visible_characters = i
+
+			var in_shake: bool = false
+			for region in shake_regions:
+				if i > region.x and i <= region.y:
+					in_shake = true
+					break
+
+			if in_shake:
+				if not _shake_active:
+					_shake_active = true
+					_shake_label_pos = _text_label.position
+					_shake_tween = create_tween().set_loops()
+					_shake_tween.tween_method(_shake_offset, 0.0, 1.0, 0.05)
+			else:
+				if _shake_active:
+					_shake_active = false
+					if is_instance_valid(_shake_tween):
+						_shake_tween.kill()
+						_shake_tween = null
+					_text_label.position = _shake_label_pos
+
+			var current_delay: float = _slow_char_delay if in_shake else char_delay
+
+			if is_instance_valid(_type_player):
+				var ch: String = clean_text[i - 1]
+				if ch != ' ' and ch != '\t' and ch != '\n':
+					_type_player.play()
+			await get_tree().create_timer(current_delay).timeout
+			if i < total:
+				var prev: String = clean_text[i - 1]
+				if prev == '.' or prev == '!' or prev == '?':
+					await get_tree().create_timer(pause_duration).timeout
+				elif prev == ',':
+					await get_tree().create_timer(_comma_pause_duration).timeout
+
+	# Stop any lingering sounds
+	if is_instance_valid(_type_player):
+		_type_player.stop()
+	if is_instance_valid(_burst_player):
+		_burst_player.stop()
+
+	# Reset position after typing
+	_shake_active = false
+	if is_instance_valid(_shake_tween):
+		_shake_tween.kill()
+		_shake_tween = null
+	_text_label.position = _shake_label_pos if _shake_label_pos != Vector2() else _text_label.position
 
 	busy = false
+	if _continue_hint_enabled:
+		_show_continue_hint()
 
 	var responses: Array = node.get("responses", [])
 	_passive_cache.clear()
@@ -269,6 +456,14 @@ func _show_node():
 			visible_count += 1
 
 	await log_system.scroll_to_bottom()
+
+
+func _shake_offset(v: float):
+	if not _shake_active or not is_instance_valid(_text_label):
+		return
+	var offset_x: float = randf_range(-_shake_intensity, _shake_intensity)
+	var offset_y: float = randf_range(-_shake_intensity, _shake_intensity)
+	_text_label.position = _shake_label_pos + Vector2(offset_x, offset_y)
 
 func _create_response_label(text: String, visible_idx: int) -> Label:
 	var lbl := Label.new()

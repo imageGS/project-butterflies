@@ -6,6 +6,8 @@ extends Resource
 @export var spawn: Vector2i = Vector2i(10, 3)
 @export var spawn_dir: int = 2
 @export var outer_ring: bool = true
+@export var is_safe: bool = false
+@export var time_of_day: float = 12.0
 @export var fog_distance: float = 7.0
 @export var ceiling_enabled: bool = false
 @export var ceiling_texture: String = ""

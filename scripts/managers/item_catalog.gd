@@ -60,6 +60,7 @@ static func create(id: String) -> Item:
 		slot,
 	)
 
+	item.id = id
 	item.texture_path = entry.get("texture", "")
 	item.examine_text = entry.get("flavor", "")
 	var col: Array = entry.get("color", [1, 1, 1])

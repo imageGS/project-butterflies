@@ -4,14 +4,25 @@ class_name LightingSystem
 var light_mat: ShaderMaterial
 var _viewport: Node
 var flashlight_on: bool = true
+var flashlight_radius: float = 300.0
 
-func setup(parent_viewport: Node):
+var _view_w: int = 0
+var _view_h: int = 0
+var _offset_x: float = 0.0
+var _offset_y: float = 0.0
+
+func setup(parent_viewport: Node, renderer: Control = null):
 	_viewport = parent_viewport
+	if renderer:
+		var rrect := renderer.get_global_rect()
+		_view_w = int(rrect.size.x)
+		_view_h = int(rrect.size.y)
+		_offset_x = rrect.position.x
+		_offset_y = rrect.position.y
 	var shader := load("res://shaders/light_fog.gdshader") as Shader
 	if not shader: return
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
-	mat.set_shader_parameter("occlusion_enabled", false)
 	light_mat = mat
 
 	var cr := ColorRect.new()
@@ -22,85 +33,77 @@ func setup(parent_viewport: Node):
 	parent_viewport.add_child(cr)
 	parent_viewport.move_child(cr, parent_viewport.get_child_count() - 1)
 
-func apply_light_settings(ambient: float, dither: float, pixel_size: float, glow: float, softness: float, curve: float):
-	if not light_mat: return
-	light_mat.set_shader_parameter("ambient", ambient)
-	light_mat.set_shader_parameter("dither_levels", dither)
-	light_mat.set_shader_parameter("dither_pixel_size", pixel_size)
-	light_mat.set_shader_parameter("light_glow", glow)
-	light_mat.set_shader_parameter("softness", softness)
-	light_mat.set_shader_parameter("light_curve", curve)
-
-func _world_to_screen(wx: float, wy: float, cam_x: float, cam_y: float, cam_angle: float, view_w: int, view_h: int, height: float = 0.0) -> Vector2:
+func _project_point(wx: float, wy: float, cam_x: float, cam_y: float, cam_angle: float, view_w: int, view_h: int, height: float = 0.0) -> Dictionary:
 	var dir_x := cos(cam_angle)
 	var dir_y := sin(cam_angle)
 	var plane_x := -dir_y
 	var plane_y := dir_x
-	var inv_det: float = 1.0 / max(plane_x * dir_y - dir_x * plane_y, 0.0001)
+	var inv_det: float = 1.0 / (plane_x * dir_y - dir_x * plane_y)
 	var sx: float = wx - cam_x
 	var sy: float = wy - cam_y
 	var tx: float = inv_det * (dir_y * sx - dir_x * sy)
 	var ty: float = inv_det * (-plane_y * sx + plane_x * sy)
 	if ty <= 0.01:
-		return Vector2(-1, -1)
+		return {"valid": false}
 	var scx: int = int((view_w / 2.0) * (1.0 + tx / ty))
 	var feety: float = view_h / 2.0 + view_h / (2.0 * ty)
 	var half_h: float = view_h / 2.0
 	var y: float = feety - height * half_h / ty
-	return Vector2(scx, y)
+	return {"valid": true, "x": float(scx), "y": y, "depth": ty}
 
 func update_lighting(
-	ambient: float, dither: float, pixel_size: float, glow: float, softness: float, curve: float,
+	glow: float, softness: float,
 	flashlight_radius: float, flashlight_intensity: float, flashlight_color: Color,
-	cam_x: float, cam_y: float, cam_angle: float, entities: Array
+	cam_x: float = 0.0, cam_y: float = 0.0, cam_angle: float = 0.0, entity_lights: Array = [], flashlight_aim: float = 0.0
 ):
 	if not light_mat: return
-	apply_light_settings(ambient, dither, pixel_size, glow, softness, curve)
+	light_mat.set_shader_parameter("light_glow", glow)
+	light_mat.set_shader_parameter("softness", softness)
 
-	var vp_size: Vector2 = _viewport.get_visible_rect().size
-	var view_w: int = int(vp_size.x)
-	var view_h: int = int(vp_size.y)
-	if view_w <= 0 or view_h <= 0: return
+	var view_w: int = _view_w
+	var view_h: int = _view_h
+	if view_w <= 0 or view_h <= 0:
+		var vp_size: Vector2 = _viewport.get_visible_rect().size
+		view_w = int(vp_size.x)
+		view_h = int(vp_size.y)
+		if view_w <= 0 or view_h <= 0: return
 
 	var pos_arr := PackedVector2Array()
 	var rad_arr := PackedFloat32Array()
 	var col_arr := PackedVector3Array()
 	var int_arr := PackedFloat32Array()
-	var flicker_time := Time.get_ticks_msec() / 1000.0
 
-	if flashlight_on:
-		pos_arr.append(Vector2(view_w * 0.5, view_h * 0.5))
-		rad_arr.append(flashlight_radius)
-		col_arr.append(Vector3(flashlight_color.r, flashlight_color.g, flashlight_color.b))
-		int_arr.append(flashlight_intensity)
+	var added: int = 0
+	for ls in entity_lights:
+		if added >= 47: break
+		var lx: float = ls.get("grid_x", 0) + 0.5
+		var ly: float = ls.get("grid_y", 0) + 0.5
+		var lh: float = ls.get("height", 0.2)
+		var p: Dictionary = _project_point(lx, ly, cam_x, cam_y, cam_angle, view_w, view_h, lh)
+		if not p.valid: continue
+		var world_radius: float = ls.world_radius
+		var screen_radius: float = world_radius * float(view_h) / (2.0 * max(p.depth, 0.1))
+		screen_radius = clamp(screen_radius, 4.0, float(view_h) * 0.5)
+		pos_arr.append(Vector2(p.x, p.y))
+		rad_arr.append(screen_radius)
+		col_arr.append(Vector3(ls.color.r, ls.color.g, ls.color.b))
+		int_arr.append(ls.get("intensity", 0.5))
+		added += 1
 
-	for ent in entities:
-		var ls = ent.get("light_source", null)
-		if not ls: continue
-		var wx: float = ent.grid_x + 0.5
-		var wy: float = ent.grid_y + 0.5
-		var lh: float = ls.get("height", 0.0)
-		var sp: Vector2 = _world_to_screen(wx, wy, cam_x, cam_y, cam_angle, view_w, view_h, lh)
-		if sp.x < 0: continue
-
-		var flicker_amount: float = ls.get("flicker", 0.0)
-		var flick: float = 1.0
-		if flicker_amount > 0.0:
-			flick = 1.0 + sin(flicker_time * 13.37 + pos_arr.size() * 7.77) * flicker_amount * 0.5
-
-		var radius: float = ls.get("radius", 150.0) * flick
-		var intensity: float = ls.get("intensity", 0.6) * flick
-		var col: Color = ls.get("color", Color(1.0, 0.6, 0.3))
-
-		pos_arr.append(sp)
-		rad_arr.append(radius)
-		col_arr.append(Vector3(col.r, col.g, col.b))
-		int_arr.append(intensity)
-
-	var count := pos_arr.size()
+	var count: int = pos_arr.size()
 	light_mat.set_shader_parameter("light_count", count)
 	if count > 0:
 		light_mat.set_shader_parameter("light_positions", pos_arr)
 		light_mat.set_shader_parameter("light_radii", rad_arr)
 		light_mat.set_shader_parameter("light_colors", col_arr)
 		light_mat.set_shader_parameter("light_intensities", int_arr)
+
+	self.flashlight_radius = flashlight_radius
+	light_mat.set_shader_parameter("flashlight_on", flashlight_on)
+	if flashlight_on:
+		var sx: float = view_w * 0.5 + _offset_x + tan(flashlight_aim) * view_w * 0.5
+		var sy: float = view_h * 0.5 + _offset_y
+		light_mat.set_shader_parameter("flashlight_screen_pos", Vector2(sx, sy))
+		light_mat.set_shader_parameter("flashlight_screen_rad", flashlight_radius)
+		light_mat.set_shader_parameter("flashlight_intensity_val", flashlight_intensity)
+		light_mat.set_shader_parameter("flashlight_color_val", Vector3(flashlight_color.r, flashlight_color.g, flashlight_color.b))

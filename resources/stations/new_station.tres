@@ -4,9 +4,30 @@
 [ext_resource type="Script" path="res://scripts/resources/exit_data.gd" id="2_w0t4c"]
 [ext_resource type="Script" path="res://scripts/resources/station_data.gd" id="3_wu7y4"]
 
+[sub_resource type="Resource" id="Resource_1qvov"]
+script = ExtResource("1_q50cg")
+position = Vector2i(2, 1)
+template_id = "pistol"
+
+[sub_resource type="Resource" id="Resource_ppjig"]
+script = ExtResource("1_q50cg")
+position = Vector2i(1, 2)
+template_id = "pistol"
+
+[sub_resource type="Resource" id="Resource_7uka5"]
+script = ExtResource("1_q50cg")
+position = Vector2i(0, 1)
+template_id = "pistol"
+
+[sub_resource type="Resource" id="Resource_h7dk2"]
+script = ExtResource("1_q50cg")
+position = Vector2i(1, 0)
+template_id = "pistol"
+
 [resource]
 script = ExtResource("3_wu7y4")
 station_name = "New Station"
 map_file = "res://resources/stations/maps/new_station.txt"
 spawn = Vector2i(1, 1)
 outer_ring = false
+entity_spawns = Array[ExtResource("1_q50cg")]([SubResource("Resource_1qvov"), SubResource("Resource_ppjig"), SubResource("Resource_7uka5"), SubResource("Resource_h7dk2")])

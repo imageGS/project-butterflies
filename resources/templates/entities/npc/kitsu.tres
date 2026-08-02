@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EntityTemplate" format=3]
+
+[ext_resource type="Script" uid="uid://crbrk1svm02ch" path="res://scripts/resources/entity_template.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "kitsu"
+display_name = "Кицунэ"
+category = "npc"
+type = 1
+subtype = "kitsu"
+sprites = {
+"front": "sprites/npc/kitsu"
+}
+default_state = "front"
+extra = {
+"name": "Кицунэ"
+}
+size = 0.5

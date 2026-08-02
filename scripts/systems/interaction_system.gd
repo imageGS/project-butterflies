@@ -14,8 +14,18 @@ var dialogue_system: DialogueSystem
 var log_system: LogBox
 var map_manager: MapManager
 var station_data
+const CURSOR_BY_OBJECT_TYPE: Dictionary = {
+	"npc": "talk",
+	"container": "hand",
+	"tv": "gear",
+	"switch": "gear",
+	"lore": "eye",
+	"rest": "hand",
+}
+
 var hovered_entity: Dictionary = {}
 var hovered_wall: Vector2i = Vector2i(-1, -1)
+var _hovered_no_action: bool = false
 var was_clicking: bool = false
 var tooltip_label: Label
 
@@ -74,6 +84,7 @@ func _is_adjacent(ent: Dictionary) -> bool:
 func update_mouse_hover(mp_win: Vector2):
 	if not renderer: return
 	hovered_entity = {}
+	_hovered_no_action = false
 
 	var crt_root = renderer.get_parent().get_parent().get_parent().get_parent()
 	var crt = crt_root.get_node("CRT_Display") as ColorRect
@@ -87,12 +98,18 @@ func update_mouse_hover(mp_win: Vector2):
 		mp = Vector2((mp_win.x + off_x) * sx, (mp_win.y + off_y) * sy) - renderer.global_position
 	var vis: Array = renderer.get_visible_entities()
 	for ve: Dictionary in vis:
+		if renderer.is_entity_occluded(ve):
+			continue
 		var ex1: float = ve.get("dx1", 0.0)
 		var ex2: float = ve.get("dx2", 0.0)
-		if mp.x >= ex1 and mp.x <= ex2 and mp.y >= ve.get("spy", 0.0) and mp.y <= (ve.get("spy", 0.0) + ve.get("sph", 0.0)):
+		var spy: float = ve.get("spy", 0.0)
+		var sph: float = ve.get("sph", 0.0)
+		if mp.x >= ex1 and mp.x <= ex2 and mp.y >= spy and mp.y <= (spy + sph):
 			var ent: Dictionary = ve.get("ent", {})
-			if ent.get("object_type", "") in ["floor_decal"]: continue
 			if not _is_adjacent(ent): continue
+			if ent.get("object_type", "") in ["floor_decal", "lamp", "light"]:
+				_hovered_no_action = true
+				continue
 			hovered_entity = {"ent": ent}
 			return
 	return
@@ -108,6 +125,21 @@ func update_tooltip():
 	tooltip_label.text = "[Click] " + data.get("name", "???")
 	tooltip_label.visible = true
 	if renderer: renderer.hovered_grid = Vector2i(ent.grid_x, ent.grid_y)
+
+func update_cursor():
+	var kind: String = "eye"
+	if not hovered_entity.is_empty():
+		var ent: Dictionary = hovered_entity.get("ent", {})
+		if ent.get("data", {}).get("locked", false):
+			kind = "locked"
+		elif ent.get("type", "") == "npc":
+			kind = "talk"
+		else:
+			kind = CURSOR_BY_OBJECT_TYPE.get(ent.get("object_type", ""), "eye")
+	elif _hovered_no_action:
+		kind = "no_action"
+	if CursorManager:
+		CursorManager.set_cursor(kind)
 
 func check_click_interact():
 	var clicking: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
@@ -167,17 +199,34 @@ func interact_object(obj: Dictionary):
 			if loot.is_empty():
 				show_tip(obj_name + " — пусто.")
 			else:
-				var item_name: String = loot[0] if loot.size() == 1 else loot[randi() % loot.size()]
-				PlayerStats.inventory.try_add(Item.new(item_name, "Найден в " + obj_name, 2, Vector2i(1,1), 3))
-				show_tip(item_name + " добавлен в инвентарь.")
+				var item_id: String = loot[0] if loot.size() == 1 else loot[randi() % loot.size()]
+				var item: Item = ItemCatalog.create(item_id)
+				if item:
+					PlayerStats.inventory.try_add(item)
+					show_tip(item.name + " добавлен в инвентарь.")
+				else:
+					show_tip("Внутри ничего ценного.")
 				data.loot = loot.duplicate()
-				data.loot.erase(item_name)
+				data.loot.erase(item_id)
 		"rest":
 			PlayerStats.restore_sanity(2)
 			PlayerStats.heal(2)
 			PlayerStats._limb_snapshot.clear()
 			if _refresh_stats: _refresh_stats.call()
 			show_tip("Вы отдыхаете у " + obj_name + ". +2 Здоровье, +2 Рассудок.")
+		"tv":
+			var timer: float = data.get("tv_timer", 0.0)
+			if timer > 0.0:
+				show_tip("Телевизор разогревается. Подождите.")
+			else:
+				data.tv_timer = 10.0
+				var on_tex: Texture2D = data.get("tv_front_on", null)
+				if on_tex:
+					var off_tex: Texture2D = data.get("tv_front_off", null)
+					if off_tex:
+						data.tv_front_off = obj.textures.get("front", null)
+					obj.textures["front"] = on_tex
+				show_tip(data.get("description", "Ничего."))
 		"hazard":
 			PlayerStats.take_damage(data.get("damage", 2))
 			if _refresh_stats: _refresh_stats.call()

@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://clwyqhh5hoog5" path="res://scripts/scenes/main.gd" id="1_sy5k4"]
 [ext_resource type="Texture2D" uid="uid://bgb3x25qaqtwj" path="res://sprites/backgrond/dark_tonnel_1.webp" id="2_112p8"]
+[ext_resource type="Shader" uid="uid://crmnshfho0h32" path="res://shaders/crtshader.gdshader" id="2_aqw2c"]
 [ext_resource type="Texture2D" uid="uid://di8hwmrceguj3" path="res://sprites/enemy/bunny/head.png" id="3_112p8"]
 [ext_resource type="Texture2D" uid="uid://d1psc5pl1vou" path="res://sprites/enemy/bunny/body.png" id="4_l6pdb"]
 [ext_resource type="Texture2D" uid="uid://cybeihjlmlnpb" path="res://sprites/enemy/bunny/r arm.png" id="5_r657h"]
@@ -12,369 +13,39 @@
 [ext_resource type="Texture2D" uid="uid://rk4kynomwl7i" path="res://sprites/guts.png" id="10_436f3"]
 [ext_resource type="AudioStream" uid="uid://dghhonvnx6h5h" path="res://audio/male-scream.mp3" id="10_bcos8"]
 [ext_resource type="Script" uid="uid://dsi67p8ck8fw5" path="res://scripts/ui/crt_display.gd" id="10_f0urt"]
-[ext_resource type="Texture2D" uid="uid://3aub1ayemjdp" path="res://assets/textures/UI_BACK.png" id="11_jfkdj"]
 [ext_resource type="VideoStream" uid="uid://box6o06jshoqq" path="res://videos/punchL2.ogv" id="11_wt6go"]
 [ext_resource type="VideoStream" uid="uid://bi3467e47wqa5" path="res://videos/heal.ogv" id="12_3t6p4"]
 [ext_resource type="Script" uid="uid://cmicxtwxruolj" path="res://scripts/ui/ripple_button.gd" id="13_r657h"]
-
-[sub_resource type="Shader" id="Shader_r657h"]
-code = "// CRT Shader by Harrison Allen
-// V4
-
-shader_type canvas_item;
-
-/**
-	The input texture that will have the CRT effect applied to it.
-	Scanline count will be determined by this texture's height.
-	You'll need to use a texture that's roughly screen height / 4.5
-	(for instance 240 on a 1080 monitor or 480 on a 4k monitor)
-	Else The scanlines won't properly resolve and you're get moiré patters.
-	*/
-uniform sampler2D tex: filter_linear;
-
-
-/**
-	Set the type of mask this CRT will have.
-	Dots: emulates a typical PC CRT monitor.
-	Grille: emulates an aperture grille. Good with higher curve values.
-	Wide Grille: more suitable for 4k monitors.
-	Soft Grille: very close to wide grille, but a little softer.
-	Slot mask: this is the pattern found on most TVs, but it can clash with the
-	scanlines unless the input texture resolution is halved.
-	*/
-uniform int mask_type : hint_enum(
-	\"Dots:1\",
-	\"Aperture Grille:2\",
-	\"Wide Grille:3\",
-	\"Wide Soft Grille:4\",
-	\"Slot Mask:5\",
-	\"Null:0\") = 1;
-
-uniform float curve : hint_range(0.0, 0.5) = 0.0;
-
-/**
-	Controls how sharp the image is. Low values are fun with dithering, but a
-	value of 0.5 will destroy high frequency details and render small text
-	illegible. Use with care.
-	*/
-uniform float sharpness : hint_range(0.5, 1.0) = 0.6666666666666666666666666667;
-
-/**
-	Use to offset color channels from each other. I've personally observed this
-	effect in real CRTs. It can go in either direction, and some CRTs are better
-	aligned than others.
-	I'd suggest offsetting this at least a little bit from the default value.
-	Note that because of the typical RGB subpixel layout on on LCD, a very small
-	positive value will actually align colors better (it depends on
-	screen size), and -0.5 is just slightly more misaligned than 0.5, which is
-	important if you want to be as misaligned as possible.
-	*/
-uniform float color_offset : hint_range(-0.5, 0.5) = 0.0;
-
-/**
-	Reduce to preserve phosphor mask details in highlights at the cost of
-	overall brightness. This should usually be kept at or near 1
-	*/
-uniform float mask_brightness : hint_range(0, 1) = 1.0;
-
-/**
-	Reduce to preserve scanline details in highlights at the cost of
-	overall brightness. This should usually be kept at or near 1
-	*/
-uniform float scanline_brightness : hint_range(0.5, 1.0) = 1.0;
-
-/**
-	Raising this value can help reduce Moiré patterns.
-	A value of 1 will eliminate scanlines entirely.
-	*/
-uniform float min_scanline_thickness : hint_range(0.25, 1.0) = 0.5;
-
-/**
-	This should be the input texture's height divided by width.
-	Only important if curve is used.
-	For 16:9, this should be 0.5625.
-	*/
-uniform float aspect : hint_range(0.5, 1.0) = 0.75;
-
-/**
-	This controls slight horizontal shaking. This is set to 0 (off) by default.
-	*/
-uniform float wobble_strength : hint_range(0.0, 1.0) = 0.0;
-
-varying flat float wobble;
-
-void vertex()
-{
-	wobble = cos(TIME * TAU * 15.0) * wobble_strength / 8192.0;
-}
-
-vec2 warp(vec2 uv, float _aspect, float _curve)
-{
-	// Centralize coordinates
-	uv -= 0.5;
-
-	uv.x /= _aspect;
-
-	// Squared distance from the middle
-	float warping = dot(uv, uv) * _curve;
-
-	// Compensate for shrinking
-	warping -= _curve * 0.25;
-
-	// Warp the coordinates
-	uv /= 1.0 - warping;
-
-	uv.x *= _aspect;
-
-	// Decentralize the coordinates
-	uv += 0.5;
-
-	return uv;
-}
-
-vec3 linear_to_srgb(vec3 col)
-{
-	return mix(
-		(pow(col, vec3(1.0 / 2.4)) * 1.055) - 0.055,
-		col * 12.92,
-		lessThan(col, vec3(0.0031318))
-	);
-}
-
-vec3 srgb_to_linear(vec3 col)
-{
-	return mix(
-		pow((col + 0.055) / 1.055, vec3(2.4)),
-		col / 12.92,
-		lessThan(col, vec3(0.04045))
-	);
-}
-
-
-// Get scanlines from coordinates (returns in linear color)
-vec3 scanlines(vec2 uv)
-{
-	// Set coordinates to match texture dimensions
-	uv *= vec2(textureSize(tex, 0));
-
-	// Vertical coordinate scanline samples
-	int y = int(uv.y + 0.5) - 1;
-
-	float x = floor(uv.x);
-
-	// Horizontal coordinates for the texture samples
-	float ax = x - 2.0;
-	float bx = x - 1.0;
-	float cx = x;
-	float dx = x + 1.0;
-	float ex = x + 2.0;
-
-	// Sample the texture at various points
-	vec3 upper_a = texelFetch(tex, ivec2(int(ax), y), 0).rgb;
-	vec3 upper_b = texelFetch(tex, ivec2(int(bx), y), 0).rgb;
-	vec3 upper_c = texelFetch(tex, ivec2(int(cx), y), 0).rgb;
-	vec3 upper_d = texelFetch(tex, ivec2(int(dx), y), 0).rgb;
-	vec3 upper_e = texelFetch(tex, ivec2(int(ex), y), 0).rgb;
-
-	// Adjust the vertical coordinate for the lower scanline
-	y += 1;
-
-	// Sample the texture at various points
-	vec3 lower_a = texelFetch(tex, ivec2(int(ax), y), 0).rgb;
-	vec3 lower_b = texelFetch(tex, ivec2(int(bx), y), 0).rgb;
-	vec3 lower_c = texelFetch(tex, ivec2(int(cx), y), 0).rgb;
-	vec3 lower_d = texelFetch(tex, ivec2(int(dx), y), 0).rgb;
-	vec3 lower_e = texelFetch(tex, ivec2(int(ex), y), 0).rgb;
-
-	// Convert every sample to linear color
-	upper_a = srgb_to_linear(upper_a);
-	upper_b = srgb_to_linear(upper_b);
-	upper_c = srgb_to_linear(upper_c);
-	upper_d = srgb_to_linear(upper_d);
-	upper_e = srgb_to_linear(upper_e);
-
-	lower_a = srgb_to_linear(lower_a);
-	lower_b = srgb_to_linear(lower_b);
-	lower_c = srgb_to_linear(lower_c);
-	lower_d = srgb_to_linear(lower_d);
-	lower_e = srgb_to_linear(lower_e);
-
-	// The x coordinates of electron beam offsets
-	vec3 beam = vec3(uv.x - 0.5);
-	beam.r -= color_offset;
-	beam.b += color_offset;
-
-	// Calculate weights
-	vec3 weight_a = smoothstep(1, 0, (beam - ax) * sharpness);
-	vec3 weight_b = smoothstep(1, 0, (beam - bx) * sharpness);
-	vec3 weight_c = smoothstep(1, 0, abs(beam - cx) * sharpness);
-	vec3 weight_d = smoothstep(1, 0, (dx - beam) * sharpness);
-	vec3 weight_e = smoothstep(1, 0, (ex - beam) * sharpness);
-	
-	// This can be a fun place to raise each weight to some power
-
-	// Mix samples into the upper scanline color
-	vec3 upper_col = vec3(
-		upper_a * weight_a +
-		upper_b * weight_b +
-		upper_c * weight_c +
-		upper_d * weight_d +
-		upper_e * weight_e
-	);
-
-	// Mix samples into the lower scanline color
-	vec3 lower_col = vec3(
-		lower_a * weight_a +
-		lower_b * weight_b +
-		lower_c * weight_c +
-		lower_d * weight_d +
-		lower_e * weight_e
-	);
-
-	vec3 weight_scaler = vec3(1.0) / (weight_a + weight_b + weight_c + weight_d + weight_e);
-
-	// Normalize weight
-	upper_col *= weight_scaler;
-	lower_col *= weight_scaler;
-	
-	// Apply scanline brightness
-	upper_col *= scanline_brightness;
-	lower_col *= scanline_brightness;
-	
-	
-	// Scanline size (and roughly the apperent brightness of this line)
-	vec3 upper_thickness = mix(vec3(min_scanline_thickness), vec3(1.0), upper_col);
-	vec3 lower_thickness = mix(vec3(min_scanline_thickness), vec3(1.0), lower_col);
-	
-	// Vertical sawtooth wave used to generate scanlines
-	// Almost the same as fract(uv.y + 0.5), but prevents a rare visual bug
-	float sawtooth = (uv.y + 0.5) - float(y);
-
-	vec3 upper_line = vec3(sawtooth) / upper_thickness;
-	upper_line = smoothstep(1.0, 0.0, upper_line);
-
-	vec3 lower_line = vec3(1.0 - sawtooth) / lower_thickness;
-	lower_line = smoothstep(1.0, 0.0, lower_line);
-
-	// Correct line brightness below min_scanline_thickness
-	upper_line *= upper_col / upper_thickness;
-	lower_line *= lower_col / lower_thickness;
-
-	// Combine the upper and lower scanlines
-	return upper_line + lower_line;
-}
-
-vec4 generate_mask(vec2 fragcoord)
-{
-	switch (mask_type)
-	{
-		case 1: // Dots
-			const vec3 pattern[] = {vec3(1,0,0), vec3(0,1,0), vec3(0,0,1), vec3(0,0,0)};
-
-			ivec2 icoords = ivec2(fragcoord);
-
-			return vec4(pattern[(icoords.y * 2 + icoords.x) % 4], 0.25);
-			
-		case 2: // Grille
-			const vec3 pattern[] = {vec3(0,1,0), vec3(1,0,1)};
-
-			return vec4(pattern[int(fragcoord.x) % 2], 0.5);
-			
-		case 3: // Wide grille
-			const vec3 pattern[] = {
-				vec3(1,0,0), vec3(0,1,0), vec3(0,0,1), vec3(0,0,0)};
-
-			return vec4(pattern[int(fragcoord.x) % 4], 0.25);
-			
-		case 4: // Grille wide soft
-			const vec3 pattern[] = {
-				vec3(1.0,0.125,0.0),
-				vec3(0.125,1.0,0.125),
-				vec3(0.0,0.125,1.0),
-				vec3(0.125,0.0,0.125)};
-
-			return vec4(pattern[int(fragcoord.x) % 4], 0.3125);
-			
-		case 5: // Slotmask
-			const vec3 pattern[] = {
-				vec3(1,0,1), vec3(0,1,0), vec3(1,0,1), vec3(0,1,0),
-				vec3(0,0,1), vec3(0,1,0), vec3(1,0,0), vec3(0,0,0),
-				vec3(1,0,1), vec3(0,1,0), vec3(1,0,1), vec3(0,1,0),
-				vec3(1,0,0), vec3(0,0,0), vec3(0,0,1), vec3(0,1,0)
-			};
-			
-			ivec2 icoords = ivec2(fragcoord) % 4;
-			
-			return vec4(pattern[icoords.y * 4 + icoords.x], 0.375);
-			
-		default:
-			return vec4(0.5);
-	}
-}
-
-// Add phosphor mask/grill
-vec3 mask(vec3 linear_color, vec2 fragcoord)
-{
-	// Get the pattern for the mask. Mask.w equals avg. brightness of the mask
-	vec4 mask = generate_mask(fragcoord);
-	
-	// Dim the color if brightness is reduced to preserve mask details
-	linear_color *= mix(mask.w, 1.0, mask_brightness);
-
-	// How bright the color needs to be to maintain 100% brightness while masked
-	vec3 target_color = linear_color / mask.w;
-
-	// Target color limited to the 0 to 1 range.
-	vec3 primary_col = clamp(target_color, 0.0, 1.0);
-
-	// This calculates how bright the secondary subpixels will need to be
-	vec3 highlights = target_color - primary_col;
-	highlights /= 1.0 / mask.w - 1.0;
-
-	primary_col *= mask.rgb;
-
-	// Add the secondary subpixels
-	primary_col += highlights * (1.0 - mask.rgb);
-
-	return primary_col;
-}
-
-void fragment()
-{
-	// Warp UV coordinates
-	vec2 warped_coords = warp(UV, aspect, curve);
-	
-	// Add wobble
-	warped_coords.x += wobble;
-
-	// Sample the scanlines
-	vec3 col = scanlines(warped_coords);
-
-	// Apply phosphor mask
-	col = mask(col, FRAGCOORD.xy);
-
-	// Convert back to srgb
-	col = linear_to_srgb(col);
-
-	COLOR.rgb = col;
-}"
-
-[sub_resource type="ViewportTexture" id="ViewportTexture_r657h"]
+[ext_resource type="Texture2D" uid="uid://betg18dylynfi" path="res://assets/UI/MAIN_HUD.png" id="15_ha2b"]
+[ext_resource type="Texture2D" uid="uid://rm4c8x6mp622" path="res://assets/UI/UL_BALL.png" id="21_nb8h"]
+[ext_resource type="Texture2D" uid="uid://vtg71r31y8xt" path="res://assets/UI/UR_BALL.png" id="22_ob9i"]
+[ext_resource type="Texture2D" uid="uid://8yxie12b1xfd" path="res://assets/UI/DL_BALL.png" id="23_pb0j"]
+[ext_resource type="Texture2D" uid="uid://cgjm604m48xsd" path="res://assets/UI/DR_BALL.png" id="24_qb1k"]
+[ext_resource type="Texture2D" uid="uid://bw2dbgvpjdox5" path="res://assets/UI/DIALOGUE_PORTRAIT_WINDOW.png" id="25_rb2l"]
+[ext_resource type="Texture2D" uid="uid://c45he1iujo4ea" path="res://assets/UI/DIALOGUE_BOX.png" id="26_sb3m"]
+[ext_resource type="Script" uid="uid://00ob3m0h63bo" path="res://scripts/ui/log_box.gd" id="27_logx"]
+[ext_resource type="Script" uid="uid://bdkiykbmhvmbr" path="res://scripts/battle/crosshair.gd" id="28_cr"]
+[ext_resource type="Script" uid="uid://c56spg4foywwt" path="res://scripts/battle/block_minigame.gd" id="29_bm"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_dg"]
 viewport_path = NodePath("CRT_Root/GameViewport")
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_f0urt"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_dg"]
 resource_local_to_scene = true
-shader = SubResource("Shader_r657h")
-shader_parameter/tex = SubResource("ViewportTexture_r657h")
-shader_parameter/mask_type = 4
-shader_parameter/curve = 0.0970000046075
-shader_parameter/sharpness = 0.7050000097375
-shader_parameter/color_offset = 0.01000002422500001
-shader_parameter/mask_brightness = 0.60800002888
-shader_parameter/scanline_brightness = 0.6700000080749999
-shader_parameter/min_scanline_thickness = 0.7240000225150001
-shader_parameter/aspect = 0.5170000008075
-shader_parameter/wobble_strength = 0.302000014345
+shader = ExtResource("2_aqw2c")
+shader_parameter/tex = SubResource("ViewportTexture_dg")
+shader_parameter/mask_type = 0
+shader_parameter/curve = 0.0830000039425
+shader_parameter/sharpness = 1.0
+shader_parameter/color_offset = -0.4869999993825
+shader_parameter/mask_brightness = 0.3670000174325
+shader_parameter/scanline_brightness = 0.582000003895
+shader_parameter/min_scanline_thickness = 0.836000027835
+shader_parameter/aspect = 0.5650000030875
+shader_parameter/wobble_strength = 0.6130000291175
+
+[sub_resource type="LabelSettings" id="LabelSettings_z4a"]
+font_size = 25
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_r657h"]
 blend_mode = 1
@@ -386,10 +57,6 @@ layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 76.0
-offset_top = 546.0
-offset_right = -1036.0
-offset_bottom = -62.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_sy5k4")
@@ -422,17 +89,15 @@ music_volume_db = -8.700000000000003
 sfx_volume_db = -8.200000000000003
 
 [node name="CRT_Display" type="ColorRect" parent="CRT_Root" unique_id=575750956 node_paths=PackedStringArray("subviewport_node")]
-material = SubResource("ShaderMaterial_f0urt")
+material = SubResource("ShaderMaterial_dg")
 layout_mode = 1
-anchors_preset = -1
-anchor_left = -2.0
-anchor_top = -13.625001
-anchor_right = 27.000002
-anchor_bottom = 2.65
-offset_left = -44.546875
-offset_top = -24.999939
-offset_right = 44.546753
-offset_bottom = 25.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -48.0
+offset_top = -22.0
+offset_right = 49.0
+offset_bottom = 31.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
@@ -442,10 +107,6 @@ subviewport_node = NodePath("../GameViewport")
 [node name="Test" type="Control" parent="CRT_Root" unique_id=220769908]
 visible = false
 anchors_preset = 0
-offset_left = -76.0
-offset_top = -546.0
-offset_right = -36.0
-offset_bottom = -506.0
 
 [node name="Head" type="Sprite2D" parent="CRT_Root/Test" unique_id=1223462757]
 z_index = 1
@@ -490,11 +151,167 @@ size_2d_override = Vector2i(1152, 648)
 
 [node name="UI" type="Control" parent="CRT_Root/GameViewport" unique_id=2146799630]
 layout_mode = 3
-anchors_preset = 0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 offset_left = 76.0
 offset_top = 546.0
-offset_right = 1076.0
-offset_bottom = 608.0
+offset_right = -76.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HUDOverlay" type="Control" parent="CRT_Root/GameViewport/UI" unique_id=1888815722]
+z_index = 5
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -576.0
+offset_top = -577.0
+offset_right = -576.0
+offset_bottom = -577.0
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(1.02, 1.02)
+pivot_offset = Vector2(575, 320)
+mouse_filter = 2
+
+[node name="LogBox" type="Control" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=1782210392]
+z_index = 10
+anchors_preset = 0
+offset_left = 349.50983
+offset_top = 508.23532
+offset_right = 784.80396
+offset_bottom = 578.8236
+mouse_filter = 2
+script = ExtResource("27_logx")
+
+[node name="MainHUD" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=1663626559]
+z_index = 1
+texture_filter = 1
+layout_mode = 0
+offset_right = 1151.0
+offset_bottom = 648.0
+mouse_filter = 2
+texture = ExtResource("15_ha2b")
+
+[node name="UL_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=453953751]
+texture_filter = 1
+layout_mode = 0
+offset_left = 3.0
+offset_top = 7.0
+offset_right = 118.0
+offset_bottom = 122.0
+pivot_offset = Vector2(58, 58)
+mouse_filter = 2
+texture = ExtResource("21_nb8h")
+
+[node name="UR_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=1930964928]
+texture_filter = 1
+layout_mode = 0
+offset_left = 1040.0
+offset_top = 9.0
+offset_right = 1148.0
+offset_bottom = 117.0
+pivot_offset = Vector2(54, 54)
+mouse_filter = 2
+texture = ExtResource("22_ob9i")
+
+[node name="DL_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=303494574]
+texture_filter = 1
+layout_mode = 0
+offset_left = 1040.0
+offset_top = 524.0
+offset_right = 1143.0
+offset_bottom = 627.0
+pivot_offset = Vector2(52, 52)
+mouse_filter = 2
+texture = ExtResource("23_pb0j")
+
+[node name="DR_Ball" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=66377144]
+texture_filter = 1
+layout_mode = 0
+offset_left = 7.0
+offset_top = 508.0
+offset_right = 125.0
+offset_bottom = 626.0
+pivot_offset = Vector2(59, 59)
+mouse_filter = 2
+texture = ExtResource("24_qb1k")
+
+[node name="TimeLabel" type="Label" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=2013385091]
+z_index = 10
+layout_mode = 0
+offset_left = 451.4706
+offset_top = 28.823555
+offset_right = 533.8236
+offset_bottom = 54.823555
+theme_override_colors/font_color = Color(0.9, 0.85, 0.7, 1)
+theme_override_font_sizes/font_size = 18
+label_settings = SubResource("LabelSettings_z4a")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DialoguePortraitWindow" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=66377145]
+visible = false
+texture_filter = 1
+layout_mode = 0
+offset_left = 841.6667
+offset_top = 288.62747
+offset_right = 1041.6667
+offset_bottom = 488.62747
+mouse_filter = 2
+texture = ExtResource("25_rb2l")
+
+[node name="DialoguePortrait" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay/DialoguePortraitWindow" unique_id=66377146]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.125
+anchor_top = 0.125
+anchor_right = 0.87500006
+anchor_bottom = 0.75000006
+offset_left = 0.49018097
+offset_top = -52.450974
+offset_right = 0.49012756
+offset_bottom = -52.450974
+mouse_filter = 2
+stretch_mode = 5
+
+[node name="DialogueName" type="Label" parent="CRT_Root/GameViewport/UI/HUDOverlay/DialoguePortraitWindow" unique_id=66377147]
+layout_mode = 0
+offset_left = 8.823547
+offset_top = 173.60786
+offset_right = 190.1961
+offset_bottom = 199.60786
+theme_override_colors/font_color = Color(0.9, 0.85, 0.7, 1)
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+
+[node name="DialogueBoxWindow" type="TextureRect" parent="CRT_Root/GameViewport/UI/HUDOverlay" unique_id=66377148]
+visible = false
+texture_filter = 1
+layout_mode = 0
+offset_left = 325.9804
+offset_top = 336.66672
+offset_right = 875.9804
+offset_bottom = 506.66672
+scale = Vector2(0.88235295, 0.88235295)
+mouse_filter = 2
+texture = ExtResource("26_sb3m")
+
+[node name="DialogueText" type="Label" parent="CRT_Root/GameViewport/UI/HUDOverlay/DialogueBoxWindow" unique_id=66377149]
+layout_mode = 0
+offset_left = 25.0
+offset_top = 25.0
+offset_right = 525.0
+offset_bottom = 145.0
+theme_override_colors/font_color = Color(0.9019608, 0.8509804, 0.7019608, 1)
+theme_override_font_sizes/font_size = 18
+autowrap_mode = 3
 
 [node name="CentralViewport" type="Control" parent="CRT_Root/GameViewport/UI" unique_id=605564114]
 anchors_preset = 0
@@ -617,34 +434,59 @@ scale = Vector2(0.37037683, 0.2403502)
 mouse_filter = 2
 texture = ExtResource("10_436f3")
 
+[node name="BattleCrosshair" type="Control" parent="CRT_Root/GameViewport/UI/CentralViewport" unique_id=1879410157]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("28_cr")
+
+[node name="BlockMinigame" type="Control" parent="CRT_Root/GameViewport/UI" unique_id=263999413]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_top = -319.0
+offset_bottom = -319.0
+grow_horizontal = 2
+scale = Vector2(0.4, 0.4)
+mouse_filter = 2
+script = ExtResource("29_bm")
+
 [node name="HitVideoPlayer" type="VideoStreamPlayer" parent="CRT_Root/GameViewport/UI" unique_id=830861257]
 z_index = 3
 material = SubResource("CanvasItemMaterial_r657h")
 layout_mode = 0
-offset_left = 100.0
-offset_top = -613.0
-offset_right = 900.0
-offset_bottom = -13.0
+offset_left = -35.0
+offset_top = -549.0
+offset_right = 765.0
+offset_bottom = 51.0
+scale = Vector2(1.3600006, 1)
 stream = ExtResource("9_r657h")
 
 [node name="HitVideoPlayer2" type="VideoStreamPlayer" parent="CRT_Root/GameViewport/UI" unique_id=480775874]
 z_index = 3
 material = SubResource("CanvasItemMaterial_r657h")
 layout_mode = 0
-offset_left = 100.0
-offset_top = -646.0
-offset_right = 900.0
-offset_bottom = -46.0
+offset_left = -35.0
+offset_top = -582.0
+offset_right = 765.0
+offset_bottom = 18.0
+scale = Vector2(1.3600006, 1)
 stream = ExtResource("11_wt6go")
 
 [node name="HealVideoPlayer" type="VideoStreamPlayer" parent="CRT_Root/GameViewport/UI" unique_id=130719445]
 z_index = 3
 material = SubResource("CanvasItemMaterial_r657h")
 layout_mode = 0
-offset_left = 100.0
-offset_top = -671.0
-offset_right = 900.0
-offset_bottom = -71.0
+offset_left = -35.0
+offset_top = -607.0
+offset_right = 765.0
+offset_bottom = -7.0
+scale = Vector2(1.3600006, 1)
 stream = ExtResource("12_3t6p4")
 
 [node name="DamageVignette" type="ColorRect" parent="CRT_Root/GameViewport/UI" unique_id=596587370]
@@ -660,9 +502,9 @@ color = Color(0.57254905, 0.003921569, 0, 1)
 [node name="EnemyStatusLabel" type="Label" parent="CRT_Root/GameViewport/UI" unique_id=1862814818]
 layout_mode = 0
 offset_left = 709.0
-offset_top = -482.0
+offset_top = -448.0
 offset_right = 907.0
-offset_bottom = -459.0
+offset_bottom = -425.0
 horizontal_alignment = 2
 
 [node name="MainMenu" type="HBoxContainer" parent="CRT_Root/GameViewport/UI" unique_id=1423755759]
@@ -672,9 +514,9 @@ anchors_preset = -1
 anchor_right = 0.9850001
 anchor_bottom = 0.71000004
 offset_left = 272.0
-offset_top = -13.0
+offset_top = -105.0
 offset_right = -263.00006
-offset_bottom = -13.020004
+offset_bottom = -105.020004
 offset_transform_enabled = true
 theme_override_constants/separation = 41
 alignment = 1
@@ -777,20 +619,9 @@ offset_bottom = -83.0
 horizontal_alignment = 2
 
 [node name="LogLabel" type="Label" parent="CRT_Root/GameViewport/UI" unique_id=67152286]
+visible = false
 layout_mode = 0
 offset_left = 87.0
 offset_top = -487.0
 offset_right = 250.0
 offset_bottom = -324.0
-
-[node name="UI_BACK" type="TextureRect" parent="CRT_Root/GameViewport/UI" unique_id=1170162403]
-z_index = 4
-texture_filter = 1
-layout_mode = 0
-offset_left = -83.0
-offset_top = -548.0
-offset_right = 557.0
-offset_bottom = -188.0
-scale = Vector2(1.8179175, 1.8119441)
-mouse_filter = 2
-texture = ExtResource("11_jfkdj")

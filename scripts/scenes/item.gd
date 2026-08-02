@@ -4,6 +4,7 @@ extends RefCounted
 enum Category { QUEST, CONSUMABLE, EQUIPMENT, JUNK }
 enum EquipSlot { NONE = -1, HEAD, BODY, WEAPON }
 
+var id: String
 var name: String
 var description: String
 var examine_text: String

@@ -14,6 +14,7 @@ var map_manager: MapManager
 var audio_system: AudioSystem
 var _get_dir_active: Callable
 var _get_inv_open: Callable
+var _is_entity_blocking: Callable
 var _refresh_cb: Callable
 var _shake_cb: Callable
 
@@ -34,10 +35,13 @@ var held_cooldown: float = 0.0
 
 var move_duration: float = 0.25
 var turn_duration: float = 0.2
+var bump_duration: float = 0.18
+
+var _bump_vec: Vector2i = Vector2i.ZERO
 
 signal moved()
 
-func setup(mm: MapManager, aud: AudioSystem, get_dir_active: Callable, get_inv_open: Callable, refresh_cb: Callable, shake_cb: Callable, move_dur: float, turn_dur: float):
+func setup(mm: MapManager, aud: AudioSystem, get_dir_active: Callable, get_inv_open: Callable, refresh_cb: Callable, shake_cb: Callable, move_dur: float, turn_dur: float, is_entity_blocking: Callable = Callable()):
 	map_manager = mm
 	audio_system = aud
 	_get_dir_active = get_dir_active
@@ -46,34 +50,65 @@ func setup(mm: MapManager, aud: AudioSystem, get_dir_active: Callable, get_inv_o
 	_shake_cb = shake_cb
 	move_duration = move_dur
 	turn_duration = turn_dur
+	_is_entity_blocking = is_entity_blocking
+
+func _can_enter(tx: int, ty: int) -> bool:
+	if not map_manager.is_walkable(tx, ty):
+		return false
+	if _is_entity_blocking and _is_entity_blocking.is_valid() and _is_entity_blocking.call(tx, ty):
+		return false
+	return true
 
 func try_move_forward():
 	var vec: Vector2i = DIR_VECTORS[player_dir]
 	var nx: int = roundi(player_x) + vec.x
 	var ny: int = roundi(player_y) + vec.y
-	if map_manager.is_walkable(nx, ny):
+	if _can_enter(nx, ny):
 		start_move(nx, ny)
+	else:
+		start_bump(vec.x, vec.y)
 
 func try_move_backward():
 	var vec: Vector2i = DIR_VECTORS[player_dir]
 	var nx: int = roundi(player_x) - vec.x
 	var ny: int = roundi(player_y) - vec.y
-	if map_manager.is_walkable(nx, ny):
+	if _can_enter(nx, ny):
 		start_move(nx, ny)
+	else:
+		start_bump(-vec.x, -vec.y)
 
 func try_strafe_left():
 	var vec: Vector2i = DIR_VECTORS[(player_dir + 3) % 4]
 	var nx: int = roundi(player_x) + vec.x
 	var ny: int = roundi(player_y) + vec.y
-	if map_manager.is_walkable(nx, ny):
+	if _can_enter(nx, ny):
 		start_move(nx, ny)
+	else:
+		start_bump(vec.x, vec.y)
 
 func try_strafe_right():
 	var vec: Vector2i = DIR_VECTORS[(player_dir + 1) % 4]
 	var nx: int = roundi(player_x) + vec.x
 	var ny: int = roundi(player_y) + vec.y
-	if map_manager.is_walkable(nx, ny):
+	if _can_enter(nx, ny):
 		start_move(nx, ny)
+	else:
+		start_bump(vec.x, vec.y)
+
+func start_bump(dx: int, dy: int):
+	if is_animating:
+		return
+	is_animating = true
+	anim_timer = 0.0
+	anim_from_x = player_x
+	anim_from_y = player_y
+	anim_to_x = player_x
+	anim_to_y = player_y
+	anim_from_angle = current_angle
+	anim_to_angle = current_angle
+	_bump_vec = Vector2i(dx, dy)
+	audio_system.play_bump()
+	_shake_cb.call()
 
 func start_move(tx: int, ty: int):
 	is_animating = true
@@ -102,14 +137,25 @@ func update_animation(delta: float) -> float:
 	if not is_animating:
 		return -1.0
 	anim_timer += delta
-	var dur: float = turn_duration if anim_from_angle != anim_to_angle and anim_from_x == anim_to_x else move_duration
+	var dur: float
+	if _bump_vec != Vector2i.ZERO:
+		dur = bump_duration
+	else:
+		dur = turn_duration if anim_from_angle != anim_to_angle and anim_from_x == anim_to_x else move_duration
 	var t: float = min(anim_timer / dur, 1.0)
 	t = t * t * t * (t * (6.0 * t - 15.0) + 10.0)
-	player_x = lerp(anim_from_x, anim_to_x, t)
-	player_y = lerp(anim_from_y, anim_to_y, t)
-	current_angle = lerp_angle(anim_from_angle, anim_to_angle, t)
+	if _bump_vec != Vector2i.ZERO:
+		var amp: float = 0.5 * sin(t * PI)
+		player_x = anim_from_x + _bump_vec.x * amp
+		player_y = anim_from_y + _bump_vec.y * amp
+		current_angle = anim_from_angle
+	else:
+		player_x = lerp(anim_from_x, anim_to_x, t)
+		player_y = lerp(anim_from_y, anim_to_y, t)
+		current_angle = lerp_angle(anim_from_angle, anim_to_angle, t)
 	if t >= 1.0:
 		is_animating = false
+		_bump_vec = Vector2i.ZERO
 		moved.emit()
 	return t
 
