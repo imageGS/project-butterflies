@@ -39,11 +39,23 @@ func set_tile(x: int, y: int, tile: int):
 		return
 	map_data[y][x] = tile
 
+func is_door_tile(x: int, y: int) -> bool:
+	if y < 0 or y >= map_data.size() or x < 0 or x >= map_data[0].size():
+		return false
+	var tv: int = map_data[y][x]
+	return tv == TILE_DOOR or tv == TILE_LOCKED
+
+func open_door(x: int, y: int):
+	set_tile(x, y, TILE_FLOOR)
+	if renderer:
+		renderer.update_height(height_data)
+
 func is_walkable(x: int, y: int) -> bool:
 	if x < 0 or x >= get_width() or y < 0 or y >= get_height():
 		return false
 	var tile_val: int = map_data[y][x]
-	return tile_val != TILE_WALL and tile_val != TILE_BLOCKED
+	return tile_val != TILE_WALL and tile_val != TILE_BLOCKED \
+		and tile_val != TILE_DOOR and tile_val != TILE_LOCKED
 
 func is_blocked(x1: int, y1: int, x2: int, y2: int) -> bool:
 	var steps: int = int(sqrt(float((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1))) * 2.0) + 1
@@ -54,7 +66,7 @@ func is_blocked(x1: int, y1: int, x2: int, y2: int) -> bool:
 		if gx == x2 and gy == y2: break
 		if gx >= 0 and gx < get_width() and gy >= 0 and gy < get_height():
 			var tv: int = map_data[gy][gx]
-			if tv == TILE_WALL or tv == TILE_BLOCKED:
+			if tv == TILE_WALL or tv == TILE_BLOCKED or tv == TILE_DOOR or tv == TILE_LOCKED:
 				return true
 	return false
 

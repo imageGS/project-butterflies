@@ -36,8 +36,11 @@ uniform float flashlight_int = 0.0;
 uniform vec3 flashlight_col = vec3(1.0);
 uniform float flashlight_aim = 0.0;
 
+uniform float light_cell = 1.0;
+uniform float view_bob = 0.0;
+
 void fragment() {
-	float half_h = view_size.y * 0.5;
+	float half_h = view_size.y * 0.5 + view_bob;
 	float focal = view_size.x * 0.5;
 	float eye_h = 0.5;
 
@@ -67,10 +70,14 @@ void fragment() {
 				fc = fh < -0.5 ? texture(rail_tex, fract(vec2(wx, wy))) : texture(floor_tex, fract(vec2(wx, wy)));
 			}
 
+			float lcell = max(light_cell, 0.05);
+			float lx = floor(wx / lcell) * lcell + lcell * 0.5;
+			float ly = floor(wy / lcell) * lcell + lcell * 0.5;
+
 			vec3 entity_light = vec3(ambient_light);
 			for (int i = 0; i < MAX_LIGHTS; i++) {
 				if (i >= light_count) break;
-				vec2 delta = vec2(wx, wy) - light_pos[i];
+				vec2 delta = vec2(lx, ly) - light_pos[i];
 				float dist = sqrt(delta.x * delta.x + delta.y * delta.y + light_height[i] * light_height[i]);
 				if (dist >= light_rad[i]) continue;
 				float falloff = 1.0 - smoothstep(0.0, light_rad[i], dist);
@@ -80,10 +87,10 @@ void fragment() {
 
 			vec3 flash_light = vec3(0.0);
 			if (flashlight_on) {
-				float fdist = distance(vec2(wx, wy), flashlight_pos);
+				float fdist = distance(vec2(lx, ly), flashlight_pos);
 				if (fdist < flashlight_rad) {
-					float dx = wx - flashlight_pos.x;
-					float dy = wy - flashlight_pos.y;
+					float dx = lx - flashlight_pos.x;
+					float dy = ly - flashlight_pos.y;
 					float angle_to = atan(dy, dx);
 					float angle_diff = abs(angle_to - (cam_angle + flashlight_aim));
 					if (angle_diff > 3.14159) angle_diff = 6.28318 - angle_diff;

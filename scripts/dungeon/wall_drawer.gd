@@ -4,7 +4,7 @@ var renderer: Control
 
 func _draw():
 	if not renderer: return
-	var half_h: float = size.y * 0.5
+	var half_h: float = size.y * 0.5 + float(renderer.get("bob_offset"))
 	var view_h: int = int(size.y); var view_w: int = int(size.x)
 	
 	if renderer.get("_ceiling_enabled") and renderer.get("_ceiling_tex"):

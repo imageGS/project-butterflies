@@ -13,6 +13,7 @@ extends Resource
 @export var ceiling_texture: String = ""
 @export var exits: Array[ExitData] = []
 @export var entity_spawns: Array[EntitySpawn] = []
+@export var doors: Array[Dictionary] = []
 
 func get_exit_at(pos: Vector2i) -> ExitData:
 	for e: ExitData in exits:

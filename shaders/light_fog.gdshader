@@ -19,8 +19,13 @@ uniform float flashlight_screen_rad = 0.0;
 uniform float flashlight_intensity_val = 0.0;
 uniform vec3 flashlight_color_val = vec3(1.0);
 
+uniform float light_cell_px = 0.0;
+
 void fragment() {
 	vec2 frag = FRAGCOORD.xy;
+	if (light_cell_px > 1.0) {
+		frag = floor(frag / light_cell_px) * light_cell_px + light_cell_px * 0.5;
+	}
 	vec3 scene = texture(screen_tex, SCREEN_UV).rgb;
 	vec3 glow = vec3(0.0);
 

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="StationData" format=3 uid="uid://cnako84qhbvts"]
+[gd_resource type="Resource" script_class="StationData" format=3 uid="uid://b7d6qpbs56ej1"]
 
 [ext_resource type="Script" uid="uid://csdjjp2doowrq" path="res://scripts/resources/station_data.gd" id="1"]
 [ext_resource type="Script" uid="uid://dfcaawdjgi8lu" path="res://scripts/resources/exit_data.gd" id="2"]
@@ -47,6 +47,18 @@ extra = {
 "name": "Кицунэ"
 }
 texture = "sprites/npc/kitsu"
+overrides = {
+"ceiling_lift": 0.0,
+"extra": {
+"name": "Кицунэ"
+},
+"facing": 2,
+"size": 0.2,
+"subtype": "kitsu",
+"texture": "sprites/npc/kitsu",
+"type": 1,
+"visual_offset_x": 0.0
+}
 
 [sub_resource type="Resource" id="EntitySpawn_5"]
 script = ExtResource("3_entity")
@@ -386,3 +398,10 @@ is_safe = true
 fog_distance = 10.0
 exits = Array[ExtResource("2")]([SubResource("ExitData_1")])
 entity_spawns = Array[ExtResource("3_entity")]([SubResource("EntitySpawn_1"), SubResource("EntitySpawn_2"), SubResource("EntitySpawn_3"), SubResource("EntitySpawn_4"), SubResource("EntitySpawn_5"), SubResource("EntitySpawn_6"), SubResource("EntitySpawn_7"), SubResource("EntitySpawn_8"), SubResource("EntitySpawn_9"), SubResource("EntitySpawn_10"), SubResource("Resource_rsrwf"), SubResource("Resource_q3784"), SubResource("Resource_bepir"), SubResource("Resource_avln7"), SubResource("Resource_f12sn")])
+doors = Array[Dictionary]([{
+"lock_dc": 8,
+"name": "Тестовая дверь",
+"smash_dc": 10,
+"x": 12,
+"y": 3
+}])

@@ -2,6 +2,14 @@ extends Control
 
 const TILE_WALL: int = 1
 const TILE_BLOCKED: int = 6
+const TILE_DOOR: int = 2
+const TILE_LOCKED: int = 3
+
+func _is_solid_cell(x: int, y: int) -> bool:
+	if y < 0 or x < 0 or y >= map_data.size() or x >= map_data[0].size():
+		return true
+	var tv: int = map_data[y][x]
+	return tv == TILE_WALL or tv == TILE_BLOCKED or tv == TILE_DOOR or tv == TILE_LOCKED
 
 var cam_x: float = 1.5
 var cam_y: float = 1.5
@@ -23,6 +31,8 @@ var _flashlight_intensity: float = 0.0
 var _flashlight_color: Color = Color.WHITE
 var flashlight_aim: float = 0.0
 var flicker_enabled: bool = true
+var light_cell: float = 1.0
+var bob_offset: float = 0.0
 
 var _wall_tex: Texture2D = load("res://assets/textures/wall/default.png")
 var _floor_tex: Texture2D = load("res://assets/textures/floor/default.png")
@@ -101,11 +111,55 @@ func get_wall_cell_at_strip(strip: int) -> Vector2i:
 	var perp: float = _wall_zbuf[strip]
 	if perp >= fog_distance: return Vector2i(-1, -1)
 	# Recast to get cell position
+	var result: Dictionary = _cast_ray(cam_x, cam_y, _strip_angle(strip))
+	return Vector2i(result.get("mx", -1), result.get("my", -1))
+
+func _strip_angle(strip: int) -> float:
 	var fov: float = deg_to_rad(90.0)
 	var num_strips: int = _wall_zbuf.size()
-	var angle: float = player_angle - fov * 0.5 + (strip / float(num_strips)) * fov
-	var result: Dictionary = _cast_ray(cam_x, cam_y, angle)
-	return Vector2i(result.get("mx", -1), result.get("my", -1))
+	var angle: float = player_angle - fov * 0.5 + ((strip + 0.5) / float(max(num_strips, 1))) * fov
+	return angle
+
+func _strip_zbuf(strip: int) -> float:
+	if strip < 0 or strip >= _wall_zbuf.size(): return INF
+	return _wall_zbuf[strip]
+
+func wall_cell_at_local(px: float, py: float) -> Vector2i:
+	if _wall_zbuf.is_empty(): return Vector2i(-1, -1)
+	var strip: int = clampi(int(px / max(_strip_w, 1)), 0, _wall_zbuf.size() - 1)
+	var perp: float = _wall_zbuf[strip]
+	if not is_finite(perp) or perp >= fog_distance: return Vector2i(-1, -1)
+	var half_h: float = _view_h / 2.0 + bob_offset
+	var wh: float = _view_h / perp
+	var top: float = half_h - wh * 0.5
+	if py < top - 4.0 or py > top + wh + 4.0:
+		return Vector2i(-1, -1)
+	var result: Dictionary = _cast_ray(cam_x, cam_y, _strip_angle(strip))
+	var tile: Vector2i = Vector2i(result.get("mx", -1), result.get("my", -1))
+	if not _is_solid_cell(tile.x, tile.y):
+		return Vector2i(-1, -1)
+	return tile
+
+func throw_target_tile_at_local(px: float, py: float, max_dist: float) -> Vector2i:
+	if _wall_zbuf.is_empty(): return Vector2i(-1, -1)
+	var strip: int = clampi(int(px / _strip_w), 0, _wall_zbuf.size() - 1)
+	var angle: float = _strip_angle(strip)
+	var dir := Vector2(cos(angle), sin(angle))
+	var cx: float = cam_x; var cy: float = cam_y
+	var cur_x: int = int(floor(cx)); var cur_y: int = int(floor(cy))
+	var last: Vector2i = Vector2i(-1, -1)
+	var travelled: float = 0.0
+	while travelled <= max_dist:
+		travelled += 0.25
+		var gx: int = int(floor(cx + dir.x * travelled))
+		var gy: int = int(floor(cy + dir.y * travelled))
+		if gx != cur_x or gy != cur_y:
+			if map_data.is_empty() or gx < 0 or gy < 0 or gy >= map_data.size() or gx >= map_data[0].size():
+				return last if last.x >= 0 else Vector2i(cur_x, cur_y)
+			if _is_solid_cell(gx, gy):
+				return last if last.x >= 0 else Vector2i(cur_x, cur_y)
+			cur_x = gx; cur_y = gy; last = Vector2i(gx, gy)
+	return last if last.x >= 0 else Vector2i(cur_x, cur_y)
 
 func is_entity_occluded(ve: Dictionary) -> bool:
 	var scx: float = ve.get("scx", -1.0)
@@ -186,7 +240,7 @@ func _fill_map_tex():
 	_map_img = Image.create(_map_w, _map_h, false, Image.FORMAT_RGBA8)
 	for y in _map_h:
 		for x in _map_w:
-			var is_wall: bool = map_data[y][x] == TILE_WALL or map_data[y][x] == TILE_BLOCKED
+			var is_wall: bool = _is_solid_cell(x, y)
 			var fh: float = height_data[y][x] if y < height_data.size() and x < height_data[y].size() else 0.0
 			_map_img.set_pixel(x, y, Color(1.0 if is_wall else 0.0, (fh + 2.0) / 4.0, 0, 1))
 	_map_tex = ImageTexture.create_from_image(_map_img)
@@ -217,7 +271,7 @@ func _build_floor_atlas():
 	var next: int = 0
 	for y in _map_h:
 		for x in _map_w:
-			if map_data[y][x] == TILE_WALL or map_data[y][x] == TILE_BLOCKED:
+			if map_data[y][x] == TILE_WALL or map_data[y][x] == TILE_BLOCKED or map_data[y][x] == TILE_DOOR or map_data[y][x] == TILE_LOCKED:
 				continue
 			var tid := ""
 			var rot: int = 0
@@ -292,6 +346,7 @@ func _update_floor_shader():
 	_floor_mat.set_shader_parameter("cam_pos", Vector2(cam_x, cam_y))
 	_floor_mat.set_shader_parameter("cam_angle", player_angle)
 	_floor_mat.set_shader_parameter("view_size", Vector2(_view_w, _view_h))
+	_floor_mat.set_shader_parameter("view_bob", bob_offset)
 	_floor_mat.set_shader_parameter("fog_dist", fog_distance)
 	_floor_mat.set_shader_parameter("fog_fade", fog_fade)
 	_floor_mat.set_shader_parameter("fog_color", fog_color)
@@ -328,13 +383,19 @@ func _get_light_style_mod(style_name: String, gx: int, gy: int) -> float:
 	var ch: int = style.unicode_at(idx) - 97
 	return clampf(ch / 12.0, 0.0, 2.0)
 
+func _light_cell_pos(w: float) -> float:
+	var cell: float = max(light_cell, 0.05)
+	return floor(w / cell) * cell + cell * 0.5
+
 func _get_light_at(wx: float, wy: float) -> Color:
 	var lr: float = floor_ambient
 	var lg: float = floor_ambient
 	var lb: float = floor_ambient
+	var cx2: float = _light_cell_pos(wx)
+	var cy2: float = _light_cell_pos(wy)
 	for ls in _entity_lights:
-		var dx: float = wx - (ls.grid_x + 0.5)
-		var dy: float = wy - (ls.grid_y + 0.5)
+		var dx: float = cx2 - (ls.grid_x + 0.5)
+		var dy: float = cy2 - (ls.grid_y + 0.5)
 		var h: float = ls.get("height", 0.0)
 		var dist: float = sqrt(dx * dx + dy * dy + h * h)
 		if dist >= ls.world_radius: continue
@@ -348,8 +409,8 @@ func _get_light_at(wx: float, wy: float) -> Color:
 
 func _get_flashlight_at(wx: float, wy: float, ray_angle: float) -> Color:
 	if not _flashlight_on: return Color.BLACK
-	var dx: float = wx - cam_x
-	var dy: float = wy - cam_y
+	var dx: float = _light_cell_pos(wx) - cam_x
+	var dy: float = _light_cell_pos(wy) - cam_y
 	var dist: float = sqrt(dx * dx + dy * dy)
 	if dist > _flashlight_range: return Color.BLACK
 	var angle_diff: float = abs(ray_angle - (player_angle + flashlight_aim))
@@ -364,6 +425,8 @@ func _update_floor_lighting(ambient: float, light_sources: Array, flash_x: float
 	floor_ambient = ambient
 	if not _floor_mat: return
 	_floor_mat.set_shader_parameter("ambient_light", ambient)
+	_floor_mat.set_shader_parameter("light_cell", light_cell)
+	_floor_mat.set_shader_parameter("view_bob", bob_offset)
 	var total: int = mini(light_sources.size(), 16)
 	_floor_mat.set_shader_parameter("light_count", total)
 	var pos_arr := PackedVector2Array()
@@ -443,7 +506,7 @@ func _fill_zbuf():
 			if side_x < side_y: side_x += ddx; mx += step_x; s = 0
 			else: side_y += ddy; my += step_y; s = 1
 			if mx < 0 or my < 0 or my >= len(map_data) or mx >= len(map_data[0]): break
-			if map_data[my][mx] == TILE_WALL or map_data[my][mx] == TILE_BLOCKED: hit = true; break
+			if _is_solid_cell(mx, my): hit = true; break
 		_wall_zbuf[i] = (side_x - ddx if s == 0 else side_y - ddy) if hit else 999.0
 
 func _draw():
@@ -451,7 +514,7 @@ func _draw():
 
 func draw_walls(ci: CanvasItem):
 	if not ci: return
-	var half_h: float = _view_h / 2.0
+	var half_h: float = _view_h / 2.0 + bob_offset
 	var num_strips: int = int(float(_view_w) / _strip_w)
 	if _wall_zbuf.size() != num_strips: _wall_zbuf.resize(num_strips)
 	var fov: float = deg_to_rad(90.0)
@@ -555,7 +618,7 @@ func _cast_ray_skip_alpha(ox: float, oy: float, angle: float, skip_alpha: bool) 
 		if side_x < side_y: side_x += delta_x; map_x += step_x; side = 0
 		else: side_y += delta_y; map_y += step_y; side = 1
 		if map_data.is_empty() or map_x < 0 or map_y < 0 or map_y >= len(map_data) or map_x >= len(map_data[0]): break
-		if map_data[map_y][map_x] == TILE_WALL or map_data[map_y][map_x] == TILE_BLOCKED:
+		if _is_solid_cell(map_x, map_y):
 			if skip_alpha:
 				var tex: Texture2D = _cell_tex(map_x, map_y, true)
 				if tex and _texture_has_alpha(tex):
@@ -594,7 +657,7 @@ func get_visible_entities() -> Array:
 func _project_entities():
 	_visible_entities.clear()
 	if entities_on_map.is_empty(): return
-	var half_h: float = _view_h / 2.0
+	var half_h: float = _view_h / 2.0 + bob_offset
 	var dir_x: float = cos(player_angle); var dir_y: float = sin(player_angle)
 	var plane_x: float = -dir_y; var plane_y: float = dir_x
 	var inv_det: float = 1.0 / (plane_x * dir_y - dir_x * plane_y)
@@ -706,7 +769,7 @@ func draw_floor_dust(ci: CanvasItem):
 	if num_strips <= 0: return
 	var specks: Array = floor_dust.get_specks_in_range(cam_x, cam_y, fog_distance)
 	if specks.is_empty(): return
-	var half_h: float = _view_h * 0.5
+	var half_h: float = _view_h * 0.5 + bob_offset
 	var dir_x: float = cos(player_angle)
 	var dir_y: float = sin(player_angle)
 	var plane_x: float = -dir_y

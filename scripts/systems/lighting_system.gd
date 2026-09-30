@@ -10,6 +10,9 @@ var _view_w: int = 0
 var _view_h: int = 0
 var _offset_x: float = 0.0
 var _offset_y: float = 0.0
+var light_levels: float = 8.0
+var light_cell: float = 1.0
+var light_cell_px: float = 0.0
 
 func setup(parent_viewport: Node, renderer: Control = null):
 	_viewport = parent_viewport
@@ -59,6 +62,7 @@ func update_lighting(
 	if not light_mat: return
 	light_mat.set_shader_parameter("light_glow", glow)
 	light_mat.set_shader_parameter("softness", softness)
+	light_mat.set_shader_parameter("light_cell_px", light_cell_px)
 
 	var view_w: int = _view_w
 	var view_h: int = _view_h

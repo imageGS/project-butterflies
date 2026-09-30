@@ -22,6 +22,8 @@ const TILE_ITEM := 8
 const TILE_RAIL := 9
 
 const FLASHLIGHT_MAX_AIM: float = 0.5
+const EDGE_TURN_ZONE: float = 40.0
+const EDGE_TURN_INSET: float = 24.0
 
 @export var move_duration: float = 0.25
 @export var turn_duration: float = 0.2
@@ -53,6 +55,7 @@ var _transition_system: TransitionSystem
 @export var light_ambient: float = 0.15
 @export var light_glow_amount: float = 0.0
 @export var light_softness: float = 0.3
+@export var light_cell: float = 1.0
 @export var player_light_radius: float = 300.0
 @export var player_light_intensity: float = 1.2
 @export var player_light_color: Color = Color(1.0, 0.95, 0.8)
@@ -65,6 +68,16 @@ var _dark_timer: float = 0.0
 const DARK_FEAR_TIME: float = 10.0
 var _entity_lights: Array = []
 var _flashlight_aim: float = 0.0
+var station_power_on: bool = true
+
+var _throw_aim: bool = false
+var _throw_item: Item = null
+var _throw_clicking: bool = false
+var _aim_marker: Dictionary = {}
+var _projectiles: Array = []
+const THROW_MAX_DIST: float = 4.0
+var _hand
+var _hand_busy: bool = false
 
 func _ready():
 	var fd := FontFile.new()
@@ -125,6 +138,12 @@ func _ready():
 	add_child(_hud_system)
 	_hud_system.setup($CRT_Root/GameViewport/UI/HUDOverlay, _dialogue_system, _mono_font)
 	_hud_system.examine_requested.connect(_on_examine_item)
+	if _hud_system.inv_panel:
+		_hud_system.inv_panel.throw_requested.connect(_on_throw_requested)
+		_hud_system.inv_panel.use_item_callback = func(anim_name: String, on_done: Callable):
+			play_hand(anim_name, on_done)
+
+	_hand = $CRT_Root/GameViewport/UI/CentralViewport/HandAnimation
 
 	_transition_system = TransitionSystem.new()
 	add_child(_transition_system)
@@ -147,8 +166,20 @@ func _ready():
 		func(): if _hud_system.stats_panel: _hud_system.stats_panel.refresh(),
 		station_data
 	)
+	_interaction_system.set_angle_callable(func(): return _player_movement.current_angle)
 	_interaction_system.entities = _entities
 	_interaction_system.entity_interacted.connect(_on_entity_interacted)
+	_interaction_system.set_noise_cb(func(tx, ty, r): _emit_noise(tx, ty, r))
+	_interaction_system.set_refresh_world_cb(func(): _refresh())
+	_interaction_system.set_power_toggle_cb(func():
+		station_power_on = not station_power_on
+		_log_system.add_message("Свет станции %s." % ("включён" if station_power_on else "погашен"))
+		_refresh()
+	)
+	_interaction_system.set_play_hand_cb(func(anim_name: String, on_done: Callable = Callable(), fps: float = 12.0, loop: bool = false, max_loops: int = 1, reverse: bool = false):
+		play_hand(anim_name, on_done, fps, loop, max_loops, reverse)
+	)
+	_setup_doors()
 
 	_enemy_ai = EnemyAI.new()
 	add_child(_enemy_ai)
@@ -162,16 +193,176 @@ func _ready():
 
 	_lighting_system = LightingSystem.new()
 	add_child(_lighting_system)
+	_lighting_system.light_cell = light_cell
+	_lighting_system.light_cell_px = light_cell * _renderer.size.x / 100.0
 	_lighting_system.setup($CRT_Root/GameViewport, _renderer)
+
+	_renderer.light_cell = light_cell
 
 	_hud_system.add_test_items()
 	_renderer.precache_outlines(_entities)
 	_refresh()
 
+var _noise_events: Array = []
+
+func _emit_noise(tx: int, ty: int, radius: float):
+	_noise_events.append({"x": tx, "y": ty, "radius": radius, "t": 0.0, "dur": 3.0})
+
+func play_hand(anim_name: String, on_done: Callable = Callable(), fps: float = 12.0, loop: bool = false, max_loops: int = 1, reverse: bool = false):
+	if not _hand: return
+	_hand_busy = true
+	_hand.play("res://assets/hands/" + anim_name, fps, func():
+		_hand_busy = false
+		if on_done.is_valid(): on_done.call()
+	, loop, max_loops, reverse)
+
+func _tick_noise(delta: float):
+	for i in range(_noise_events.size() - 1, -1, -1):
+		var e: Dictionary = _noise_events[i]
+		e.t += delta
+		if e.t >= e.get("dur", 3.0):
+			_noise_events.remove_at(i)
+
+func _setup_doors():
+	if not station_data: return
+	var states: Dictionary = {}
+	for d in station_data.doors:
+		var x: int = int(d.get("x", -1)); var y: int = int(d.get("y", -1))
+		if x < 0 or y < 0: continue
+		var key := "%d,%d" % [x, y]
+		states[key] = {
+			"x": x, "y": y,
+			"name": str(d.get("name", "Запертая дверь")),
+			"lock_dc": int(d.get("lock_dc", 12)),
+			"smash_dc": int(d.get("smash_dc", 13)),
+		}
+		if PlayerStats.has_flag("door_%s_open" % key):
+			_map_manager.open_door(x, y)
+		elif not _map_manager.is_door_tile(x, y):
+			_map_manager.set_tile(x, y, TILE_LOCKED)
+	if _interaction_system:
+		_interaction_system.set_door_states(states)
+
+func _on_throw_requested(item: Item):
+	if _dialogue_system.active or _hand_busy: return
+	if not item: return
+	_throw_item = item
+	_throw_aim = true
+	_throw_clicking = true
+	if _hud_system.inv_open:
+		_hud_system.toggle_inventory()
+	if not _aim_marker.is_empty():
+		_entities.erase(_aim_marker)
+	_aim_marker = {
+		"grid_x": roundi(_player_movement.player_x),
+		"grid_y": roundi(_player_movement.player_y),
+		"type": "object", "object_type": "floor_decal",
+		"color": Color(1.0, 0.9, 0.3, 0.7), "size": 0.5,
+	}
+	_entities.append(_aim_marker)
+	_log_system.add_message("Выберите точку броска (ЛКМ), отмена — Esc.")
+
+func _cancel_throw():
+	if not _aim_marker.is_empty():
+		_entities.erase(_aim_marker)
+		_aim_marker = {}
+	_throw_aim = false
+	_throw_item = null
+	_renderer.hovered_grid = Vector2i(-1, -1)
+	_log_system.add_message("Бросок отменён.")
+
+func _update_aim_marker():
+	if not _throw_aim or _aim_marker.is_empty(): return
+	var angle: float = _player_movement.current_angle
+	var px: float = _player_movement.player_x
+	var py: float = _player_movement.player_y
+	var dx: float = cos(angle)
+	var dy: float = sin(angle)
+	var last_walkable := Vector2i(roundi(px), roundi(py))
+	var traveled: float = 0.0
+	while traveled < THROW_MAX_DIST:
+		traveled += 0.25
+		var wx: float = px + dx * traveled
+		var wy: float = py + dy * traveled
+		var gx: int = floori(wx)
+		var gy: int = floori(wy)
+		var tile := Vector2i(gx, gy)
+		if tile != last_walkable:
+			if not _map_manager.is_walkable(gx, gy):
+				break
+			last_walkable = tile
+	_aim_marker.grid_x = last_walkable.x
+	_aim_marker.grid_y = last_walkable.y
+	_renderer.hovered_grid = last_walkable
+
+func _commit_throw():
+	if not _throw_item: return
+	var target := Vector2i(int(_aim_marker.get("grid_x", 0)), int(_aim_marker.get("grid_y", 0)))
+	var item: Item = _throw_item
+	var count: int = item.stack_count
+	var inv := PlayerStats.inventory
+	for i in inv.size():
+		if inv.get_item(i) == item:
+			inv.remove(i)
+			break
+	if not _aim_marker.is_empty():
+		_entities.erase(_aim_marker)
+		_aim_marker = {}
+	_throw_aim = false
+	_throw_item = null
+	_spawn_projectile(
+		Vector2(_player_movement.player_x, _player_movement.player_y),
+		Vector2(target.x, target.y), item, count)
+	_log_system.add_message("Вы бросили %s." % item.name)
+
+func _spawn_projectile(from: Vector2, to: Vector2, item: Item, count: int):
+	var ent: Dictionary = {
+		"grid_x": int(floor(from.x)), "grid_y": int(floor(from.y)),
+		"visual_offset_x": 0.0, "visual_offset_y": 0.0,
+		"type": "object", "object_type": "projectile",
+		"data": {"name": item.name, "item_id": item.id, "count": count},
+		"color": item.icon_color, "size": 0.35,
+		"texture": item.get_texture(),
+		"_from": from, "_to": to, "_t": 0.0, "_dur": 0.55,
+		"_arc_height": 0.4 + from.distance_to(to) * 0.08,
+	}
+	_entities.append(ent)
+	_projectiles.append(ent)
+
+func _update_projectiles(delta: float):
+	for i in range(_projectiles.size() - 1, -1, -1):
+		var p: Dictionary = _projectiles[i]
+		p._t += delta
+		var t: float = clampf(p._t / p.get("_dur", 0.55), 0.0, 1.0)
+		var smooth: float = t * t * (3.0 - 2.0 * t)
+		var pos: Vector2 = p._from.lerp(p._to, smooth)
+		p.visual_offset_x = pos.x - p.grid_x
+		p.visual_offset_y = pos.y - p.grid_y
+		var arc: float = p.get("_arc_height", 0.4)
+		p["ceiling_lift"] = arc * sin(t * PI)
+		if p._t >= p.get("_dur", 0.55):
+			_entities.erase(p)
+			_projectiles.remove_at(i)
+			var pdata: Dictionary = p.get("data", {})
+			var it := ItemCatalog.create(str(pdata.get("item_id", "")))
+			if it:
+				it.stack_count = int(pdata.get("count", 1))
+				_spawn_ground_item(int(p._to.x), int(p._to.y), it)
+			_emit_noise(int(p._to.x), int(p._to.y), 4.0)
+			_refresh()
+
+func _spawn_ground_item(tx: int, ty: int, item: Item):
+	_entities.append({
+		"grid_x": tx, "grid_y": ty,
+		"type": "object", "object_type": "ground_item",
+		"data": {"name": item.name, "item_id": item.id, "count": item.stack_count},
+		"texture": item.get_texture(), "color": item.icon_color, "size": 0.3,
+	})
+
 func _tile_blocked_by_entity(tx: int, ty: int) -> bool:
 	for ent in _entities:
 		if ent.grid_x == tx and ent.grid_y == ty:
-			if ent.get("object_type", "") in ["floor_decal", "lamp", "light"]:
+			if ent.get("object_type", "") in ["floor_decal", "lamp", "light", "ground_item", "projectile"]:
 				continue
 			return true
 	return false
@@ -216,6 +407,8 @@ func _load_station():
 	_player_movement.current_angle = DIR_ANGLES[_player_movement.player_dir]
 
 func _unhandled_input(event):
+	if _hand_busy:
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_TAB:
@@ -235,49 +428,16 @@ func _unhandled_input(event):
 				if not _dialogue_system.active and _hud_system.dl_window:
 					_hud_system.dl_open = _hud_system.toggle_window(_hud_system.dl_window, _hud_system.dl_open, _hud_system.dl_on_pos, _hud_system.dl_off_pos)
 					return
-	if _player_movement.is_animating or _hud_system.inv_open:
+	if _hud_system.inv_open or _hand_busy:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
-			KEY_W, KEY_UP:
-				if not _dialogue_system.active:
-					_player_movement.try_move_forward()
-					_player_movement.held_cooldown = 0.12
-			KEY_S, KEY_DOWN:
-				if not _dialogue_system.active:
-					_player_movement.try_move_backward()
-					_player_movement.held_cooldown = 0.12
-			KEY_A, KEY_LEFT:
-				if not _dialogue_system.active:
-					var old_dir = _player_movement.player_dir
-					_player_movement.player_dir = (_player_movement.player_dir + 3) % 4
-					_player_movement.start_rotate(old_dir)
-					_player_movement.held_cooldown = 0.08
-			KEY_D, KEY_RIGHT:
-				if not _dialogue_system.active:
-					var old_dir = _player_movement.player_dir
-					_player_movement.player_dir = (_player_movement.player_dir + 1) % 4
-					_player_movement.start_rotate(old_dir)
-					_player_movement.held_cooldown = 0.08
 			KEY_R:
 				if not _dialogue_system.active:
-					var old_dir = _player_movement.player_dir
-					_player_movement.player_dir = (_player_movement.player_dir + 2) % 4
-					_player_movement.start_rotate(old_dir)
-					_player_movement.held_cooldown = 0.08
-			KEY_Q:
-				if not _dialogue_system.active:
-					_player_movement.try_strafe_left()
-					_player_movement.held_cooldown = 0.12
-			KEY_E:
+					_interaction_system.try_interact()
+			KEY_E, KEY_SPACE:
 				if _dialogue_system.active:
 					_dialogue_system.advance()
-				elif not _dialogue_system.active:
-					_player_movement.try_strafe_right()
-					_player_movement.held_cooldown = 0.12
-			KEY_SPACE, KEY_F:
-				if not _dialogue_system.active:
-					_interaction_system.try_interact()
 			KEY_L:
 				if not _dialogue_system.active:
 					if _lighting_system.flashlight_on or PlayerStats.flashlight_energy > 0.0:
@@ -323,8 +483,59 @@ func _update_flashlight_aim():
 	if _renderer:
 		_renderer.flashlight_aim = _flashlight_aim
 
+func _mouse_in_view() -> Vector2:
+	if not _renderer:
+		return Vector2.ZERO
+	var mp_win: Vector2 = get_viewport().get_mouse_position()
+	var mp: Vector2 = mp_win - _renderer.global_position
+	var crt_root: Node = _renderer.get_parent().get_parent().get_parent().get_parent()
+	var crt: ColorRect = crt_root.get_node("CRT_Display") as ColorRect
+	if crt:
+		var off_x: float = -crt.offset_left
+		var off_y: float = -crt.offset_top
+		var svp: SubViewport = crt_root.get_node("GameViewport") as SubViewport
+		var sx: float = float(svp.size.x) / crt.size.x
+		var sy: float = float(svp.size.y) / crt.size.y
+		mp = Vector2((mp_win.x + off_x) * sx, (mp_win.y + off_y) * sy) - _renderer.global_position
+	return mp
+
+func _update_edge_turn(delta: float) -> bool:
+	if _player_movement.is_animating:
+		_player_movement.stop_continuous_turn()
+		return false
+	if _hud_system.inv_open or _dialogue_system.active or _hud_system.ul_open or _hud_system.dl_open or _hand_busy:
+		_player_movement.stop_continuous_turn()
+		return false
+	var mp: Vector2 = _mouse_in_view()
+	var vw: float = _renderer.size.x if _renderer else 0.0
+	if vw <= 0.0:
+		_player_movement.stop_continuous_turn()
+		return false
+	var dir: int = 0
+	if mp.x > EDGE_TURN_INSET and mp.x < EDGE_TURN_INSET + EDGE_TURN_ZONE:
+		dir = -1
+	elif mp.x > vw - EDGE_TURN_INSET - EDGE_TURN_ZONE and mp.x < vw - EDGE_TURN_INSET:
+		dir = 1
+	if dir == 0:
+		_player_movement.stop_continuous_turn()
+		return false
+	_player_movement.start_continuous_turn(dir)
+	CursorManager.set_cursor("left" if dir < 0 else "right")
+	return true
+
 
 func _process(delta):
+	_tick_noise(delta)
+	_update_projectiles(delta)
+	if _throw_aim:
+		_update_aim_marker()
+		var lmb: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+		if lmb and not _throw_clicking:
+			_commit_throw()
+		if not lmb:
+			_throw_clicking = false
+		if Input.is_action_just_pressed("ui_cancel"):
+			_cancel_throw()
 	if _cursor_visual:
 		_cursor_visual.update_position(get_viewport().get_mouse_position())
 		var cur: Dictionary = CursorManager.get_current_cursor()
@@ -404,29 +615,26 @@ func _process(delta):
 		ball_brightness = maxf(ball_brightness, 0.15)
 	_hud_system.tick_balls(delta, ball_brightness)
 
-	if not _player_movement.is_animating:
-		if not _hud_system.inv_open:
-			_player_movement.process_held_input(delta)
-		if _renderer:
-			_renderer._project_entities()
-			_renderer.queue_redraw_walls()
-		if not _hud_system.inv_open and not _dialogue_system.active:
+	var idle: bool = _hud_system.inv_open or _dialogue_system.active or _throw_aim or _hand_busy
+	var edge_turning: bool = false
+	if not idle:
+		edge_turning = _update_edge_turn(delta)
+	var moved: bool = false
+	if not idle:
+		moved = _player_movement.process_free(delta)
+	if _renderer:
+		_renderer.bob_offset = _player_movement.bob_offset
+		_renderer._project_entities()
+		_renderer.queue_redraw_walls()
+	if not idle:
+		if not edge_turning:
 			_interaction_system.update_mouse_hover(get_viewport().get_mouse_position())
 			_interaction_system.update_tooltip()
 			_interaction_system.update_cursor()
 			_interaction_system.check_click_interact()
-		return
-
-	var t: float = _player_movement.update_animation(delta)
-	if t >= 0.0:
+	if moved or edge_turning:
 		_refresh()
-		if _renderer: _renderer._project_entities()
-		_interaction_system.update_mouse_hover(get_viewport().get_mouse_position())
-		_interaction_system.update_tooltip()
-		_interaction_system.update_cursor()
-		_interaction_system.check_click_interact()
-		if t >= 1.0:
-			_interaction_system.check_entity()
+		_interaction_system.check_entity()
 
 
 
@@ -473,22 +681,25 @@ func _update_floor_lights():
 	else:
 		floor_ambient = 0.0
 	_entity_lights.clear()
-	for ent in _entities:
-		var ls = ent.get("light_source", null)
-		if not ls: continue
-		var entry := {
-			grid_x = ent.grid_x,
-			grid_y = ent.grid_y,
-			world_radius = ls.get("world_radius", ls.get("radius", 150.0) * 0.01),
-			intensity = ls.get("intensity", 0.6),
-			color = ls.get("color", Color(1.0, 0.6, 0.3)),
-			height = ls.get("height", 0.2),
-			style = ls.get("style", ""),
-		}
-		if emergency_night and ls.get("emergency", false):
-			entry.color = Color(1.0, 0.25, 0.15)
-			entry.style = "alarm"
-		_entity_lights.append(entry)
+	if station_power_on:
+		for ent in _entities:
+			var ls = ent.get("light_source", null)
+			if not ls: continue
+			var entry := {
+				grid_x = ent.grid_x,
+				grid_y = ent.grid_y,
+				world_radius = ls.get("world_radius", ls.get("radius", 150.0) * 0.01),
+				intensity = ls.get("intensity", 0.6),
+				color = ls.get("color", Color(1.0, 0.6, 0.3)),
+				height = ls.get("height", 0.2),
+				style = ls.get("style", ""),
+			}
+			if emergency_night and ls.get("emergency", false):
+				entry.color = Color(1.0, 0.25, 0.15)
+				entry.style = "alarm"
+			_entity_lights.append(entry)
+	else:
+		floor_ambient = 0.0
 	_renderer._entity_lights = _entity_lights
 	var flash_intensity: float = player_light_intensity * 3.0 if _lighting_system.flashlight_on else 0.0
 	_renderer._update_floor_lighting(floor_ambient, _entity_lights, _player_movement.player_x, _player_movement.player_y, flash_intensity, player_light_radius * 0.015, player_light_color, _flashlight_aim)

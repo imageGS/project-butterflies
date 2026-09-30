@@ -7,7 +7,7 @@ extends Node
 
 const DIR: String = "res://assets/UI/cursor"
 
-const SCALE: float = 1.4
+const SCALE: float = 1.2
 
 const HOTSPOTS: Dictionary = {
 	"pointer": Vector2(1, 1),
@@ -18,6 +18,8 @@ const HOTSPOTS: Dictionary = {
 	"gear": Vector2(15, 15),
 	"pinch": Vector2(11, 16),
 	"no_action": Vector2(16, 17),
+	"left": Vector2(22, 7),
+	"right": Vector2(22, 7),
 }
 
 var _textures: Dictionary = {}

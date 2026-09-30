@@ -25,8 +25,10 @@ var _ctx_menu_rect: Rect2
 var _ctx_hover_idx: int = -1
 
 signal examine_requested(item_name: String, description: String)
+signal throw_requested(item: Item)
 
 var equip_slots: EquipmentSlots
+var use_item_callback: Callable
 var inventory: InventoryGrid:
 	set(value):
 		if inventory:
@@ -455,7 +457,10 @@ func _show_context_menu(local_pos: Vector2):
 	var items_list: Array[Dictionary] = []
 	if can_use:
 		items_list.append({"text": "Использовать", "cb": func(): _use_item(item, hit.idx)})
-	items_list.append({"text": "Выбросить", "cb": func(): _drop_from_grid(item, hit.idx)})
+	items_list.append({"text": "Бросить", "cb": func():
+		throw_requested.emit(item)
+		_close_context_menu()
+	})
 	items_list.append({"text": "Осмотреть", "cb": func(): _examine_item(item)})
 
 	for it in items_list:
@@ -477,15 +482,21 @@ func _close_context_menu():
 	queue_redraw()
 
 func _use_item(item: Item, idx: int):
-	if item.heal_amount > 0:
-		PlayerStats.heal(item.heal_amount)
-	elif item.id == "battery":
-		PlayerStats.change_flashlight_energy(25.0)
-	var s: Dictionary = inventory.slots[idx]
-	s.item.stack_count -= 1
-	if s.item.stack_count <= 0:
-		inventory.slots.remove_at(idx)
-	inventory.changed.emit()
+	var apply_effect: Callable = func():
+		if item.heal_amount > 0:
+			PlayerStats.heal(item.heal_amount)
+		elif item.id == "battery":
+			PlayerStats.change_flashlight_energy(25.0)
+		var s: Dictionary = inventory.slots[idx]
+		s.item.stack_count -= 1
+		if s.item.stack_count <= 0:
+			inventory.slots.remove_at(idx)
+		inventory.changed.emit()
+	if use_item_callback.is_valid():
+		var anim_name: String = "heal" if item.heal_amount > 0 else "use"
+		use_item_callback.call(anim_name, apply_effect)
+	else:
+		apply_effect.call()
 
 func _drop_from_grid(item: Item, idx: int):
 	inventory.remove(idx)
